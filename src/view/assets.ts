@@ -35,7 +35,7 @@ export function loadAssets(scene: Phaser.Scene) {
           );
         }
     }
-  for (const kind of ["skeleton", "ash", "medic"]) {
+  for (const kind of ["skeleton", "ash", "medic", "drowned"]) {
     if (scene.textures.exists(kind)) continue;
     const canvas = document.createElement("canvas");
     canvas.width = 80;
@@ -69,6 +69,19 @@ export function loadAssets(scene: Phaser.Scene) {
       }
       c.fillStyle = "#c9c7ac";
       c.fillRect(38, 62, 3, 18);
+    }
+    if (kind === "drowned") {
+      c.strokeStyle = "#cae9dd";
+      c.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        c.beginPath();
+        c.ellipse(40, 85, 12 + i * 8, 3 + i * 2, 0, 0, Math.PI * 2);
+        c.stroke();
+      }
+      c.fillStyle = "#52766e";
+      c.beginPath();
+      c.ellipse(40, 83, 9, 4, -0.2, 0, Math.PI * 2);
+      c.fill();
     }
     if (kind === "medic") {
       c.fillStyle = "#efe7cc";

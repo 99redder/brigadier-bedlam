@@ -6,6 +6,8 @@ import {
   TUNING,
   TERRAIN,
   COVER,
+  WATER,
+  BRIDGES,
   type ClassId,
 } from "../sim/data";
 import { type Point, distance } from "../sim/geometry";
@@ -115,23 +117,49 @@ export class Battlefield extends Phaser.Scene {
       ],
       true,
     );
-    for (const r of this.battle?.water ?? [
-      { x: 445, y: 55, w: 180, h: 94 },
-      { x: 590, y: 345, w: 134, h: 73 },
-    ]) {
-      const p = project(r);
-      g.fillStyle(0x778e85);
-      g.fillEllipse(p.x + r.w / 2, p.y + r.h * 0.37, r.w + 18, r.h * 0.8 + 10);
-      g.fillStyle(0x96b4aa);
-      g.fillEllipse(p.x + r.w / 2, p.y + r.h * 0.37, r.w, r.h * 0.74);
-      g.lineStyle(2, 0xc9d8bf, 0.65);
-      for (let j = 0; j < 4; j++)
-        g.lineBetween(
-          p.x + 25 + j * 12,
-          p.y + 15 + j * 12,
-          p.x + 85 + j * 15,
-          p.y + 15 + j * 12,
-        );
+    for (const r of this.battle?.water ?? WATER) {
+      const corners = [
+        project(r),
+        project({ x: r.x + r.w, y: r.y }),
+        project({ x: r.x + r.w, y: r.y + r.h }),
+        project({ x: r.x, y: r.y + r.h }),
+      ];
+      g.lineStyle(12, 0x869378);
+      g.strokePoints(corners, true, true);
+      g.fillStyle(0x6a9e9a);
+      g.fillPoints(corners, true);
+      g.lineStyle(2, 0xc2d7bc, 0.7);
+      g.strokePoints(corners, true, true);
+      g.lineStyle(2, 0xc8e5d5, 0.5);
+      for (let y = r.y + 20; y < r.y + r.h; y += 30) {
+        for (let x = r.x + 12; x < r.x + r.w - 20; x += 32) {
+          const p = project({ x, y });
+          g.lineBetween(p.x, p.y, p.x + 18, p.y);
+          g.lineBetween(p.x + 4, p.y + 4, p.x + 13, p.y + 4);
+        }
+      }
+    }
+    for (const r of this.battle?.bridges ?? BRIDGES) {
+      const corners = [
+        project(r),
+        project({ x: r.x + r.w, y: r.y }),
+        project({ x: r.x + r.w, y: r.y + r.h }),
+        project({ x: r.x, y: r.y + r.h }),
+      ];
+      g.fillStyle(0x8b6848);
+      g.fillPoints(corners, true);
+      g.lineStyle(2, 0xc4a473);
+      for (let x = r.x + 6; x < r.x + r.w; x += 13) {
+        const a = project({ x, y: r.y }),
+          b = project({ x, y: r.y + r.h });
+        g.lineBetween(a.x, a.y, b.x, b.y);
+      }
+      g.lineStyle(5, 0x4d503c);
+      for (const y of [r.y, r.y + r.h]) {
+        const a = project({ x: r.x, y }),
+          b = project({ x: r.x + r.w, y });
+        g.lineBetween(a.x, a.y - 5, b.x, b.y - 5);
+      }
     }
     for (const node of this.coverNodes) node.destroy();
     this.coverNodes = [];
@@ -330,7 +358,7 @@ export class Battlefield extends Phaser.Scene {
       if (selected.goal) {
         const goal = project(selected.goal);
         g.lineStyle(2, 0xffe5a1, 0.65);
-        g.lineBetween(p.x, p.y, goal.x, goal.y);
+        g.strokePoints([p, ...selected.path.map(project)]);
         g.strokeEllipse(goal.x, goal.y, 18, 10);
         g.lineBetween(goal.x - 5, goal.y, goal.x + 5, goal.y);
         g.lineBetween(goal.x, goal.y - 4, goal.x, goal.y + 4);
@@ -367,6 +395,9 @@ export class Battlefield extends Phaser.Scene {
             ? { x: anchor.x - facing * 30, y: anchor.y }
             : project(s),
         alive = s.life === "alive",
+        wet = b.inWater(s) && alive,
+        sinking = s.drowningTime > 0,
+        sink = sinking ? 1 - s.drowningTime / TUNING.drowningDuration : 0,
         down = s.life === "down",
         pose = CLASS_POSES[s.classId],
         anim = alive
@@ -403,11 +434,14 @@ export class Battlefield extends Phaser.Scene {
             : assetKey(s.classId, s.side),
       );
       sprite
-        .setPosition(p.x + facing * (strike + recoil), p.y + anim)
+        .setPosition(
+          p.x + facing * (strike + recoil),
+          p.y + anim + (wet ? 9 + sink * 18 : 0),
+        )
         .setDepth(p.y)
         .setFlipX(facing < 0)
-        .setScale(0.79)
-        .setAlpha(down ? 0.64 : 1)
+        .setScale(0.79 * (1 - sink * 0.45))
+        .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
         .setAngle(
           down
             ? s.brawlKnockdown
@@ -435,6 +469,20 @@ export class Battlefield extends Phaser.Scene {
       else sprite.setOrigin(0.5, 0.93);
       g.fillStyle(0x354638, 0.19);
       g.fillEllipse(p.x, p.y + 3, 33, 13);
+      if (wet) {
+        const ripple = Math.sin(b.time * 7 + s.id) * 3;
+        g.fillStyle(0x6a9e9a, 0.9);
+        g.fillEllipse(p.x, p.y + 6, 31, 12);
+        g.lineStyle(2, 0xc8e5d5, 0.8);
+        g.strokeEllipse(p.x, p.y + 5, 38 + ripple, 15 + ripple * 0.3);
+        if (sinking)
+          for (let i = 0; i < 3; i++)
+            g.strokeCircle(
+              p.x + (i - 1) * 12,
+              p.y - 12 - ((b.time * 24 + i * 9) % 28),
+              2 + (i % 2),
+            );
+      }
       if (alive) {
         g.lineStyle(1.5, s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
         g.strokeEllipse(p.x, p.y + 3, 34, 15);
@@ -456,7 +504,9 @@ export class Battlefield extends Phaser.Scene {
           5,
           2,
         );
-        if (s.jam > 0) {
+        if (sinking) label!.setText("DROWNING!");
+        else if (wet) label!.setText("CROSSING");
+        else if (s.jam > 0) {
           label!.setText("JAM!");
         } else if (s.brawl !== null) {
           label!.setText(s.blocking ? "BLOCK" : "BRAWL");
@@ -465,7 +515,15 @@ export class Battlefield extends Phaser.Scene {
             `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
           );
       } else
-        label!.setText(down ? "✚ MEDIC" : s.death === "ash" ? "ASH" : "R.I.P.");
+        label!.setText(
+          down
+            ? "✚ MEDIC"
+            : s.death === "drowned"
+              ? "DROWNED"
+              : s.death === "ash"
+                ? "ASH"
+                : "R.I.P.",
+        );
       label!
         .setBackgroundColor(s.side === 0 ? "#2b5845" : "#874536")
         .setPosition(p.x, p.y + 16)
@@ -508,6 +566,15 @@ export class Battlefield extends Phaser.Scene {
       drawProjectile(g, shot, project(shot.from), project(shot.to));
     for (const e of b.effects) {
       const p = project(e);
+      if (e.kind === "splash") {
+        g.lineStyle(2, 0xd7efe5, e.time);
+        g.strokeEllipse(
+          p.x,
+          p.y,
+          e.size * (2 - e.time),
+          e.size * (1 - e.time * 0.4),
+        );
+      }
       if (e.kind === "debris") {
         const progress = 1 - e.time / 0.7;
         g.fillStyle(0xb9af89, e.time / 0.7);

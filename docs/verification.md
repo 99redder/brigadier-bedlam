@@ -1,5 +1,12 @@
 # Prototype verification — October 13, 2026
 
+## v0.6 river and bridge update
+
+- 62 tests pass, including class speed/risk thresholds, one roll per entry, permanent drowning and medic rejection, bridge immunity, longer dry routes, default-map routing around scenery, and seeded replay with both crossing options.
+- Browser verified a native click on the bridge records a bridge order; the Bazooka completed the route at the opposite bank (619, 68), alive, with zero water-exposure steps.
+- Browser inspected wading ripples and the CROSSING label, sinking/fading bubbles and DROWNING label, then a DROWNED result with medic rejection. Class speed and risk are visible in the selected unit's order panel; the safe route is highlighted.
+- Browser error logs were empty. Fixtures were cleared by navigation. TypeScript and production build pass; deployment repeats automated checks.
+
 ## v0.5 destructible scenery update
 
 - 53 tests pass. New regressions cover zero bullet damage, three-rocket and one-dynamite demolition, lethal-core shielding, blast occlusion of adjacent scenery, all three material types, route reopening, explicit approach/demolition commands, and in-flight collision.

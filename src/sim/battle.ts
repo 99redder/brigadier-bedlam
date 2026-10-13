@@ -2,6 +2,7 @@ import {
   CLASSES,
   COVER,
   WATER,
+  BRIDGES,
   FIELD,
   SQUADS,
   TUNING,
@@ -30,7 +31,7 @@ export interface Soldier extends Point {
   classId: ClassId;
   hp: number;
   life: Life;
-  death: "skeleton" | "ash" | null;
+  death: "skeleton" | "ash" | "drowned" | null;
   target: number | null;
   terrainTarget: Point | null;
   goal: Point | null;
@@ -55,6 +56,9 @@ export interface Soldier extends Point {
   think: number;
   repath: number;
   moving: boolean;
+  wasInWater: boolean;
+  drowningTime: number;
+  safeRoute: boolean;
   retreatUntil: number;
   retreatReady: number;
 }
@@ -80,6 +84,7 @@ export interface Effect extends Point {
   classId?: ClassId;
   impactFacing?: number;
   kind:
+    | "splash"
     | "debris"
     | "hit"
     | "boom"
@@ -94,6 +99,7 @@ export interface Effect extends Point {
 }
 export type Command =
   | { type: "move"; id: number; point: Point }
+  | { type: "bridge"; id: number; point: Point }
   | { type: "attack"; id: number; target: number }
   | { type: "demolish"; id: number; point: Point }
   | { type: "hold"; id: number }
@@ -135,13 +141,14 @@ export class Battle {
   rubble: Cover[] = [];
   terrainRevision = 0;
   water: Rect[] = WATER.map((r) => ({ ...r }));
+  bridges: Rect[] = BRIDGES.map((r) => ({ ...r }));
   winner: Side | null = null;
   selected: number | null = null;
   log: string[] = [];
   commands: Replay["commands"] = [];
   shotId = 0;
   nextMedic = 5;
-  stats = { shots: 0, revives: 0, brawls: 0, instantKills: 0 };
+  stats = { shots: 0, revives: 0, brawls: 0, instantKills: 0, drownings: 0 };
   constructor(seed: number, squad = 0) {
     this.seed = seed >>> 0;
     this.rngState = this.seed;
@@ -184,6 +191,9 @@ export class Battle {
             think: this.random(),
             repath: 0,
             moving: false,
+            wasInWater: false,
+            drowningTime: 0,
+            safeRoute: false,
             retreatUntil: 0,
             retreatReady: 0,
           });
@@ -218,7 +228,23 @@ export class Battle {
       return;
     }
     const s = this.get(c.id);
-    if (!s || s.life !== "alive") return;
+    if (!s || s.life !== "alive" || s.drowningTime > 0) return;
+    if (c.type === "bridge" && s.brawl === null) {
+      const bridge = this.bridges.find((r) => inside(c.point, r));
+      if (bridge) {
+        const river = this.water.find((r) =>
+          inside({ x: bridge.x + bridge.w / 2, y: bridge.y + bridge.h / 2 }, r),
+        );
+        if (river) {
+          const x =
+            s.x < river.x + river.w / 2 ? river.x + river.w + 24 : river.x - 24;
+          s.target = null;
+          s.terrainTarget = null;
+          s.hold = false;
+          this.setGoal(s, { x, y: bridge.y + bridge.h / 2 }, true);
+        }
+      }
+    }
     if (c.type === "demolish" && s.brawl === null) {
       const r = this.cover.find((r) => inside(c.point, r));
       if (r) {
@@ -256,18 +282,82 @@ export class Battle {
     if (c.type === "block") s.blocking = c.held && s.brawl !== null;
     if (c.type === "punch" || c.type === "kick") this.brawlHit(s, c.type);
   }
-  setGoal(s: Soldier, p: Point) {
-    s.goal = safePoint(p, this.cover);
-    s.path = pathfind(s, s.goal, this.cover);
+  // Treat the river as a movement obstacle, except for the bridge deck.
+  dryCover(): Rect[] {
+    let water = this.water.map((r) => ({ ...r }));
+    for (const bridge of this.bridges) {
+      water = water.flatMap((r) => {
+        const x = Math.max(r.x, bridge.x),
+          y = Math.max(r.y, bridge.y),
+          right = Math.min(r.x + r.w, bridge.x + bridge.w),
+          bottom = Math.min(r.y + r.h, bridge.y + bridge.h);
+        if (x >= right || y >= bottom) return [r];
+        return [
+          { x: r.x, y: r.y, w: r.w, h: y - r.y },
+          { x: r.x, y: bottom, w: r.w, h: r.y + r.h - bottom },
+          { x: r.x, y, w: x - r.x, h: bottom - y },
+          { x: right, y, w: r.x + r.w - right, h: bottom - y },
+        ].filter((piece) => piece.w > 0 && piece.h > 0);
+      });
+    }
+    return [...this.cover, ...water];
+  }
+  setGoal(s: Soldier, p: Point, bridge = false) {
+    const preferBridge =
+      bridge ||
+      (s.side === 1 &&
+        CLASSES[s.classId].drowningRisk >= 0.35 &&
+        !this.inWater(s) &&
+        blocked(s, p, this.water));
+    const obstacles = preferBridge ? this.dryCover() : this.cover;
+    s.safeRoute = preferBridge;
+    s.goal = safePoint(p, obstacles);
+    s.path = pathfind(s, s.goal, obstacles);
     s.repath = 0.65;
   }
   inWater(p: Point) {
-    return this.water.some((r) => inside(p, r));
+    return (
+      this.water.some((r) => inside(p, r)) &&
+      !this.bridges.some((r) => inside(p, r))
+    );
+  }
+  updateWater(s: Soldier) {
+    if (s.life !== "alive" || s.drowningTime > 0) return;
+    const wet = this.inWater(s);
+    if (wet && !s.wasInWater) {
+      this.effects.push({ ...s, kind: "splash", time: 0.6, size: 22 });
+      // One seeded roll on entry, never a repeated chance on each frame.
+      if (this.random() < CLASSES[s.classId].drowningRisk) {
+        s.drowningTime = TUNING.drowningDuration;
+        s.path = [];
+        s.goal = null;
+        s.target = null;
+        s.terrainTarget = null;
+        s.flash = 0;
+        s.blocking = false;
+        s.fightMoveTime = 0;
+        s.recoilTime = 0;
+        if (s.brawl !== null) {
+          const other = this.get(s.brawl);
+          if (other) {
+            other.brawl = null;
+            other.blocking = false;
+          }
+          s.brawl = null;
+        }
+        this.note(
+          `${s.side === 0 ? "Your" : "Enemy"} ${CLASSES[s.classId].name} is drowning!`,
+        );
+      }
+    }
+    s.wasInWater = wet;
   }
   canShoot(s: Soldier, t: Soldier) {
     const w = CLASSES[s.classId];
     return (
       s.life === "alive" &&
+      s.drowningTime <= 0 &&
+      t.drowningTime <= 0 &&
       t.life === "alive" &&
       s.brawl === null &&
       s.fightMoveTime <= 0 &&
@@ -283,7 +373,7 @@ export class Battle {
     classId: ClassId | null = null,
     lethal = false,
   ) {
-    if (target.life !== "alive") return;
+    if (target.life !== "alive" || target.drowningTime > 0) return;
     const instant =
       lethal || (classId !== null && this.random() < CLASSES[classId].instant);
     if (instant) {
@@ -330,6 +420,7 @@ export class Battle {
     const hit = firstCoverHit(s, point, this.cover);
     if (
       s.life !== "alive" ||
+      s.drowningTime > 0 ||
       s.brawl !== null ||
       s.fightMoveTime > 0 ||
       s.cooldown > 0 ||
@@ -456,7 +547,12 @@ export class Battle {
     // Recompute active routes immediately when the obstacle layout changes.
     if (demolished) {
       for (const s of this.soldiers)
-        if (s.goal) s.path = pathfind(s, s.goal, this.cover);
+        if (s.goal)
+          s.path = pathfind(
+            s,
+            s.goal,
+            s.safeRoute ? this.dryCover() : this.cover,
+          );
       for (const m of this.medics)
         if (m.phase === "in")
           m.path = pathfind(m, this.get(m.target)!, this.cover);
@@ -675,6 +771,22 @@ export class Battle {
       s.think -= dt;
       s.moving = false;
       if (s.life !== "alive") continue;
+      if (s.drowningTime > 0) {
+        s.drowningTime = Math.max(0, s.drowningTime - dt);
+        if (s.drowningTime <= 0) {
+          s.hp = 0;
+          s.life = "dead";
+          s.death = "drowned";
+          this.stats.drownings++;
+          this.effects.push({ ...s, kind: "splash", time: 0.8, size: 30 });
+          this.note(
+            `${s.side === 0 ? "Your" : "Enemy"} ${CLASSES[s.classId].name} drowned. No medic rescue.`,
+          );
+        }
+        continue;
+      }
+      this.updateWater(s);
+      if (s.drowningTime > 0) continue;
       if (s.brawl !== null) {
         const t = this.get(s.brawl);
         if (!t || t.life !== "alive") {
@@ -764,7 +876,7 @@ export class Battle {
           d = distance(s, p),
           speed =
             CLASSES[s.classId].speed *
-            (this.inWater(s) ? TUNING.waterSpeed : 1) *
+            (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {
           s.x = p.x;
@@ -781,9 +893,12 @@ export class Battle {
             s.x = next.x;
             s.y = next.y;
             s.moving = true;
-          } else if (s.goal && s.repath <= 0) this.setGoal(s, s.goal);
+          } else if (s.goal && s.repath <= 0)
+            this.setGoal(s, s.goal, s.safeRoute);
         }
       }
+      this.updateWater(s);
+      if (s.drowningTime > 0) continue;
       const aim =
         target && target.life === "alive" && this.canShoot(s, target)
           ? target
@@ -802,7 +917,9 @@ export class Battle {
           a.life !== "alive" ||
           b.life !== "alive" ||
           a.brawl !== null ||
-          b.brawl !== null
+          b.brawl !== null ||
+          a.drowningTime > 0 ||
+          b.drowningTime > 0
         )
           continue;
         const d = distance(a, b);
@@ -825,13 +942,15 @@ export class Battle {
           }
         }
       }
+    for (const s of this.soldiers) this.updateWater(s);
     for (const a of this.soldiers.filter(
-      (s) => s.life === "alive" && s.brawl === null,
+      (s) => s.life === "alive" && s.brawl === null && s.drowningTime <= 0,
     ))
       for (const b of this.soldiers) {
         if (
           a.brawl === null &&
           b.life === "alive" &&
+          b.drowningTime <= 0 &&
           b.brawl === null &&
           a.side !== b.side &&
           distance(a, b) < TUNING.brawlRange &&
@@ -861,6 +980,8 @@ export class Battle {
         if (m.timer > 0.8) {
           if (t.life === "down") {
             t.life = "alive";
+            t.wasInWater = false;
+            t.drowningTime = 0;
             t.hp = CLASSES[t.classId].hp * TUNING.reviveHealth;
             t.cooldown = 1;
             t.target = null;

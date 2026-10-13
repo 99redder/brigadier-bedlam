@@ -469,3 +469,150 @@ describe("destructible scenery", () => {
     expect(t.hp).toBe(1000);
   });
 });
+
+describe("river crossings and bridges", () => {
+  function riverPair(id: ClassId = "rifleman") {
+    const setup = pair(id);
+    setup.b.water = [{ x: 400, y: 0, w: 100, h: 560 }];
+    setup.b.bridges = [{ x: 380, y: 36, w: 140, h: 64 }];
+    setup.a.x = 350;
+    setup.a.y = 280;
+    setup.a.cooldown = 999;
+    setup.t.x = 1050;
+    setup.t.y = 520;
+    setup.t.cooldown = 999;
+    return setup;
+  }
+  it("the river spans the battlefield and its bridge is out of the central combat route", () => {
+    const b = new Battle(42);
+    expect(b.water[0].y).toBe(0);
+    expect(b.water[0].h).toBe(560);
+    expect(b.inWater({ x: 550, y: 280 })).toBe(true);
+    expect(b.inWater({ x: 550, y: 68 })).toBe(false);
+    expect(b.bridges[0].y + b.bridges[0].h).toBeLessThan(150);
+    expect(
+      b.cover.some((r) => blocked(r, { x: r.x + r.w, y: r.y + r.h }, b.water)),
+    ).toBe(false);
+  });
+  it("class risks use a 25% baseline, with a safer Rifleman and riskier heavy kits", () => {
+    expect(CLASSES.lobber.drowningRisk).toBe(0.25);
+    expect(CLASSES.rifleman.drowningRisk).toBeLessThan(0.25);
+    for (const id of ["bazooka", "sapper", "torch"] as const) {
+      expect(CLASSES[id].drowningRisk).toBeGreaterThan(0.25);
+      expect(CLASSES[id].waterSpeed).toBeLessThan(CLASSES.rifleman.waterSpeed);
+    }
+  });
+  it("rolls only once per water entry, and rolls again only after leaving and re-entering", () => {
+    const { b, a } = riverPair();
+    let rolls = 0;
+    b.random = () => {
+      rolls++;
+      return 1;
+    };
+    a.x = 450;
+    b.updateWater(a);
+    for (let i = 0; i < 100; i++) b.updateWater(a);
+    expect(rolls).toBe(1);
+    a.x = 350;
+    b.updateWater(a);
+    a.x = 450;
+    b.updateWater(a);
+    expect(rolls).toBe(2);
+  });
+  it("uses each class threshold without a per-frame death lottery", () => {
+    for (const id of Object.keys(CLASSES) as ClassId[]) {
+      const { b, a } = riverPair(id);
+      a.x = 450;
+      b.random = () => CLASSES[id].drowningRisk;
+      b.updateWater(a);
+      expect(a.drowningTime).toBe(0);
+      a.x = 350;
+      b.updateWater(a);
+      a.x = 450;
+      b.random = () => CLASSES[id].drowningRisk - 0.0001;
+      b.updateWater(a);
+      expect(a.drowningTime).toBe(TUNING.drowningDuration);
+    }
+  });
+  it("drowning stops combat and movement, animates briefly, then permanently removes the soldier", () => {
+    const { b, a, t } = riverPair("bazooka");
+    a.x = 450;
+    b.random = () => 0;
+    b.updateWater(a);
+    const start = { x: a.x, y: a.y };
+    b.command({ type: "move", id: a.id, point: { x: 600, y: 280 } });
+    expect(a.path).toEqual([]);
+    expect(b.canShoot(a, t)).toBe(false);
+    advance(b, 1.3);
+    expect(a.life).toBe("dead");
+    expect(a.death).toBe("drowned");
+    expect({ x: a.x, y: a.y }).toEqual(start);
+    expect(b.callMedic(a.id, 0)).toBe(false);
+    expect(b.stats.drownings).toBe(1);
+    expect(b.winner).toBe(1);
+  });
+  it("Riflemen cross faster than launchers when both survive", () => {
+    const positions = [];
+    for (const id of ["rifleman", "bazooka"] as const) {
+      const { b, a } = riverPair(id);
+      a.x = 410;
+      b.random = () => 1;
+      b.command({ type: "move", id: a.id, point: { x: 650, y: 280 } });
+      advance(b, 1);
+      positions.push(a.x);
+      expect(a.life).toBe("alive");
+    }
+    expect(positions[0] - 410).toBeGreaterThan((positions[1] - 410) * 1.5);
+  });
+  it("clicking a bridge takes a longer dry route and avoids every drowning roll", () => {
+    const { b, a } = riverPair("bazooka");
+    let rolls = 0;
+    b.random = () => {
+      rolls++;
+      return 0;
+    };
+    b.command({ type: "bridge", id: a.id, point: { x: 450, y: 68 } });
+    expect(a.safeRoute).toBe(true);
+    expect(a.path.length).toBeGreaterThan(1);
+    let length = 0,
+      previous = { x: a.x, y: a.y };
+    for (const point of a.path) {
+      length += distance(previous, point);
+      previous = point;
+    }
+    expect(length).toBeGreaterThan(350);
+    for (let i = 0; i < 600; i++) {
+      b.step();
+      expect(b.inWater(a)).toBe(false);
+    }
+    expect(a.x).toBeGreaterThan(500);
+    expect(a.life).toBe("alive");
+    expect(rolls).toBe(0);
+    expect(a.goal).toBeNull();
+  });
+  it("bridge crossings and water outcomes are deterministic in replay", () => {
+    const b = new Battle(567, 0);
+    b.command({ type: "bridge", id: 0, point: { x: 550, y: 68 } });
+    b.command({ type: "move", id: 1, point: { x: 680, y: 260 } });
+    advance(b, 12);
+    const replay = replayBattle(b.replay(), b.tick);
+    expect(replay.soldiers).toEqual(b.soldiers);
+    expect(replay.stats).toEqual(b.stats);
+    expect(replay.rngState).toBe(b.rngState);
+  });
+});
+
+it("the default map routes to the bridge around intact scenery", () => {
+  const b = new Battle(42);
+  const a = b.soldiers[1];
+  a.x = 330;
+  a.y = 280;
+  b.command({ type: "bridge", id: a.id, point: { x: 550, y: 68 } });
+  expect(a.path.length).toBeGreaterThan(1);
+  let previous = { x: a.x, y: a.y };
+  for (const p of a.path) {
+    expect(blocked(previous, p, b.dryCover(), 14)).toBe(false);
+    previous = p;
+  }
+  expect(previous.x).toBeGreaterThan(595);
+});

@@ -78,7 +78,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.5</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.6</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -121,7 +121,7 @@ function renderBattle() {
     )
     .join(
       "",
-    )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${CLASSES[s.classId].description}<br>${esc(input.hint("hold"))}: hold · ${esc(input.hint("medic"))}: medic nearest cursor` : `Select a soldier, then order a move or attack.<br>Unselected soldiers fire at enemies in range.`}</p></div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+    )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${CLASSES[s.classId].description}<br>Click the bridge for a safe detour. River: ${Math.round(CLASSES[s.classId].waterSpeed * 100)}% speed · ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drowning risk<br>${esc(input.hint("hold"))}: hold · ${esc(input.hint("medic"))}: medic nearest cursor` : `Select a soldier, then order a move or attack.<br>Unselected soldiers fire at enemies in range.`}</p></div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
   if (scene.paused && !menuOpen && !settingsOpen)
     ui.insertAdjacentHTML(
       "beforeend",
@@ -184,18 +184,24 @@ function updateBattleHud() {
 }
 function unitStatus(t: Soldier) {
   return t.life === "dead"
-    ? "NO REVIVE"
+    ? t.death === "drowned"
+      ? "DROWNED"
+      : "NO REVIVE"
     : t.life === "down"
       ? "MEDIC NEEDED"
-      : t.jam > 0
-        ? "JAMMED"
-        : t.brawl !== null
-          ? "BRAWLING"
-          : t.moving
-            ? "MOVING"
-            : t.hold
-              ? "HOLDING"
-              : "READY";
+      : t.drowningTime > 0
+        ? "DROWNING"
+        : scene.battle?.inWater(t)
+          ? "CROSSING"
+          : t.jam > 0
+            ? "JAMMED"
+            : t.brawl !== null
+              ? "BRAWLING"
+              : t.moving
+                ? "MOVING"
+                : t.hold
+                  ? "HOLDING"
+                  : "READY";
 }
 
 function renderResult() {
@@ -262,6 +268,8 @@ function action(a: Action, held = true, event?: Event) {
     } else if (s?.life === "alive") {
       if (near?.side === 1)
         b.command({ type: "attack", id: s.id, target: near.id });
+      else if (b.bridges.some((r) => inside(scene.cursor, r)))
+        b.command({ type: "bridge", id: s.id, point: { ...scene.cursor } });
       else if (b.cover.some((r) => inside(scene.cursor, r)))
         b.command({ type: "demolish", id: s.id, point: { ...scene.cursor } });
       else b.command({ type: "move", id: s.id, point: { ...scene.cursor } });

@@ -14,6 +14,8 @@ export interface ClassStats {
   arc: boolean;
   instant: number;
   jam: number;
+  waterSpeed: number;
+  drowningRisk: number;
   description: string;
 }
 export const CLASSES: Record<ClassId, ClassStats> = {
@@ -32,6 +34,8 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: false,
     instant: 0,
     jam: 0.045,
+    waterSpeed: 0.85,
+    drowningRisk: 0.1,
     description: "Reliable firepower. Occasionally unreliable gun.",
   },
   bazooka: {
@@ -49,6 +53,8 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: false,
     instant: 0.008,
     jam: 0,
+    waterSpeed: 0.45,
+    drowningRisk: 0.4,
     description: "Long-range rockets. Three hits demolish solid cover.",
   },
   lobber: {
@@ -66,6 +72,8 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: true,
     instant: 0,
     jam: 0,
+    waterSpeed: 0.65,
+    drowningRisk: 0.25,
     description: "Grenades chip cover and blast exposed soldiers.",
   },
   torch: {
@@ -83,6 +91,8 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: false,
     instant: 0.001,
     jam: 0,
+    waterSpeed: 0.4,
+    drowningRisk: 0.45,
     description: "Close-range crowd control. Allergic to puddles.",
   },
   sapper: {
@@ -100,6 +110,8 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: true,
     instant: 0.01,
     jam: 0,
+    waterSpeed: 0.5,
+    drowningRisk: 0.35,
     description: "Short throw. A close dynamite hit is a guaranteed kill.",
   },
 };
@@ -153,7 +165,7 @@ export const TUNING = {
   aiAccuracy: 0.85,
   aiAggression: 0.8,
   jamDuration: 2.4,
-  waterSpeed: 0.65,
+  drowningDuration: 1.2,
 };
 export const FIELD = { width: 1100, height: 560, cell: 26 };
 export interface Rect {
@@ -173,12 +185,13 @@ export const TERRAIN = {
 export const COVER: Cover[] = [
   { x: 230, y: 100, w: 100, h: 40, material: "rock" },
   { x: 260, y: 370, w: 90, h: 44 },
-  { x: 492, y: 225, w: 112, h: 46, material: "crate" },
+  { x: 360, y: 225, w: 112, h: 46, material: "crate" },
   { x: 760, y: 110, w: 95, h: 42 },
   { x: 790, y: 375, w: 80, h: 44, material: "rock" },
-  { x: 500, y: 460, w: 80, h: 34 },
+  { x: 390, y: 460, w: 80, h: 34 },
 ];
-export const WATER: Rect[] = [
-  { x: 445, y: 55, w: 180, h: 94 },
-  { x: 590, y: 345, w: 134, h: 73 },
-];
+// Bank-to-bank crossing is unavoidable when moving between the two halves.
+export const WATER: Rect[] = [{ x: 505, y: 0, w: 90, h: FIELD.height }];
+
+// Deliberately far from the central fight: safe but a substantial detour.
+export const BRIDGES: Rect[] = [{ x: 485, y: 36, w: 130, h: 64 }];
