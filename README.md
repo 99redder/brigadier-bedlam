@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.12 — two medic calls and vulnerable field medics.**
+Current prototype: **v0.13 — sharper, labeled title-screen soldiers.**
+
+Title-screen illustrations are rendered directly at high resolution with larger, distinct weapons and class/weapon nameplates. The rifle has a wood stock and long barrel; the rocket launcher has a wide muzzle; the grenade has segmentation and a pull ring; the flamethrower has a fuel hose and pilot flame; dynamite is a tied bundle with a sparking fuse. Squad-selection and roster portraits also render at higher resolution.
 
 Each team gets two medic calls. Medics have 60 health and can be targeted by enemy soldiers, including automatic fire and Fire all. Bullets, flames, and blasts damage medics; explosions can also hit friendly medics. Cover shields them using the same rules as soldiers. A medic killed before finishing treatment leaves the patient down and the call spent, allowing another attempt if a call remains. Medics can also die while leaving after a successful rescue. Fallen medics stay on the field and cannot be revived.
 
