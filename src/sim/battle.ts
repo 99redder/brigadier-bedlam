@@ -114,6 +114,7 @@ export interface Replay {
   seed: number;
   squad: number;
   training?: boolean;
+  aiSides?: Side[];
   commands: { tick: number; command: Command }[];
 }
 export interface CombatEvent {
@@ -122,6 +123,7 @@ export interface CombatEvent {
   kind: "fire" | "impact";
 }
 export class Battle {
+  aiSides: Side[] = [1];
   combatEvents: CombatEvent[] = [];
   combatEventId = 0;
   meleeEvents: { id: number; kind: "punch" | "kick"; blocked: boolean }[] = [];
@@ -318,13 +320,16 @@ export class Battle {
   setGoal(s: Soldier, p: Point, bridge = false) {
     const preferBridge =
       bridge ||
-      (s.side === 1 &&
-        CLASSES[s.classId].drowningRisk >= 0.35 &&
+      (this.aiSides.includes(s.side) &&
+        CLASSES[s.classId].drowningRisk >= TUNING.aiBridgeRisk &&
         !this.inWater(s) &&
         blocked(s, p, this.water));
     const obstacles = preferBridge ? this.dryCover() : this.cover;
     s.safeRoute = preferBridge;
-    s.goal = safePoint(p, obstacles);
+    s.goal = safePoint(
+      p,
+      this.aiSides.includes(s.side) ? this.dryCover() : obstacles,
+    );
     s.path = pathfind(s, s.goal, obstacles);
     s.repath = 0.65;
   }
@@ -378,6 +383,27 @@ export class Battle {
       distance(s, t) <= w.range &&
       !(s.classId === "torch" && this.inWater(s)) &&
       (w.arc || s.classId === "bazooka" || !blocked(s, t, this.cover))
+    );
+  }
+  safeBlast(s: Soldier, target: Point) {
+    const w = CLASSES[s.classId];
+    if (!w.radius || s.classId === "torch") return true;
+    const impact = firstCoverHit(s, target, this.cover)?.point ?? target;
+    return !this.soldiers.some((friend) => {
+      const point = friend.id === s.id ? s : friend;
+      return (
+        friend.side === s.side &&
+        friend.life === "alive" &&
+        friend.drowningTime <= 0 &&
+        distance(point, impact) <= w.radius &&
+        !blocked(impact, point, this.cover)
+      );
+    });
+  }
+  canAutoShoot(s: Soldier, t: Soldier) {
+    return (
+      this.canShoot(s, t) &&
+      (!this.aiSides.includes(s.side) || this.safeBlast(s, t))
     );
   }
   damage(
@@ -546,7 +572,8 @@ export class Battle {
       if (
         t &&
         distance(t, impact) < 42 &&
-        (owner.side === 0 || this.random() < TUNING.aiAccuracy)
+        (!this.aiSides.includes(owner.side) ||
+          this.random() < TUNING.aiAccuracy)
       )
         this.damage(t, w.damage, shot.classId);
     } else {
@@ -706,6 +733,7 @@ export class Battle {
         const score = (t: Soldier) =>
           distance(s, t) +
           t.hp * 0.4 +
+          (this.safeBlast(s, t) ? 0 : TUNING.aiUnsafeBlastPenalty) +
           this.soldiers.filter(
             (o) =>
               o !== s &&
@@ -744,13 +772,16 @@ export class Battle {
       });
       return;
     }
-    if (s.classId === "torch" && this.inWater(s)) {
-      this.setGoal(s, { x: s.x + 120, y: s.y + 100 });
+    if (this.inWater(s)) {
+      // Finish an existing crossing instead of stopping to fire mid-river.
+      if (s.path.length && s.goal && !this.inWater(s.goal)) return;
+      this.setGoal(s, safePoint(s, this.dryCover()));
       return;
     }
     if (
       d > w.preferred + 35 ||
       (!w.arc && blocked(s, t, this.cover)) ||
+      !this.safeBlast(s, t) ||
       d < w.preferred * 0.55
     ) {
       const candidates: Point[] = [];
@@ -762,7 +793,7 @@ export class Battle {
         };
         if (
           legal(p, this.cover) &&
-          !(s.classId === "torch" && this.inWater(p)) &&
+          !this.inWater(p) &&
           (w.arc || !blocked(p, t, this.cover))
         )
           candidates.push(p);
@@ -770,6 +801,9 @@ export class Battle {
       candidates.sort((a, b) => {
         const score = (p: Point) =>
           distance(s, p) +
+          (this.safeBlast({ ...s, ...p }, t)
+            ? 0
+            : TUNING.aiUnsafePositionPenalty) +
           this.soldiers.filter(
             (e) =>
               e.side !== s.side &&
@@ -844,7 +878,7 @@ export class Battle {
           continue;
         }
       }
-      if (s.side === 1 && s.think <= 0) {
+      if (this.aiSides.includes(s.side) && s.think <= 0) {
         s.think = TUNING.aiThink;
         this.ai(s);
       }
@@ -878,7 +912,7 @@ export class Battle {
       const target = s.target === null ? null : this.get(s.target);
       if (target && target.life !== "alive") s.target = null;
       if (
-        s.side === 0 &&
+        !this.aiSides.includes(s.side) &&
         target &&
         target.life === "alive" &&
         !s.hold &&
@@ -941,10 +975,10 @@ export class Battle {
       this.updateWater(s);
       if (s.drowningTime > 0) continue;
       const aim =
-        target && target.life === "alive" && this.canShoot(s, target)
+        target && target.life === "alive" && this.canAutoShoot(s, target)
           ? target
           : this.soldiers
-              .filter((t) => t.side !== s.side && this.canShoot(s, t))
+              .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
       if (aim && !s.terrainTarget) this.fire(s, aim);
     }
@@ -976,7 +1010,8 @@ export class Battle {
               x: s.x + Math.cos(angle) * push * sign,
               y: s.y + Math.sin(angle) * push * sign,
             };
-            if (legal(next, this.cover) && !blocked(s, next, this.cover, 14)) {
+            const obstacles = s.safeRoute ? this.dryCover() : this.cover;
+            if (legal(next, obstacles) && !blocked(s, next, obstacles, 14)) {
               s.x = next.x;
               s.y = next.y;
             }
@@ -1052,13 +1087,15 @@ export class Battle {
     );
     if (this.time >= this.nextMedic) {
       this.nextMedic = this.time + TUNING.aiMedicDelay;
-      const t = this.soldiers.find(
-        (s) =>
-          s.side === 1 &&
-          s.life === "down" &&
-          !this.medics.some((m) => m.target === s.id),
-      );
-      if (t) this.callMedic(t.id, 1);
+      for (const side of this.aiSides) {
+        const t = this.soldiers.find(
+          (s) =>
+            s.side === side &&
+            s.life === "down" &&
+            !this.medics.some((m) => m.target === s.id),
+        );
+        if (t) this.callMedic(t.id, side);
+      }
     }
     const alive = (side: Side) =>
       this.soldiers.some((s) => s.side === side && s.life === "alive");
@@ -1077,6 +1114,7 @@ export class Battle {
       seed: this.seed,
       squad: this.squad,
       training: this.training,
+      aiSides: [...this.aiSides],
       commands: this.commands,
     };
   }
@@ -1087,6 +1125,7 @@ export function replayBattle(replay: Replay, ticks: number) {
     replay.squad,
     replay.training ?? false,
   );
+  battle.aiSides = replay.aiSides ? [...replay.aiSides] : [1];
   let i = 0;
   for (let t = 0; t < ticks; t++) {
     while (

@@ -11,6 +11,7 @@ export const ACTIONS = {
   next: { label: "Next living soldier", context: "field" },
   medic: { label: "Medic nearest cursor", context: "field" },
   hold: { label: "Hold position", context: "field" },
+  fireAll: { label: "Fire all stationary soldiers", context: "global" },
   punch: { label: "Punch", context: "brawl" },
   kick: { label: "Kick", context: "brawl" },
   block: { label: "Block (hold)", context: "brawl" },
@@ -40,6 +41,7 @@ export function defaults(leftHanded = false): Bindings {
     next: "KeyE",
     medic: "KeyR",
     hold: "KeyF",
+    fireAll: "KeyG",
     punch: "Mouse0",
     kick: "Mouse2",
     block: "ShiftLeft",
@@ -57,6 +59,7 @@ export function defaults(leftHanded = false): Bindings {
       next: "KeyO",
       medic: "KeyP",
       hold: "KeyJ",
+      fireAll: "KeyH",
       block: "ShiftRight",
     });
   return Object.fromEntries(
@@ -82,6 +85,36 @@ export function loadBindings(storage: StorageLike): Bindings {
   try {
     const raw = JSON.parse(storage.getItem(STORAGE_KEY) || "null");
     if (!raw || typeof raw !== "object") return defaults();
+    // Upgrade pre-Fire-all saves without discarding a player's custom controls.
+    if (!("fireAll" in raw)) {
+      const preferred = raw.hold?.includes?.("KeyJ") ? "KeyH" : "KeyG";
+      const candidates = [
+        preferred,
+        ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+          .split("")
+          .filter((k) => !"WASD".includes(k))
+          .map((k) => `Key${k}`),
+        ...Array.from({ length: 10 }, (_, i) => `Digit${i}`),
+        ...Array.from({ length: 5 }, (_, i) => `Mouse${i}`),
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F6",
+        "F7",
+        "F8",
+        "F9",
+        "F10",
+        "F12",
+      ];
+      const available = candidates.find(
+        (code) =>
+          !Object.values(raw).some(
+            (value) => Array.isArray(value) && value.includes(code),
+          ),
+      );
+      raw.fireAll = [available ?? preferred, null];
+    }
     for (const a of Object.keys(ACTIONS) as Action[]) {
       if (
         !Array.isArray(raw[a]) ||

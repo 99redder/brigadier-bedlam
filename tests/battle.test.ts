@@ -688,3 +688,75 @@ describe("Fire all squad order", () => {
     expect(b.shots).toEqual([]);
   });
 });
+
+describe("autonomous blast safety and river tactics", () => {
+  it("AI holds an unsafe explosive shot, while an explicit player order remains possible", () => {
+    const { b, a, t } = pair("sapper");
+    b.aiSides = [0, 1];
+    b.random = () => 1;
+    const friend = b.get(1)!;
+    Object.assign(friend, {
+      life: "alive",
+      hp: 210,
+      x: 300,
+      y: 285,
+      cooldown: 999,
+      think: 999,
+    });
+    a.think = 999;
+    t.cooldown = 999;
+    expect(b.canShoot(a, t)).toBe(true);
+    expect(b.safeBlast(a, t)).toBe(false);
+    b.step();
+    expect(b.shots.some((shot) => shot.owner === a.id)).toBe(false);
+    a.cooldown = 0;
+    expect(b.fire(a, t)).toBe(true);
+    friend.x = 450;
+    expect(b.safeBlast(a, t)).toBe(true);
+  });
+  it("blast safety recognizes that cover shields an ally", () => {
+    const { b, a, t } = pair("lobber");
+    const friend = b.get(1)!;
+    Object.assign(friend, { life: "alive", hp: 210, x: 340, y: 250 });
+    expect(b.safeBlast(a, t)).toBe(false);
+    b.cover = [{ x: 320, y: 220, w: 10, h: 60, hp: 100 }];
+    expect(b.safeBlast(a, t)).toBe(true);
+  });
+  it("AI finishes a surviving crossing rather than stopping to fight in water", () => {
+    const { b, a, t } = pair("torch");
+    b.aiSides = [0, 1];
+    b.random = () => 1;
+    b.water = [{ x: 250, y: 0, w: 100, h: 560 }];
+    b.bridges = [];
+    a.x = 270;
+    a.goal = { x: 390, y: 250 };
+    a.path = [a.goal];
+    const path = a.path;
+    b.ai(a);
+    expect(a.path).toBe(path);
+    expect(a.goal).toEqual({ x: 390, y: 250 });
+    a.path = [];
+    a.goal = null;
+    b.ai(a);
+    expect(a.goal).not.toBeNull();
+    expect(b.inWater(a.goal!)).toBe(false);
+  });
+  it("AI destinations avoid water while manual river orders retain the direct choice", () => {
+    const { b, a } = pair("lobber");
+    b.water = [{ x: 250, y: 0, w: 100, h: 560 }];
+    b.bridges = [];
+    b.setGoal(a, { x: 300, y: 250 });
+    expect(b.inWater(a.goal!)).toBe(true);
+    b.aiSides = [0, 1];
+    b.setGoal(a, { x: 300, y: 250 });
+    expect(b.inWater(a.goal!)).toBe(false);
+  });
+  it("diagnostic AI control is recorded in deterministic replays", () => {
+    const b = new Battle(81);
+    b.aiSides = [0, 1];
+    advance(b, 5);
+    const replay = replayBattle(b.replay(), b.tick);
+    expect(replay.aiSides).toEqual([0, 1]);
+    expect(replay.soldiers).toEqual(b.soldiers);
+  });
+});

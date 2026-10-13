@@ -99,3 +99,35 @@ describe("input bindings", () => {
     expect(saveBindings(s, defaults())).toBe(false);
   });
 });
+
+describe("Fire all bindings and saved-control upgrades", () => {
+  it("has keyboard defaults, alternate mouse support, and a mirrored preset", () => {
+    expect(defaults().fireAll).toEqual(["KeyG", null]);
+    expect(defaults(true).fireAll).toEqual(["KeyH", null]);
+    const s = store(),
+      b = defaults();
+    expect(rebind(b, "fireAll", 1, "Mouse4")).toBe(true);
+    expect(rebind(b, "fireAll", 0, "KeyB")).toBe(true);
+    saveBindings(s, b);
+    expect(loadBindings(s).fireAll).toEqual(["KeyB", "Mouse4"]);
+    expect(conflicts(b, "hold", "KeyB")).toEqual([
+      { action: "fireAll", slot: 0 },
+    ]);
+  });
+  it("preserves old customized controls and finds a free key when G is occupied", () => {
+    const s = store(),
+      old = defaults() as Partial<ReturnType<typeof defaults>>;
+    delete old.fireAll;
+    old.hold = ["KeyG", "Mouse3"];
+    old.medic = ["KeyB", null];
+    s.setItem(STORAGE_KEY, JSON.stringify(old));
+    const upgraded = loadBindings(s);
+    expect(upgraded.hold).toEqual(["KeyG", "Mouse3"]);
+    expect(upgraded.medic).toEqual(["KeyB", null]);
+    expect(upgraded.fireAll[0]).not.toBe("KeyG");
+    expect(conflicts(upgraded, "fireAll", upgraded.fireAll[0]!)).toEqual([]);
+    expect(["KeyW", "KeyA", "KeyS", "KeyD"]).not.toContain(upgraded.fireAll[0]);
+    saveBindings(s, upgraded);
+    expect(loadBindings(s)).toEqual(upgraded);
+  });
+});

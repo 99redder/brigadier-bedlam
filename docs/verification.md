@@ -1,5 +1,12 @@
 # Prototype verification — October 13, 2026
 
+## v0.10 controls and balance pass
+
+- 78 tests pass. New regressions cover Fire all defaults, alternate bindings, conflict checks, saved-control migration, AI blast restraint and shielding, dry destinations, crossing continuation, and symmetric diagnostic replay.
+- The matched 36-game audit finished all games: average 41.3 seconds, range 23–65. The corrected baseline averaged 50.3 seconds, range 18–92. See `balance-v0.10.md` and its raw JSON for method and limits.
+- Browser verified rebind/save/reload, the live Fire all hint, keyboard triggering in field and brawl contexts, and AI refusing an unsafe Sapper shot then firing once the ally cleared. A full battle reached the defeat UI.
+- Original browser preferences and unmodified game state were restored after fixtures. TypeScript and production build pass; CI repeats tests and build before Pages deployment.
+
 ## v0.9 Fire all and browser identity
 
 - 71 tests pass. Fire all regressions cover stationary player ownership, moving and queued movement exclusion, retained routes, cooldowns, blocked rifle fire, range, and downed units.

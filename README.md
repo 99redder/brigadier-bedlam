@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.9 — Fire all squad orders, a military helmet favicon, and the updated browser title.**
+Current prototype: **v0.10 — rebindable Fire all controls and an AI/balance pass.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -31,7 +31,7 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
-- **Fire all** orders stationary player soldiers to shoot at an available enemy in range, or their current demolition target. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
+- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, or their current demolition target. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
 - Right-click to deselect. Soldiers automatically shoot enemies in range. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
@@ -106,7 +106,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 - A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same three-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
 - An attack order chases the named target into range. Hold cancels movement and pursuit but keeps automatic firing. Explicit orders persist after deselection.
-- Enemy AI favors suitable targets and firing positions, penalizes exposed positions and clustering, avoids water as Torch, and retreats briefly when hurt before re-engaging.
+- Enemy AI avoids unsafe allied blast zones, chooses dry firing positions, completes surviving crossings, favors suitable targets and firing positions, penalizes exposed positions and clustering, avoids water as Torch, and retreats briefly when hurt before re-engaging.
 - The left-handed preset moves keyboard shortcuts to the specified right-hand keys; mouse buttons retain their standard primary/secondary roles.
 - Browser keyboard-layout labels are used where supported. Observed key labels and physical-code labels provide fallbacks elsewhere.
 
@@ -114,6 +114,8 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest 12-match diagnostic averaged 42 seconds (27–72 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest matched 36-game diagnostic averaged 41 seconds (23–65 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
+
+The v0.10 balance changes and repeatable diagnostic are documented in [docs/balance-v0.10.md](docs/balance-v0.10.md). Automated AI control of both teams is a diagnostic option; ordinary play keeps the player squad under manual orders.

@@ -85,7 +85,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.9</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.10</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -117,7 +117,7 @@ function renderBattle() {
     .padStart(2, "0")}:${Math.floor(b.time % 60)
     .toString()
     .padStart(2, "0")}`;
-  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : "OPERATION: DISPUTED PICNIC"}</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/5`}</span></div><div class="hud-actions">${btn("Fire all", "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
+  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : "OPERATION: DISPUTED PICNIC"}</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/5`}</span></div><div class="hud-actions">${btn(`Fire all · ${esc(input.hint("fireAll"))}`, "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
     .slice(0, 2)
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
@@ -186,6 +186,7 @@ function updateBattleHud() {
     if (hp) hp.style.width = `${(t.hp / CLASSES[t.classId].hp) * 100}%`;
     write(`[data-unit="${t.id}"] .unit-status`, unitStatus(t));
   }
+  write(".fire-all", `Fire all · ${input.hint("fireAll")}`);
   write(".medic-button strong", `${b.calls[0]} / ${TUNING.medicCalls} CALLS`);
   write(
     ".battle-help",
@@ -276,6 +277,10 @@ function action(a: Action, held = true, event?: Event) {
   if (!held) return;
   if (a === "punch" || a === "kick") {
     if (s) issue({ type: a, id: s.id });
+    return;
+  }
+  if (a === "fireAll") {
+    issue({ type: "fire-all" });
     return;
   }
   if (a === "interact") {
@@ -389,8 +394,7 @@ function wire() {
           start(Number(raw) >>> 0);
         }
         if (what === "again") start(newSeed());
-        if (what === "fire-all" && screen === "battle" && !scene.paused)
-          issue({ type: "fire-all" });
+        if (what === "fire-all") action("fireAll");
         if (what === "pause") action("pause");
         if (what === "menu") action("menu");
         if (what === "resume") {
@@ -451,7 +455,7 @@ function renderSettings() {
   )
     .map(
       (context) =>
-        `<div class="context-title">${context === "field" ? "Battlefield" : context === "brawl" ? "Close combat" : "Menus & pause"}</div>${(
+        `<div class="context-title">${context === "field" ? "Battlefield" : context === "brawl" ? "Close combat" : "Squad orders & menus"}</div>${(
           Object.keys(ACTIONS) as Action[]
         )
           .filter((a) => ACTIONS[a].context === context)
