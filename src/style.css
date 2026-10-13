@@ -1,0 +1,667 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap");
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: #273b32;
+  background: #23392f;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, #425143, #1c2e26);
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #ce6a4c;
+  outline-offset: 3px;
+}
+#app {
+  position: relative;
+  width: min(100vw, calc(100vh * 16 / 9));
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  box-shadow: 0 25px 100px #1119;
+  background: #bcc08c;
+}
+#game {
+  position: absolute;
+  inset: 0;
+}
+canvas {
+  display: block;
+}
+#ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: clamp(9px, 1.15vw, 17px);
+}
+#ui button,
+#ui input,
+#ui .overlay,
+#ui .settings {
+  pointer-events: auto;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: #ebe5ca;
+  overflow: hidden;
+}
+.overlay:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.eyebrow {
+  font: 700 0.76em "DM Sans";
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+.title-top {
+  position: absolute;
+  top: 6.2%;
+  left: 6%;
+  right: 6%;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #354e3444;
+  padding-bottom: 1.3%;
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  font-size: 0.75em;
+}
+.badge {
+  font: 0.72em monospace;
+  letter-spacing: 0.06em;
+}
+.title-content {
+  position: absolute;
+  left: 6%;
+  top: 21%;
+  width: 47%;
+  z-index: 2;
+}
+h1 {
+  font:
+    900 6.9em/0.81 "Barlow Condensed",
+    "Impact",
+    sans-serif;
+  letter-spacing: -0.025em;
+  margin: 3% 0 6%;
+  text-transform: uppercase;
+}
+h1 span {
+  color: #b95c40;
+}
+h2 {
+  font:
+    800 3.2em/0.96 "Barlow Condensed",
+    "Impact",
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin: 0.25em 0;
+}
+p {
+  line-height: 1.6;
+}
+.title-content p {
+  max-width: 29em;
+  font-size: 0.97em;
+  color: #536252;
+}
+.btn {
+  border: 0;
+  border-radius: 3px;
+  padding: 1em 1.6em;
+  background: #2e493b;
+  color: #f1e8cb;
+  font-size: 0.83em;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  box-shadow: 0 3px 0 #182f25;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.btn:hover {
+  background: #46604b;
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.btn.primary {
+  background: #be6345;
+  box-shadow: 0 3px 0 #904830;
+}
+.btn.primary:hover {
+  background: #ce7252;
+}
+.btn.secondary {
+  background: transparent;
+  color: #324b3a;
+  border: 1px solid #617158;
+  box-shadow: none;
+}
+.buttons {
+  display: flex;
+  gap: 1em;
+  margin-top: 2em;
+  align-items: center;
+}
+.title-bottom {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 5.5%;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #354e3444;
+  padding-top: 1.5%;
+  font: 0.7em monospace;
+  letter-spacing: 0.1em;
+  color: #58694e;
+}
+.art-panel {
+  position: absolute;
+  right: -3%;
+  top: 16%;
+  width: 52%;
+  height: 68%;
+  transform: rotate(-5deg);
+  border: 1px solid #8b9970;
+  background: #acb382;
+  overflow: hidden;
+  box-shadow: 12px 14px 0 #b3ae8370;
+}
+.art-panel:before {
+  content: "";
+  position: absolute;
+  width: 110%;
+  height: 22%;
+  background: #d0c795;
+  top: 48%;
+  transform: rotate(-15deg);
+}
+.art-panel:after {
+  content: "FIELD MANUAL No. 01";
+  position: absolute;
+  bottom: 6%;
+  left: 7%;
+  font: 0.8em monospace;
+  letter-spacing: 0.15em;
+  color: #455d43;
+}
+.art-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#71836519 1px, transparent 1px),
+    linear-gradient(90deg, #71836519 1px, transparent 1px);
+  background-size: 12% 12%;
+}
+.hero-unit {
+  position: absolute;
+  width: 26%;
+  image-rendering: auto;
+  filter: drop-shadow(9px 15px 0 #40583930);
+}
+.hero-unit.u0 {
+  left: 8%;
+  top: 17%;
+  transform: rotate(8deg);
+}
+.hero-unit.u1 {
+  left: 35%;
+  top: 8%;
+  transform: rotate(2deg);
+}
+.hero-unit.u2 {
+  left: 62%;
+  top: 23%;
+  transform: rotate(-8deg);
+}
+.hero-unit.u3 {
+  left: 24%;
+  top: 47%;
+  transform: rotate(6deg);
+}
+.hero-unit.u4 {
+  left: 52%;
+  top: 49%;
+  transform: rotate(-8deg);
+}
+.stamp {
+  position: absolute;
+  right: 6%;
+  top: 10%;
+  font: 800 1.5em "Barlow Condensed";
+  letter-spacing: 0.12em;
+  border: 3px solid #ad6048;
+  color: #ad6048;
+  padding: 0.3em 0.6em;
+  transform: rotate(12deg);
+}
+.screen-inner {
+  position: absolute;
+  inset: 7% 6%;
+  z-index: 1;
+}
+.screen-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.muted {
+  color: #62705c;
+}
+.squad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2%;
+  margin-top: 4%;
+}
+.squad-card {
+  border: 1px solid #849275;
+  background: #f3edd533;
+  padding: 6%;
+  text-align: left;
+  color: #2d4738;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.squad-card:hover,
+.squad-card.selected {
+  background: #faf3db;
+  border: 2px solid #b96346;
+  transform: translateY(-4px);
+}
+.squad-card h3 {
+  font: 800 2.05em "Barlow Condensed";
+  margin: 0.5em 0 0.25em;
+  text-transform: uppercase;
+}
+.squad-card p {
+  font-size: 0.85em;
+  min-height: 4.7em;
+}
+.squad-portraits {
+  display: flex;
+  height: 6em;
+  margin: 1em -5% 0;
+}
+.squad-portraits img {
+  width: 20%;
+  object-fit: contain;
+}
+.seed-row {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  margin-top: 3%;
+  font-size: 0.8em;
+}
+.seed-row input {
+  border: 1px solid #8b9970;
+  background: #f8efd3;
+  padding: 0.6em;
+  width: 12em;
+  color: #2e493b;
+}
+.hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #263f32;
+  color: #f1e7c9;
+  padding: 0 3%;
+  border-bottom: 3px solid #84936a;
+}
+.hud-brand {
+  font: 800 1.5em "Barlow Condensed";
+  letter-spacing: 0.02em;
+}
+.hud-brand small {
+  display: block;
+  font: 0.43em "DM Sans";
+  letter-spacing: 0.15em;
+  margin-top: 0.4em;
+  color: #b7c2a3;
+}
+.hud-center {
+  display: flex;
+  gap: 1.8em;
+  align-items: center;
+}
+.team-count {
+  font: 700 1.4em "Barlow Condensed";
+}
+.team-count.enemy {
+  color: #e5a987;
+}
+.clock {
+  font: 1.25em monospace;
+  color: #d4d1a5;
+}
+.hud-actions {
+  display: flex;
+  gap: 0.65em;
+}
+.hud-actions .btn {
+  color: #f1e7c9;
+  font-size: 0.67em;
+  padding: 0.75em 0.9em;
+  border: 1px solid #697d5e;
+  background: transparent;
+  box-shadow: none;
+}
+.hud-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 17.8%;
+  background: #e9e3c6;
+  border-top: 3px solid #738468;
+  display: flex;
+  padding: 1.2% 2.5%;
+  gap: 1.4%;
+}
+.roster {
+  display: flex;
+  gap: 0.5em;
+  width: 52%;
+}
+.unit-card {
+  position: relative;
+  width: 20%;
+  display: grid;
+  grid-template-columns: 38% 62%;
+  align-items: center;
+  border: 1px solid #889679;
+  background: #f3ebd0;
+  color: #314b39;
+  text-align: left;
+  padding: 0.3em;
+}
+.unit-card.selected {
+  border: 2px solid #bc6344;
+  background: #f9efd0;
+  box-shadow: 0 0 0 2px #bc634433;
+}
+.unit-card.down {
+  opacity: 0.68;
+  background: #dedbc1;
+}
+.unit-card.dead {
+  opacity: 0.43;
+}
+.unit-card img {
+  width: 100%;
+  height: 4.3em;
+  object-fit: contain;
+}
+.unit-name {
+  font: 700 1.08em "Barlow Condensed";
+  text-transform: uppercase;
+}
+.slot {
+  font: 0.68em monospace;
+  color: #68765f;
+}
+.hp {
+  height: 3px;
+  background: #bcbea1;
+  margin-top: 0.6em;
+  width: 92%;
+}
+.hp div {
+  height: 100%;
+  background: #648669;
+}
+.unit-status {
+  font: 0.65em monospace;
+  margin-top: 0.45em;
+  letter-spacing: 0.03em;
+}
+.orders {
+  flex: 1;
+  border-left: 1px solid #9aab8544;
+  padding-left: 1.2em;
+  min-width: 0;
+}
+.orders h3 {
+  font: 700 1.5em "Barlow Condensed";
+  margin: 0 0 0.25em;
+  text-transform: uppercase;
+}
+.orders p {
+  font-size: 0.72em;
+  margin: 0;
+  color: #596b52;
+  line-height: 1.6;
+}
+.medic-button {
+  width: 13%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55em;
+  text-align: left;
+  border: 1px solid #8c9c79;
+  background: #d6dcc0;
+  color: #354e3c;
+  padding: 0.6em 1em;
+  font-size: 0.72em;
+  letter-spacing: 0.06em;
+}
+.medic-button strong {
+  font: 700 1.8em "Barlow Condensed";
+}
+.medic-button:hover {
+  background: #e8eacb;
+}
+.battle-help {
+  position: absolute;
+  bottom: 20.5%;
+  left: 3%;
+  max-width: 70%;
+  background: #263f32dd;
+  color: #eee7ca;
+  padding: 0.7em 1.1em;
+  border-left: 3px solid #d8bb6b;
+  font-size: 0.72em;
+}
+.radio-log {
+  position: absolute;
+  right: 3%;
+  bottom: 21%;
+  max-width: 26%;
+  text-align: right;
+  color: #324e3c;
+  font: 0.67em/1.5 monospace;
+  pointer-events: none;
+}
+.radio-log div:first-child {
+  background: #e7e2c4dd;
+  padding: 0.3em 0.6em;
+}
+.modal-shade {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #1c3026bb;
+  pointer-events: auto;
+  backdrop-filter: blur(3px);
+}
+.modal {
+  width: 47%;
+  padding: 4%;
+  background: #ece6cb;
+  box-shadow: 12px 12px 0 #152a2466;
+  border: 1px solid #879470;
+  text-align: center;
+}
+.modal p {
+  font-size: 0.9em;
+  color: #5a6b52;
+}
+.modal .buttons {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.result-stat {
+  display: flex;
+  justify-content: center;
+  gap: 1.6em;
+  font: 0.85em monospace;
+  margin: 2em 0;
+}
+.settings {
+  position: absolute;
+  inset: 3% 6%;
+  z-index: 5;
+  background: #eee8d0;
+  box-shadow: 12px 12px 0 #1b332677;
+  border: 1px solid #8a9878;
+  padding: 2.5%;
+  display: flex;
+  flex-direction: column;
+}
+.settings h2 {
+  font-size: 2.2em;
+}
+.settings-note {
+  font-size: 0.74em;
+  color: #607257;
+  margin: 0.7em 0;
+}
+.bindings-scroll {
+  overflow: auto;
+  flex: 1;
+  border-top: 1px solid #92a17e;
+  border-bottom: 1px solid #92a17e;
+  margin: 1em 0;
+}
+.context-title {
+  font: 700 0.72em "DM Sans";
+  letter-spacing: 0.14em;
+  background: #d4dcc0;
+  padding: 0.8em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.binding-row {
+  display: grid;
+  grid-template-columns: 48% 25% 25%;
+  gap: 1%;
+  align-items: center;
+  padding: 0.4em 0.7em;
+  border-bottom: 1px solid #9ba78733;
+  font-size: 0.82em;
+}
+.binding-row button {
+  border: 1px solid #9aa987;
+  background: #f8efd8;
+  color: #35523e;
+  padding: 0.48em;
+  min-height: 2em;
+}
+.binding-row button:hover {
+  background: #dbdec0;
+}
+.binding-row button.capturing {
+  background: #bc6648;
+  color: #fff0cc;
+  border-color: #bc6648;
+}
+.settings-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9em;
+}
+.settings-message {
+  font-size: 0.77em;
+  color: #af513b;
+  min-height: 1.5em;
+}
+.settings-footer .buttons {
+  margin: 0;
+}
+.conflict {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #263e32cc;
+  z-index: 10;
+}
+.conflict .modal {
+  width: 60%;
+}
+.paused-banner {
+  position: absolute;
+  top: 15%;
+  left: 43%;
+  font: 800 2em "Barlow Condensed";
+  color: #fff2cf;
+  letter-spacing: 0.12em;
+  text-shadow: 2px 2px #334b39;
+}
+.tiny {
+  font-size: 0.72em;
+}
+.sound-toggle {
+  min-width: 5.2em;
+}
+@media (max-width: 800px) {
+  #ui {
+    font-size: 1.2vw;
+  }
+  .title-content {
+    top: 22%;
+  }
+  .title-content p {
+    font-size: 1.02em;
+  }
+  h1 {
+    font-size: 6.5em;
+  }
+  .modal {
+    width: 55%;
+  }
+  .settings {
+    inset: 3% 4%;
+  }
+}

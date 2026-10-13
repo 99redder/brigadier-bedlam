@@ -1,0 +1,167 @@
+Build the first playable prototype of a browser game: a satirical, cartoonish
+real-time squad tactics game inspired by the 1993 Sega Genesis game General
+Chaos. This is a personal project. It is an original game in the same genre,
+so use no names, sprites, music or other assets from the original. Working
+title: "Brigadier Bedlam".
+
+The game is single player only, against computer-controlled enemies. Do not
+build or plan for multiplayer of any kind, local or online.
+
+WHAT THE GAME IS
+Two squads of 5 soldiers fight in real time on a single-screen battlefield
+viewed from a 3/4 isometric-style angle. The battlefield has cover objects
+that block direct fire, and patches of water. A battle ends when every
+soldier on one side is down. The tone is slapstick: exaggerated cartoon
+soldiers, comic deaths, nothing gritty.
+
+Soldier classes (my names; keep all names and stats in one data file so I
+can rename and rebalance easily):
+- Rifleman: machine gun. Medium range, high rate of fire, all-rounder.
+  The gun occasionally jams and he can't fire for a few seconds.
+- Bazooka: rocket launcher. Longest range, slow to fire, blocked by cover.
+- Lobber: grenades. Good range, low rate of fire, arcs over cover, damages
+  everyone in a small radius.
+- Torch: flamethrower. Shortest range, fastest firing, hits several
+  soldiers at once, does not work while standing in water.
+- Sapper: dynamite. Short range, very slow, arcs over cover, heavy damage
+  in a small radius.
+
+Other rules:
+- A soldier whose health reaches zero falls down and stays on the field.
+  The player can revive him by calling a medic, who runs on, revives him
+  and runs off. Medic calls are limited per battle (start with 3).
+- Bazooka, Torch and Sapper hits have a small random chance of an instant
+  kill that leaves a skeleton or a pile of ash. Those soldiers cannot be
+  revived.
+- When two opposing soldiers get very close they enter close combat: both
+  stop shooting and brawl with punch, kick and block until one is knocked
+  down. Nearby soldiers are knocked back when a brawl starts.
+- Before a battle the player picks one of three preset squads with
+  different class mixes. The enemy gets a random one.
+
+CONTROLS
+Every action goes through a rebindable input layer. Game code asks "was
+the Punch action triggered", never "was the left mouse button pressed".
+Both keyboard keys and mouse buttons can be bound to any action.
+
+Default layout, designed for mouse in the right hand and the left hand
+resting on the WASD cluster:
+
+Mouse
+- Left click a friendly soldier: select him.
+- Left click ground: selected soldier moves there.
+- Left click an enemy: selected soldier attacks him, moving into range
+  first if needed.
+- Left click a downed friendly: call a medic.
+- Right click: deselect. Suppress the browser context menu over the game.
+
+Keyboard (left hand)
+- 1-5: select soldier by squad slot.
+- Q / E: select previous / next living soldier.
+- R: call a medic for the downed friendly nearest the cursor.
+- F: selected soldier holds position and stops chasing his target.
+- Space: pause.
+- Esc: open the menu (also pauses).
+- W A S D: leave unbound in this build. They are reserved for direct
+  movement in the future two-man commando mode, so don't assign them to
+  anything else by default.
+
+Close combat, when the player's selected soldier is in the brawl
+- Left click: punch.
+- Right click: kick.
+- Left Shift: block (held).
+Brawls between soldiers the player is not controlling resolve
+automatically.
+
+Unselected soldiers look after themselves: they fire at enemies in range
+and hold position otherwise.
+
+The core loop of select, move, attack and revive must stay playable with
+the mouse alone under the default layout. The keyboard defaults are
+shortcuts, except block, which needs a key or a rebind to a mouse button.
+
+Controls settings screen
+- Reachable from the title screen and the in-game menu.
+- Lists every action with its current binding. Click a binding, then
+  press a key or mouse button to change it.
+- If the new binding is already used by another action in the same
+  context, warn and offer to swap. Battlefield actions and close combat
+  actions are separate contexts, so left click can be both "select/move"
+  and "punch".
+- Allow a second, alternate binding per action.
+- A "Reset to defaults" button, and a "Left-handed mouse" preset that
+  mirrors the keyboard defaults to the right side of the keyboard
+  (6-0, U / O, P, J, Right Shift).
+- Bind by physical key position (KeyboardEvent.code), so the layout
+  stays under the same fingers on AZERTY, Dvorak and other layouts, but
+  display the label the user's own keyboard prints for that key.
+- Don't allow binding keys the browser needs, such as F5, F11, Tab, or
+  anything combined with Ctrl, Alt or Cmd.
+- Save bindings in localStorage and load them on start. If saved data is
+  missing or invalid, fall back to the defaults silently.
+- On-screen hints and the win/lose and pause screens must show the
+  player's current bindings, not hard-coded key names.
+
+SCOPE OF THIS FIRST BUILD
+Build: a title screen, squad selection, one battlefield, all five classes,
+cover and water, medics, instant kills, close combat, enemy AI, the
+controls settings screen, a pause menu, and a win/lose screen that returns
+to the title.
+
+Do not build yet, but don't make them hard to add: a campaign played across
+a strategic map of territories, more battlefields, a tutorial, a two-man
+"commando" squad with direct control, pickups and scoring, and final art
+and audio.
+
+TECHNICAL DIRECTION
+- TypeScript, Vite, and Phaser 3. It must build to a static site with no
+  backend.
+- Keep the battle simulation (movement, targeting, damage, AI, brawls,
+  medics) in plain TypeScript modules that do not import Phaser, driven by
+  a fixed timestep and a seedable random number generator. Phaser only
+  draws the simulation state and forwards input. This is so the rules can
+  be unit tested without a browser, and so a battle can be replayed from
+  a seed when I report a bug.
+- Write unit tests with Vitest:
+  - Simulation: weapon ranges and cooldowns, cover blocking direct fire
+    but not arcing weapons, the flamethrower failing in water, revive and
+    no-revive deaths, medic limits, and battle end conditions.
+  - Input bindings: defaults load, a rebind persists and reloads,
+    conflicts within a context are detected, and invalid saved data falls
+    back to defaults.
+- Art: generate simple placeholder sprites in code or as small SVGs.
+  Each class must be recognisable at a glance by colour and silhouette,
+  and the two sides clearly distinguishable. Soldiers need visibly
+  different states for idle, moving, firing, brawling, down, and dead
+  (skeleton or ash). Put all art behind one asset-loading module so I
+  can swap in real sprite sheets later without touching game code.
+- Audio: a few short synthesised sound effects are enough. No music yet.
+- Target a 16:9 play area that scales to fit the browser window on a
+  desktop. Mobile and touch are not needed.
+
+ENEMY AI
+The AI is what makes this fun or not, so give it real attention. Enemy
+soldiers should pick targets sensibly for their weapon, keep to their
+preferred range, use cover, avoid standing in water as a Torch, back off
+when badly hurt, and call their own medics. It should be beatable by a
+new player but punish leaving soldiers idle in the open. Put the AI's
+tuning numbers in the same data file as the class stats.
+
+HOW TO WORK
+- Start by getting one soldier moving by mouse click on an empty
+  battlefield, then add things in an order that keeps the game runnable
+  at every step.
+- Run the game in a browser yourself and play it as you go. Passing unit
+  tests are not enough; check that selection, movement, shooting, brawls,
+  medics and rebinding actually work, and that a full battle can be won
+  and lost.
+- Weapon stats and AI numbers will need tuning. Make a reasonable first
+  pass, play several battles, and adjust so battles last roughly 2 to 4
+  minutes and no class is useless or dominant.
+- If a rule here is ambiguous, pick the option that is more fun and
+  simpler, and note the choice.
+
+WHEN YOU FINISH
+Give me the commands to run and build it, a short list of the design
+choices you made where this brief was unclear, and anything that is
+unfinished or that you could not verify by playing.
