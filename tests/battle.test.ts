@@ -312,7 +312,7 @@ describe("dynamite lethal core and weapon events", () => {
       b.resolveShot(b.shots[0]);
       expect(b.combatEvents.at(-1)).toMatchObject({
         classId: id,
-        kind: "impact",
+        kind: id === "bazooka" ? "hit" : "impact",
       });
     }
     const { b, a, t } = pair();

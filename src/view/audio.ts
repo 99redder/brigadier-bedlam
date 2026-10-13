@@ -1,3 +1,4 @@
+import type { CombatEvent } from "../sim/battle";
 import type { ClassId } from "../sim/data";
 // Synthesized sound identities; no external samples or simulation RNG are used.
 export const WEAPON_AUDIO: Record<
@@ -130,12 +131,21 @@ export class Sound {
       g.disconnect();
     };
   }
-  weapon(classId: ClassId, kind: "fire" | "impact") {
+  weapon(classId: ClassId, kind: CombatEvent["kind"]) {
     if (this.muted || !this.context || this.context.state !== "running") return;
     const ctx = this.context,
       key = `${classId}:${kind}`;
     if (ctx.currentTime - (this.last.get(key) ?? -1) < 0.065) return;
     this.last.set(key, ctx.currentTime);
+    if (kind === "hit") {
+      // Rocket contact: a chunky crack/boom with a bright two-note confirmation.
+      // Keep a separate throttle key so a nearby miss cannot suppress this cue.
+      this.tone(125, 28, 0.4, "sine", 0.11);
+      this.hiss(0.35, 0.12, 1800);
+      this.tone(680, 480, 0.09, "triangle", 0.055, 0.025);
+      this.tone(980, 740, 0.12, "triangle", 0.05, 0.115);
+      return;
+    }
     if (kind === "impact") {
       if (classId === "rifleman" || classId === "torch") return;
       const dynamite = classId === "sapper",

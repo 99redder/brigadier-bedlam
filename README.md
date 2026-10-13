@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.14 — automatic fire toward distant enemies.**
+Current prototype: **v0.15 — distinctive rocket hit confirmation.**
+
+When a rocket blast actually damages a soldier or medic, it plays a distinct crack/boom with a bright two-note confirmation instead of the normal rocket explosion. Cover hits, empty explosions, out-of-range misses, downed units, and protected training targets keep the ordinary impact sound. Each rocket emits one hit cue even if its blast damages several units. The cue respects Sound off and has a separate playback throttle so a nearby terrain impact cannot suppress it.
 
 If no enemy is in effective range, units keep firing toward the closest living enemy. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
 

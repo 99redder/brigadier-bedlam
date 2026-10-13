@@ -126,7 +126,7 @@ export interface Replay {
 export interface CombatEvent {
   id: number;
   classId: ClassId;
-  kind: "fire" | "impact";
+  kind: "fire" | "impact" | "hit";
 }
 export class Battle {
   aiSides: Side[] = [1];
@@ -596,7 +596,7 @@ export class Battle {
     const hit = firstCoverHit(shot.from, shot.to, cover);
     const impact = hit?.point ?? shot.to;
     const terrainHit = !!hit || !!shot.hitCover;
-    this.emitWeapon(shot.classId, "impact");
+    let damagedUnit = false;
     if (shot.miss) {
       this.effects.push({
         ...impact,
@@ -605,6 +605,7 @@ export class Battle {
         time: 0.35,
         size: Math.min(w.radius || 10, 18),
       });
+      this.emitWeapon(shot.classId, "impact");
       if (!terrainHit) return;
     } else if (w.radius) {
       for (const t of this.combatants()) {
@@ -628,12 +629,14 @@ export class Battle {
             continue;
         } else if (distance(t, impact) > w.radius || blocked(impact, t, cover))
           continue;
+        const hpBefore = t.hp;
         this.damage(
           t,
           w.damage,
           shot.classId,
           w.lethalRadius > 0 && distance(t, impact) <= w.lethalRadius,
         );
+        if (t.hp < hpBefore) damagedUnit = true;
       }
       this.effects.push({
         ...impact,
@@ -654,6 +657,11 @@ export class Battle {
     } else {
       this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 10 });
     }
+    if (!shot.miss)
+      this.emitWeapon(
+        shot.classId,
+        shot.classId === "bazooka" && damagedUnit ? "hit" : "impact",
+      );
     const amount = TERRAIN.damage[shot.classId];
     if (!amount) return;
     let demolished = false;
