@@ -1,5 +1,11 @@
 # Prototype verification — October 13, 2026
 
+## v0.8 jagged river
+
+- 69 tests pass, including connected river coverage, dry notches and wet bends, a single shared bank outline, safe bridge routing, and the full interactive boot camp crossing sequence.
+- Browser inspection confirmed the zigzag river on the tutorial map, with no internal seams between water sections. Water detection and bridge routing use the same bands as the visible bank outline.
+- TypeScript and production build pass; CI repeats checks before Pages deployment.
+
 ## v0.7 interactive boot camp
 
 - 68 tests pass. New checks cover no enemies/no premature victory, movement completion, correct weapon gating, the complete interactive lesson sequence, practice target recovery, training safety isolated from combat rules, and deterministic initial training replay.

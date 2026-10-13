@@ -185,3 +185,31 @@ export function pathfind(
   }
   return [];
 }
+
+// Contiguous horizontal bands share a single bank outline, with no internal seams.
+// The outline uses the exact rectangles used by water hazards and pathfinding.
+export function waterOutlines(water: Rect[]): Point[][] {
+  const groups: Rect[][] = [];
+  for (const r of [...water].sort((a, b) => a.y - b.y)) {
+    const group = groups.at(-1),
+      previous = group?.at(-1);
+    if (
+      previous &&
+      previous.y + previous.h === r.y &&
+      previous.x < r.x + r.w &&
+      r.x < previous.x + previous.w
+    )
+      group!.push(r);
+    else groups.push([r]);
+  }
+  return groups.map((group) => [
+    ...group.flatMap((r) => [
+      { x: r.x, y: r.y },
+      { x: r.x, y: r.y + r.h },
+    ]),
+    ...[...group].reverse().flatMap((r) => [
+      { x: r.x + r.w, y: r.y + r.h },
+      { x: r.x + r.w, y: r.y },
+    ]),
+  ]);
+}

@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.7 — an interactive, enemy-free Boot Camp tutorial.**
+Current prototype: **v0.8 — jagged river banks, with matching hazards and bridge routes.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -82,7 +82,7 @@ You can restart or exit any time. Graduation offers real squad deployment, repea
 
 ## River crossing tradeoff
 
-The river separates the two halves of the battlefield. Its bridge sits near the northern edge, well away from the central fighting. Click it to order a safe crossing; the highlighted route shows the detour. Direct ground orders retain the shorter water route.
+The jagged river zigzags between the two halves of the battlefield. Its connected water bands share a single visible bank outline, so the displayed shape matches water hazards and navigation. Its bridge sits near the northern edge, well away from the central fighting. Click it to order a safe crossing; the highlighted route shows the detour. Direct ground orders retain the shorter water route.
 
 | Class | Speed in water (% of land speed) | Drowning chance per entry |
 | --- | ---: | ---: |

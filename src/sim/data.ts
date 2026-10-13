@@ -191,7 +191,16 @@ export const COVER: Cover[] = [
   { x: 390, y: 460, w: 80, h: 34 },
 ];
 // Bank-to-bank crossing is unavoidable when moving between the two halves.
-export const WATER: Rect[] = [{ x: 505, y: 0, w: 90, h: FIELD.height }];
+export const WATER: Rect[] = [
+  { x: 505, y: 0, w: 90, h: 100 },
+  { x: 475, y: 100, w: 100, h: 60 },
+  { x: 530, y: 160, w: 95, h: 65 },
+  { x: 490, y: 225, w: 110, h: 65 },
+  { x: 535, y: 290, w: 110, h: 75 },
+  { x: 495, y: 365, w: 110, h: 60 },
+  { x: 550, y: 425, w: 100, h: 65 },
+  { x: 505, y: 490, w: 100, h: 70 },
+];
 
 // Deliberately far from the central fight: safe but a substantial detour.
 export const BRIDGES: Rect[] = [{ x: 485, y: 36, w: 130, h: 64 }];

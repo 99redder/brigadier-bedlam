@@ -10,7 +10,7 @@ import {
   BRIDGES,
   type ClassId,
 } from "../sim/data";
-import { type Point, distance } from "../sim/geometry";
+import { type Point, distance, waterOutlines } from "../sim/geometry";
 import {
   loadAssets,
   assetKey,
@@ -118,19 +118,17 @@ export class Battlefield extends Phaser.Scene {
       ],
       true,
     );
-    for (const r of this.battle?.water ?? WATER) {
-      const corners = [
-        project(r),
-        project({ x: r.x + r.w, y: r.y }),
-        project({ x: r.x + r.w, y: r.y + r.h }),
-        project({ x: r.x, y: r.y + r.h }),
-      ];
+    const water = this.battle?.water ?? WATER;
+    for (const outline of waterOutlines(water)) {
+      const corners = outline.map(project);
       g.lineStyle(12, 0x869378);
       g.strokePoints(corners, true, true);
       g.fillStyle(0x6a9e9a);
       g.fillPoints(corners, true);
       g.lineStyle(2, 0xc2d7bc, 0.7);
       g.strokePoints(corners, true, true);
+    }
+    for (const r of water) {
       g.lineStyle(2, 0xc8e5d5, 0.5);
       for (let y = r.y + 20; y < r.y + r.h; y += 30) {
         for (let x = r.x + 12; x < r.x + r.w - 20; x += 32) {

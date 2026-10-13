@@ -1,7 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Battle, replayBattle } from "../src/sim/battle";
 import { CLASSES, TUNING, type ClassId } from "../src/sim/data";
-import { distance, blocked, pathfind } from "../src/sim/geometry";
+import {
+  distance,
+  blocked,
+  pathfind,
+  waterOutlines,
+} from "../src/sim/geometry";
 function pair(classId: ClassId = "rifleman") {
   const b = new Battle(42);
   b.cover = [];
@@ -486,7 +491,17 @@ describe("river crossings and bridges", () => {
   it("the river spans the battlefield and its bridge is out of the central combat route", () => {
     const b = new Battle(42);
     expect(b.water[0].y).toBe(0);
-    expect(b.water[0].h).toBe(560);
+    expect(b.water.at(-1)!.y + b.water.at(-1)!.h).toBe(560);
+    expect(new Set(b.water.map((r) => r.x)).size).toBeGreaterThan(4);
+    for (let i = 1; i < b.water.length; i++) {
+      const previous = b.water[i - 1],
+        current = b.water[i];
+      expect(current.y).toBe(previous.y + previous.h);
+      expect(
+        Math.min(previous.x + previous.w, current.x + current.w) -
+          Math.max(previous.x, current.x),
+      ).toBeGreaterThan(0);
+    }
     expect(b.inWater({ x: 550, y: 280 })).toBe(true);
     expect(b.inWater({ x: 550, y: 68 })).toBe(false);
     expect(b.bridges[0].y + b.bridges[0].h).toBeLessThan(150);
@@ -615,4 +630,16 @@ it("the default map routes to the bridge around intact scenery", () => {
     previous = p;
   }
   expect(previous.x).toBeGreaterThan(595);
+});
+
+it("jagged banks use the same outline and water hit areas, without filling dry notches", () => {
+  const b = new Battle(42);
+  const outline = waterOutlines(b.water);
+  expect(outline).toHaveLength(1);
+  expect(outline[0]).toContainEqual({ x: 475, y: 100 });
+  expect(outline[0]).toContainEqual({ x: 645, y: 365 });
+  expect(b.inWater({ x: 480, y: 130 })).toBe(true);
+  expect(b.inWater({ x: 480, y: 180 })).toBe(false);
+  expect(b.inWater({ x: 630, y: 330 })).toBe(true);
+  expect(b.inWater({ x: 630, y: 390 })).toBe(false);
 });
