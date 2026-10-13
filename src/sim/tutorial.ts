@@ -111,7 +111,7 @@ export class Tutorial {
       case "dynamite":
         return [
           "Short range, big consequence",
-          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, an exposed close hit kills permanently; grenades and explosions can hurt allies. Riflemen sometimes jam; Torch uses a short flame cone.`,
+          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, one rocket or dynamite hit kills; two grenades kill a full-health soldier. Explosions hurt allies. Torch ignites an eight-second burn; water extinguishes it. Riflemen sometimes jam.`,
         ];
       case "bridge":
         return [
@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. In a real battle, click an enemy to pursue and attack; units fire automatically, but shots outside the range circle miss. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Then click an enemy to pursue and attack; units fire automatically, but shots outside the range circle miss. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }

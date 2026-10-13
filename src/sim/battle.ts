@@ -31,6 +31,7 @@ export interface Soldier extends Point {
   slot: number;
   classId: ClassId;
   hp: number;
+  burnRemaining: number;
   life: Life;
   death: "skeleton" | "ash" | "drowned" | null;
   target: number | null;
@@ -66,6 +67,7 @@ export interface Soldier extends Point {
 export interface Medic extends Point {
   id: number;
   hp: number;
+  burnRemaining: number;
   life: "alive" | "dead";
   death: "skeleton" | "ash" | null;
   side: Side;
@@ -120,6 +122,7 @@ export interface Replay {
   seed: number;
   squad: number;
   training?: boolean;
+  deploymentSeconds?: number;
   aiSides?: Side[];
   commands: { tick: number; command: Command }[];
 }
@@ -142,6 +145,14 @@ export class Battle {
   rngState: number;
   squad: number;
   tick = 0;
+  combatTicks = 0;
+  planningTicks = 0;
+  get planning() {
+    return this.planningTicks > 0;
+  }
+  get countdown() {
+    return Math.ceil(this.planningTicks * TUNING.step);
+  }
   time = 0;
   soldiers: Soldier[] = [];
   medics: Medic[] = [];
@@ -166,7 +177,11 @@ export class Battle {
     seed: number,
     squad = 0,
     readonly training = false,
+    readonly deploymentSeconds = 0,
   ) {
+    this.planningTicks = training
+      ? 0
+      : Math.round(deploymentSeconds / TUNING.step);
     if (training)
       this.cover = TRAINING_COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
     this.seed = seed >>> 0;
@@ -184,6 +199,7 @@ export class Battle {
             x: side === 0 ? 105 : 995,
             y: training ? 160 + slot * 70 : 75 + slot * 99,
             hp: CLASSES[classId].hp,
+            burnRemaining: 0,
             life: "alive",
             death: null,
             target: null,
@@ -243,6 +259,13 @@ export class Battle {
     if (this.winner !== null) return;
     if (record)
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
+    if (
+      this.planning &&
+      !["select", "move", "bridge", "hold"].includes(c.type)
+    ) {
+      this.note("Deployment: queue movement orders. Weapons unlock at GO.");
+      return;
+    }
     if (c.type === "fire-all") {
       this.fireAll();
       return;
@@ -387,6 +410,7 @@ export class Battle {
   canShoot(s: Soldier, t: Combatant) {
     const w = CLASSES[s.classId];
     return (
+      !this.planning &&
       s.life === "alive" &&
       s.drowningTime <= 0 &&
       (!("classId" in t) || t.drowningTime <= 0) &&
@@ -420,13 +444,24 @@ export class Battle {
       (!this.aiSides.includes(s.side) || this.safeBlast(s, t))
     );
   }
+  tickBurn(target: Combatant, dt: number) {
+    if (target.life !== "alive" || this.training || this.inWater(target)) {
+      target.burnRemaining = 0;
+      return;
+    }
+    if (target.burnRemaining <= 0) return;
+    const duration = Math.min(dt, target.burnRemaining);
+    target.burnRemaining = Math.max(0, target.burnRemaining - dt);
+    const amount = TUNING.burnDamagePerSecond * duration;
+    this.damage(target, amount, "torch", amount >= target.hp);
+  }
   damage(
     target: Combatant,
     amount: number,
     classId: ClassId | null = null,
     lethal = false,
   ) {
-    if (this.training || target.life !== "alive") return;
+    if (this.training || this.planning || target.life !== "alive") return;
     if (!("classId" in target)) {
       const instant =
         lethal ||
@@ -435,6 +470,7 @@ export class Battle {
       this.effects.push({ ...target, kind: "hit", time: 0.25, size: 10 });
       if (target.hp === 0) {
         target.life = "dead";
+        target.burnRemaining = 0;
         target.death = classId === "torch" ? "ash" : "skeleton";
         target.path = [];
         target.timer = 0;
@@ -467,6 +503,7 @@ export class Battle {
       target.knockdownTime = TUNING.knockdownAnimation;
     }
     if (target.life !== "alive") {
+      target.burnRemaining = 0;
       target.path = [];
       target.goal = null;
       target.blocking = false;
@@ -526,7 +563,12 @@ export class Battle {
       .sort((a, b) => distance(s, a) - distance(s, b) || a.id - b.id)[0];
   }
   fireDistant(s: Soldier, target: Combatant | undefined) {
-    if (!target || target.life !== "alive" || target.side === s.side)
+    if (
+      this.planning ||
+      !target ||
+      target.life !== "alive" ||
+      target.side === s.side
+    )
       return false;
     const d = distance(s, target),
       range = CLASSES[s.classId].range;
@@ -551,6 +593,7 @@ export class Battle {
     const w = CLASSES[s.classId];
     const hit = firstCoverHit(s, point, this.cover);
     if (
+      this.planning ||
       s.life !== "alive" ||
       s.drowningTime > 0 ||
       s.brawl !== null ||
@@ -637,6 +680,13 @@ export class Battle {
           w.lethalRadius > 0 && distance(t, impact) <= w.lethalRadius,
         );
         if (t.hp < hpBefore) damagedUnit = true;
+        if (
+          shot.classId === "torch" &&
+          t.life === "alive" &&
+          !this.training &&
+          !this.inWater(t)
+        )
+          t.burnRemaining = TUNING.burnDuration;
       }
       this.effects.push({
         ...impact,
@@ -712,6 +762,7 @@ export class Battle {
   callMedic(id: number, side: Side) {
     const t = this.get(id);
     if (
+      this.planning ||
       !t ||
       t.side !== side ||
       t.life !== "down" ||
@@ -725,6 +776,7 @@ export class Battle {
     this.medics.push({
       id: this.nextMedicId--,
       hp: TUNING.medicHealth,
+      burnRemaining: 0,
       life: "alive",
       death: null,
       x: side === 0 ? 10 : FIELD.width - 10,
@@ -920,7 +972,13 @@ export class Battle {
     if (this.winner !== null) return;
     const dt = TUNING.step;
     this.tick++;
-    this.time = this.tick * dt;
+    if (this.planning) {
+      this.planningTicks--;
+      if (!this.planning) this.note("GO! Opening orders are live.");
+      return;
+    }
+    this.time = ++this.combatTicks * dt;
+    for (const unit of this.combatants()) this.tickBurn(unit, dt);
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
     for (const s of this.soldiers) {
       s.cooldown -= dt;
@@ -1150,6 +1208,7 @@ export class Battle {
         if (m.timer > 0.8) {
           if (t.life === "down") {
             t.life = "alive";
+            t.burnRemaining = 0;
             t.wasInWater = false;
             t.drowningTime = 0;
             t.hp = CLASSES[t.classId].hp * TUNING.reviveHealth;
@@ -1211,6 +1270,7 @@ export class Battle {
       seed: this.seed,
       squad: this.squad,
       training: this.training,
+      deploymentSeconds: this.deploymentSeconds,
       aiSides: [...this.aiSides],
       commands: this.commands,
     };
@@ -1221,6 +1281,7 @@ export function replayBattle(replay: Replay, ticks: number) {
     replay.seed,
     replay.squad,
     replay.training ?? false,
+    replay.deploymentSeconds ?? 0,
   );
   battle.aiSides = replay.aiSides ? [...replay.aiSides] : [1];
   let i = 0;

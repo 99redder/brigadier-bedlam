@@ -85,7 +85,12 @@ describe("out-of-range automatic fire", () => {
   });
   it("keeps firing at its normal cadence and damages targets once they enter range", () => {
     const { b, a, target } = distant();
-    for (let i = 0; i < 30; i++) b.step();
+    for (
+      let i = 0;
+      i < Math.ceil((2 * CLASSES.rifleman.cooldown) / TUNING.step);
+      i++
+    )
+      b.step();
     expect(b.stats.shots).toBeGreaterThanOrEqual(2);
     expect(target.hp).toBe(CLASSES[target.classId].hp);
     target.x = 200;

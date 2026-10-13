@@ -729,3 +729,38 @@ p {
   border-color: #f0d69a;
   font-weight: 800;
 }
+
+.deployment-banner {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 76%;
+  padding: 0.4em 0.8em;
+  background: #263f35ee;
+  color: #fff0bf;
+  text-align: center;
+  border: 2px solid #dfc880;
+  pointer-events: none;
+}
+.deployment-banner strong {
+  display: block;
+  font:
+    800 1.65em "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.12em;
+}
+.deployment-banner > span {
+  font-size: 0.8em;
+}
+
+#ui.planning .battle-help,
+#ui.planning .radio-log {
+  display: none;
+}
+
+.hud-actions button:disabled,
+.medic-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

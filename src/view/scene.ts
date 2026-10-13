@@ -364,6 +364,11 @@ export class Battlefield extends Phaser.Scene {
     const b = this.battle;
     if (!b) return;
     if (this.terrainRevision !== b.terrainRevision) this.drawTerrain();
+    for (const [id, sprite] of this.units) {
+      const present = b.get(id) !== undefined;
+      sprite.setVisible(present);
+      this.labels.get(id)?.setVisible(present);
+    }
     this.victoryBanner
       .setVisible(b.winner !== null)
       .setText(
@@ -398,6 +403,15 @@ export class Battlefield extends Phaser.Scene {
         g.lineBetween(goal.x, goal.y - 4, goal.x, goal.y + 4);
       }
     }
+    if (b.planning)
+      for (const unit of b.soldiers) {
+        if (unit.side !== 0 || !unit.goal || unit.id === b.selected) continue;
+        const p = project(unit),
+          goal = project(unit.goal);
+        g.lineStyle(2, 0xffe5a1, 0.6);
+        g.strokePoints([p, ...unit.path.map(project)]);
+        g.strokeEllipse(goal.x, goal.y, 18, 10);
+      }
     if (this.tutorialMarker) {
       const p = project(this.tutorialMarker.point),
         pulse = Math.sin(b.time * 5) * 4;
@@ -556,7 +570,10 @@ export class Battlefield extends Phaser.Scene {
           5,
           2,
         );
-        if (celebrating) label!.setText(EMOTES[s.classId]);
+        if (s.burnRemaining > 0) {
+          this.drawBurning(p, s.id);
+          label!.setText("ON FIRE!");
+        } else if (celebrating) label!.setText(EMOTES[s.classId]);
         else if (sinking) label!.setText("DROWNING!");
         else if (wet) label!.setText("CROSSING");
         else if (s.jam > 0) {
@@ -632,6 +649,7 @@ export class Battlefield extends Phaser.Scene {
         .setPosition(p.x, p.y + 32)
         .setDepth(p.y + 1);
       if (m.life === "alive") {
+        if (m.burnRemaining > 0) this.drawBurning(p, m.id);
         g.lineStyle(1.5, m.side === 0 ? 0x477963 : 0xc45e48, 0.8);
         g.strokeEllipse(p.x, p.y + 3, 27, 13);
         g.fillStyle(0x314a3b);
@@ -738,6 +756,24 @@ export class Battlefield extends Phaser.Scene {
         g.lineBetween(p.x, p.y - 50, p.x, p.y - 34);
       }
     }
+  }
+  private drawBurning(p: Point, id: number) {
+    const g = this.effects,
+      time = this.battle!.time;
+    for (let i = 0; i < 4; i++) {
+      const x = p.x - 13 + i * 8,
+        rise = 9 + Math.sin(time * 13 + i + id) * 5;
+      g.fillStyle(0xe56735, 0.9);
+      g.fillTriangle(x - 6, p.y - 18, x + 6, p.y - 18, x + 2, p.y - 40 - rise);
+      g.fillStyle(0xffdb71, 0.9);
+      g.fillTriangle(x - 3, p.y - 19, x + 3, p.y - 19, x + 1, p.y - 32 - rise);
+    }
+    g.fillStyle(0x4b4c3f, 0.3);
+    g.fillCircle(
+      p.x + Math.sin(time * 4 + id) * 6,
+      p.y - 57 - ((time * 12) % 16),
+      7,
+    );
   }
   pick(point: Point) {
     const cursor = project(point);

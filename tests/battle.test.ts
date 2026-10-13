@@ -131,7 +131,7 @@ describe("life, medics, battle end", () => {
     expect(b.callMedic(a.id, 0)).toBe(true);
     expect(b.calls[0]).toBe(1);
     expect(b.callMedic(a.id, 0)).toBe(false);
-    advance(b, 2.5);
+    advance(b, 3.5);
     expect(a.life).toBe("alive");
     expect(a.hp).toBe(CLASSES[a.classId].hp * TUNING.reviveHealth);
     expect(b.stats.revives).toBe(1);
@@ -140,7 +140,7 @@ describe("life, medics, battle end", () => {
     it(`${id} instant kills cannot be revived`, () => {
       const { b, a } = pair();
       b.random = () => 0;
-      b.damage(a, 1, id);
+      b.damage(a, 1, id, true);
       expect(a.life).toBe("dead");
       expect(a.death).toBe(id === "torch" ? "ash" : "skeleton");
       expect(b.callMedic(a.id, 0)).toBe(false);
@@ -208,7 +208,7 @@ describe("movement, brawls and replay", () => {
     const { b, a, t } = pair();
     t.x = 1000;
     b.command({ type: "move", id: a.id, point: { x: 400, y: 250 } });
-    advance(b, 3);
+    advance(b, 5);
     expect(distance(a, { x: 400, y: 250 })).toBeLessThan(2);
   });
   it("close enemies brawl; selected soldier uses punch, kick and block", () => {
@@ -275,7 +275,7 @@ describe("dynamite lethal core and weapon events", () => {
     expect(t.death).toBe("skeleton");
     expect(b.callMedic(t.id, 1)).toBe(false);
   });
-  it("the lethal core includes its boundary; outside it, normal splash rules apply", () => {
+  it("the dynamite blast is lethal through its boundary and harmless outside it", () => {
     const { b, a, t } = pair("sapper");
     b.random = () => 1;
     t.x = 300 + CLASSES.sapper.lethalRadius;
@@ -286,7 +286,7 @@ describe("dynamite lethal core and weapon events", () => {
     t.x += 0.01;
     explode(b, a.id, t.id);
     expect(t.life).toBe("alive");
-    expect(t.hp).toBe(1000 - CLASSES.sapper.damage);
+    expect(t.hp).toBe(1000);
   });
   it("close dynamite kills allies too, but cannot hit outside the blast radius", () => {
     const { b, a, t } = pair("sapper");
@@ -378,6 +378,7 @@ describe("destructible scenery", () => {
     setup.b.cover = [
       { x: 240, y: 220, w: 10, h: 60, hp: 100, material: "rock" },
     ];
+    setup.a.x = 160;
     setup.t.x = 260;
     return setup;
   }
@@ -414,7 +415,7 @@ describe("destructible scenery", () => {
     expect(b.rubble).toHaveLength(1);
     expect(t.hp).toBe(1000);
     shoot(b, a, t);
-    expect(t.hp).toBe(1000 - CLASSES.bazooka.damage);
+    expect(t.life).toBe("dead");
   });
   it("one dynamite destroys cover but cannot kill through it, including within the lethal core", () => {
     const { b, a, t } = fixture("sapper");

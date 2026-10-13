@@ -1,6 +1,22 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.15 — distinctive rocket hit confirmation.**
+Current prototype: **v0.16 — opening deployment, slower movement, lethal explosives, and persistent burning.**
+
+Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
+
+Movement is about 35% slower for every class and medics. Weapon cooldowns are longer, with stronger damage:
+
+| Class | Land speed | Seconds between shots | Effect on an exposed soldier |
+| --- | ---: | ---: | --- |
+| Rifleman | 47 | 1.2 | 30 damage; several hits to kill |
+| Bazooka | 40 | 6 | One rocket blast kills |
+| Lobber | 44 | 5 | 130 damage; two hits kill any full-health class |
+| Torch | 49 | 2 | 12 contact damage, then 35 damage/second while burning |
+| Sapper | 52 | 7.5 | One dynamite blast kills within its 60-unit radius |
+
+A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing a full-health soldier as ash. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
+
+Rockets and dynamite still respect cover and friendly fire. Cover damage stays unchanged: three rockets or one dynamite demolish a rock, while grenades chip it and bullets/flames cannot damage it.
 
 When a rocket blast actually damages a soldier or medic, it plays a distinct crack/boom with a bright two-note confirmation instead of the normal rocket explosion. Cover hits, empty explosions, out-of-range misses, downed units, and protected training targets keep the ordinary impact sound. Each rocket emits one hit cue even if its blast damages several units. The cue respects Sound off and has a separate playback throttle so a nearby terrain impact cannot suppress it.
 
@@ -109,9 +125,9 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 - Every solid scenery object has 100 health. Rockets deal 40 terrain damage, dynamite 100, and grenades 20. Bullets and flames deal zero terrain damage. Cracks and health bars show damage; destruction creates debris and permanent passable rubble. Soldiers and medics recalculate active routes when cover is destroyed. Units do not intercept shots aimed at others; medics can be targeted directly and take blast damage.
 - Rockets, grenades, and dynamite can damage allies. Flame attacks affect enemies in a cone. Rockets have a small 28-unit blast radius.
-- Dynamite throws have only 125 world units of range. Exposed soldiers within 24 units of the blast center are guaranteed to die permanently, including allies; the outer 60-unit blast radius deals normal splash damage. The bright central flash marks the lethal core.
+- Dynamite throws have only 125 world units of range. Exposed soldiers anywhere within the 60-unit blast radius die permanently, including allies. Rockets are likewise lethal inside their 28-unit blast radius.
 - All projectiles stop at the first intact obstacle, including thrown explosives. Blast visibility uses the obstacle layout before destruction: the blast that removes cover still shields soldiers and other scenery behind it. Subsequent attacks can pass through the cleared route. This applies to every solid prop on the current battlefield and any new props added through the same cover data. Water, the bridge, and the ground remain terrain.
-- Other permanent instant kills, including rare outer dynamite splash kills, use the configured per-hit probability. All values live in `src/sim/data.ts`.
+- Explosive lethality is guaranteed rather than random. Burning causes permanent ash deaths over time. All values live in `src/sim/data.ts`.
 - A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants. Weapons are stowed during the fight; guards, punches, kicks, blocked hits, recoil, and knockdowns use separate generated frames. Strike follow-through completes before ranged fire resumes. AI guards are held briefly so blocks are readable.
 - A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same two-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
@@ -124,7 +140,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest matched 36-game diagnostic averaged 41 seconds (23–65 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.16 matched 36-game diagnostic averaged 21 seconds of combat (16–33 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 
