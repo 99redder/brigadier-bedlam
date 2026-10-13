@@ -91,7 +91,7 @@ export class Tutorial {
       case "hold":
         return [
           "Stand your ground",
-          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement but keeps automatic fire at enemies in range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
+          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement but keeps automatic fire. With no enemy in range, units aim at the closest enemy and miss; the circle shows effective range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
         ];
       case "slots":
         return [
@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. In a real battle, click an enemy to pursue and attack; unselected soldiers also fire at enemies in range. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. In a real battle, click an enemy to pursue and attack; units fire automatically, but shots outside the range circle miss. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }

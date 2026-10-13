@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.13 — sharper, labeled title-screen soldiers.**
+Current prototype: **v0.14 — automatic fire toward distant enemies.**
+
+If no enemy is in effective range, units keep firing toward the closest living enemy. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
 
 Title-screen illustrations are rendered directly at high resolution with larger, distinct weapons and class/weapon nameplates. The rifle has a wood stock and long barrel; the rocket launcher has a wide muzzle; the grenade has segmentation and a pull ring; the flamethrower has a fuel hose and pilot flame; dynamite is a tied bundle with a sparking fuse. Squad-selection and roster portraits also render at higher resolution.
 
@@ -37,8 +39,8 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
-- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, or their current demolition target. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
-- Right-click to deselect. Soldiers automatically shoot enemies in range. They otherwise hold their positions unless carrying out an explicit order.
+- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy beyond range. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
+- Right-click to deselect. Soldiers automatically fire at enemies; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
 - In a selected soldier's brawl: left-click punches, right-click kicks, and hold Left Shift to block. Other brawls resolve automatically.

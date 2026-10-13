@@ -70,6 +70,8 @@ describe("weapon rules", () => {
     a.cooldown = 0;
     expect(b.canShoot(a, t)).toBe(false);
     t.x = 1000;
+    // Distant automatic shots now continue after recovery; do not force a second jam.
+    b.random = () => 1;
     advance(b, 2.5);
     expect(a.jam).toBeLessThanOrEqual(0);
   });
@@ -673,14 +675,16 @@ describe("Fire all squad order", () => {
     expect(b.shots.map((s) => s.owner)).toEqual([0, 1, 3, 2, 4]);
     expect(b.commands.at(-1)!.command).toEqual({ type: "fire-all" });
   });
-  it("cannot shoot through rifle cover, fire out of range, or make downed soldiers shoot", () => {
+  it("keeps cover and life restrictions while distant Fire all shots miss", () => {
     const { b, a, t } = pair();
     b.random = () => 1;
     b.cover = [{ x: 240, y: 220, w: 20, h: 60, hp: 100 }];
     expect(b.fireAll()).toBe(0);
     b.cover = [];
     t.x = 1000;
-    expect(b.fireAll()).toBe(0);
+    expect(b.fireAll()).toBe(1);
+    expect(b.shots[0].miss).toBe(true);
+    b.shots = [];
     t.x = 300;
     a.life = "down";
     expect(b.fireAll()).toBe(0);

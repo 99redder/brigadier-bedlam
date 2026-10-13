@@ -85,6 +85,7 @@ export interface Shot {
   time: number;
   duration: number;
   hitCover?: boolean;
+  miss?: boolean;
 }
 export interface Effect extends Point {
   classId?: ClassId;
@@ -500,20 +501,53 @@ export class Battle {
               .sort(
                 (a, b) => distance(s, a) - distance(s, b) || a.id - b.id,
               )[0];
-      if (target && this.fire(s, target)) fired++;
+      if (
+        target
+          ? this.fire(s, target)
+          : this.fireDistant(s, this.nearestEnemy(s))
+      )
+        fired++;
     }
     this.note(
       fired
         ? `Fire all: ${fired} stationary soldier${fired === 1 ? "" : "s"} fired.`
-        : "Fire all: no stationary soldiers ready with a target in range.",
+        : "Fire all: no stationary soldiers ready to fire.",
     );
     return fired;
+  }
+  nearestEnemy(s: Soldier) {
+    return this.combatants()
+      .filter(
+        (t) =>
+          t.side !== s.side &&
+          t.life === "alive" &&
+          (!("classId" in t) || t.drowningTime <= 0),
+      )
+      .sort((a, b) => distance(s, a) - distance(s, b) || a.id - b.id)[0];
+  }
+  fireDistant(s: Soldier, target: Combatant | undefined) {
+    if (!target || target.life !== "alive" || target.side === s.side)
+      return false;
+    const d = distance(s, target),
+      range = CLASSES[s.classId].range;
+    if (d <= range) return false;
+    // Aim toward the enemy, but stop the visual projectile at weapon range.
+    // These guaranteed misses cannot damage units; intercepted explosives still damage cover.
+    return this.fireAt(
+      s,
+      {
+        x: s.x + ((target.x - s.x) / d) * range,
+        y: s.y + ((target.y - s.y) / d) * range,
+      },
+      target.id,
+      true,
+    );
   }
   fire(s: Soldier, t: Combatant) {
     if (s.cooldown > 0 || !this.canShoot(s, t)) return false;
     return this.fireAt(s, t, t.id);
   }
-  fireAt(s: Soldier, point: Point, target = -1) {
+  fireAt(s: Soldier, point: Point, target = -1, miss = false) {
     const w = CLASSES[s.classId];
     const hit = firstCoverHit(s, point, this.cover);
     if (
@@ -523,7 +557,7 @@ export class Battle {
       s.fightMoveTime > 0 ||
       s.cooldown > 0 ||
       s.jam > 0 ||
-      distance(s, hit?.point ?? point) > w.range ||
+      distance(s, hit?.point ?? point) > w.range + 1e-8 ||
       (s.classId === "torch" && this.inWater(s))
     )
       return false;
@@ -544,6 +578,7 @@ export class Battle {
       from: { x: s.x, y: s.y },
       to: hit?.point ?? { ...point },
       hitCover: !!hit,
+      miss,
       owner: s.id,
       classId: s.classId,
       target,
@@ -562,7 +597,16 @@ export class Battle {
     const impact = hit?.point ?? shot.to;
     const terrainHit = !!hit || !!shot.hitCover;
     this.emitWeapon(shot.classId, "impact");
-    if (w.radius) {
+    if (shot.miss) {
+      this.effects.push({
+        ...impact,
+        kind: w.radius ? "boom" : "hit",
+        classId: shot.classId,
+        time: 0.35,
+        size: Math.min(w.radius || 10, 18),
+      });
+      if (!terrainHit) return;
+    } else if (w.radius) {
       for (const t of this.combatants()) {
         if (t.life !== "alive") continue;
         if (shot.classId === "torch") {
@@ -1018,7 +1062,10 @@ export class Battle {
           : this.combatants()
               .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
-      if (aim && !s.terrainTarget) this.fire(s, aim);
+      if (!s.terrainTarget) {
+        if (aim) this.fire(s, aim);
+        else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s));
+      }
     }
     // Soft separation keeps allied silhouettes readable without moving held units far.
     for (let i = 0; i < this.soldiers.length; i++)
