@@ -127,7 +127,7 @@ describe("life, medics, battle end", () => {
     b.damage(a, 999);
     expect(a.life).toBe("down");
     expect(b.callMedic(a.id, 0)).toBe(true);
-    expect(b.calls[0]).toBe(2);
+    expect(b.calls[0]).toBe(1);
     expect(b.callMedic(a.id, 0)).toBe(false);
     advance(b, 2.5);
     expect(a.life).toBe("alive");
@@ -142,13 +142,12 @@ describe("life, medics, battle end", () => {
       expect(a.life).toBe("dead");
       expect(a.death).toBe(id === "torch" ? "ash" : "skeleton");
       expect(b.callMedic(a.id, 0)).toBe(false);
-      expect(b.calls[0]).toBe(3);
+      expect(b.calls[0]).toBe(2);
     });
-  it("medics cannot exceed 3 calls", () => {
+  it("medics cannot exceed 2 calls", () => {
     const b = new Battle(9);
     for (const s of b.soldiers.filter((s) => s.side === 0)) s.life = "down";
-    expect([0, 1, 2, 3].map((id) => b.callMedic(id, 0))).toEqual([
-      true,
+    expect([0, 1, 2].map((id) => b.callMedic(id, 0))).toEqual([
       true,
       true,
       false,

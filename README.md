@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.11 — class-specific victory celebrations.**
+Current prototype: **v0.12 — two medic calls and vulnerable field medics.**
+
+Each team gets two medic calls. Medics have 60 health and can be targeted by enemy soldiers, including automatic fire and Fire all. Bullets, flames, and blasts damage medics; explosions can also hit friendly medics. Cover shields them using the same rules as soldiers. A medic killed before finishing treatment leaves the patient down and the call spent, allowing another attempt if a call remains. Medics can also die while leaving after a successful rescue. Fallen medics stay on the field and cannot be revived.
 
 The surviving soldiers on the winning team celebrate for 3.5 seconds before the results modal opens. Riflemen salute, Bazookas flex, Lobbers dance a jig, Torches pump a fist, and Sappers hop with raised arms. This also applies to enemy victories. Pausing freezes the celebration; starting another battle resets it. The celebration uses presentation time, leaving combat results and deterministic replays unchanged.
 
@@ -38,7 +40,7 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
 - In a selected soldier's brawl: left-click punches, right-click kicks, and hold Left Shift to block. Other brawls resolve automatically.
-- Medics restore 60% health. Each side has three calls. Skeletons and ash cannot be revived.
+- Medics restore 60% health. Each side has two calls. Skeletons and ash cannot be revived.
 - Rocks, sandbags, and crates obstruct movement, projectiles, and explosions. Three rockets or one dynamite destroy them; grenades chip them, while bullets and flames do not damage them. Rubble is passable. River water slows soldiers according to class and prevents Torch from firing. The bridge uses normal land speed and has no drowning risk.
 
 Open **Controls** from the title or pause menu to rebind any action, add an alternate, swap conflicting bindings, apply a left-handed keyboard preset, or reset defaults. Binding hints update automatically. WASD starts unbound. Bindings use physical keyboard codes and persist locally; unsupported or corrupt storage falls back to defaults.
@@ -99,13 +101,13 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 ## Prototype design choices
 
-- Every solid scenery object has 100 health. Rockets deal 40 terrain damage, dynamite 100, and grenades 20. Bullets and flames deal zero terrain damage. Cracks and health bars show damage; destruction creates debris and permanent passable rubble. Soldiers and medics recalculate active routes when cover is destroyed. Units and medics do not block shots.
+- Every solid scenery object has 100 health. Rockets deal 40 terrain damage, dynamite 100, and grenades 20. Bullets and flames deal zero terrain damage. Cracks and health bars show damage; destruction creates debris and permanent passable rubble. Soldiers and medics recalculate active routes when cover is destroyed. Units do not intercept shots aimed at others; medics can be targeted directly and take blast damage.
 - Rockets, grenades, and dynamite can damage allies. Flame attacks affect enemies in a cone. Rockets have a small 28-unit blast radius.
 - Dynamite throws have only 125 world units of range. Exposed soldiers within 24 units of the blast center are guaranteed to die permanently, including allies; the outer 60-unit blast radius deals normal splash damage. The bright central flash marks the lethal core.
 - All projectiles stop at the first intact obstacle, including thrown explosives. Blast visibility uses the obstacle layout before destruction: the blast that removes cover still shields soldiers and other scenery behind it. Subsequent attacks can pass through the cleared route. This applies to every solid prop on the current battlefield and any new props added through the same cover data. Water, the bridge, and the ground remain terrain.
 - Other permanent instant kills, including rare outer dynamite splash kills, use the configured per-hit probability. All values live in `src/sim/data.ts`.
 - A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants. Weapons are stowed during the fight; guards, punches, kicks, blocked hits, recoil, and knockdowns use separate generated frames. Strike follow-through completes before ranged fire resumes. AI guards are held briefly so blocks are readable.
-- A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same three-call allowance.
+- A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same two-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
 - An attack order chases the named target into range. Hold cancels movement and pursuit but keeps automatic firing. Explicit orders persist after deselection.
 - Enemy AI avoids unsafe allied blast zones, chooses dry firing positions, completes surviving crossings, favors suitable targets and firing positions, penalizes exposed positions and clustering, avoids water as Torch, and retreats briefly when hurt before re-engaging.

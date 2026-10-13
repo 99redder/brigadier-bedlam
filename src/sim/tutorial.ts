@@ -1,5 +1,5 @@
 import { Battle, type Command } from "./battle";
-import { type Cover } from "./data";
+import { TUNING, type Cover } from "./data";
 import { distance, inside, type Point } from "./geometry";
 import { type Action } from "../input/bindings";
 type Hint = (action: Action) => string;
@@ -126,7 +126,7 @@ export class Tutorial {
       case "medic":
         return [
           "A staged medical emergency",
-          `The instructor has downed your Lobber for practice. Click his highlighted body, or point near him and use ${h("medic")}; the Field Medics button works too. Wait for the medic to revive him. Each team has three calls; skeletons, ash, and drowned soldiers cannot return.`,
+          `The instructor has downed your Lobber for practice. Click his highlighted body, or point near him and use ${h("medic")}; the Field Medics button works too. Wait for the medic to revive him. Each team has two calls. In battle, medics can be killed; a failed rescue still spends the call. Cover protects them; skeletons, ash, and drowned soldiers cannot return.`,
         ];
       case "spar":
         return [
@@ -216,7 +216,7 @@ export class Tutorial {
     if (this.id === "medic") {
       const s = b.get(2)!;
       Object.assign(s, { x: 180, y: 410, hp: 0, life: "down", death: null });
-      b.calls[0] = 3;
+      b.calls[0] = TUNING.medicCalls;
     }
     if (this.id === "spar") {
       const a = b.get(0)!,

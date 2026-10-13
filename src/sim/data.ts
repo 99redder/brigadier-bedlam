@@ -142,7 +142,8 @@ export const SQUADS: {
 ];
 export const TUNING = {
   step: 1 / 30,
-  medicCalls: 3,
+  medicCalls: 2,
+  medicHealth: 60,
   medicSpeed: 160,
   reviveHealth: 0.6,
   brawlRange: 28,

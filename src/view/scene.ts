@@ -52,6 +52,7 @@ export class Battlefield extends Phaser.Scene {
   private units = new Map<number, Phaser.GameObjects.Image>();
   private labels = new Map<number, Phaser.GameObjects.Text>();
   private medics: Phaser.GameObjects.Image[] = [];
+  private medicLabels: Phaser.GameObjects.Text[] = [];
   private terrainRevision = -1;
   private coverNodes: Phaser.GameObjects.Container[] = [];
   private lastCombatEvent = -1;
@@ -608,13 +609,41 @@ export class Battlefield extends Phaser.Scene {
         .setOrigin(0.5, 0.93)
         .setScale(0.66);
       this.medics[i]
+        .setTexture(m.life === "dead" ? m.death! : "medic")
         .setVisible(true)
-        .setPosition(p.x, p.y + Math.sin(b.time * 18) * 2)
+        .setPosition(
+          p.x,
+          p.y + (m.life === "alive" ? Math.sin(b.time * 18) * 2 : 0),
+        )
         .setDepth(p.y)
         .setFlipX(m.side === 1);
+      this.medicLabels[i] ??= this.add
+        .text(0, 0, "", {
+          fontSize: "10px",
+          fontFamily: "monospace",
+          color: "#fff5d5",
+          padding: { x: 3, y: 1 },
+        })
+        .setOrigin(0.5);
+      this.medicLabels[i]
+        .setVisible(true)
+        .setText(m.life === "dead" ? "MEDIC LOST" : "✚ MEDIC")
+        .setBackgroundColor(m.side === 0 ? "#2b5845" : "#874536")
+        .setPosition(p.x, p.y + 32)
+        .setDepth(p.y + 1);
+      if (m.life === "alive") {
+        g.lineStyle(1.5, m.side === 0 ? 0x477963 : 0xc45e48, 0.8);
+        g.strokeEllipse(p.x, p.y + 3, 27, 13);
+        g.fillStyle(0x314a3b);
+        g.fillRect(p.x - 14, p.y - 64, 28, 4);
+        g.fillStyle(m.side === 0 ? 0xc7e0ac : 0xe2a47e);
+        g.fillRect(p.x - 14, p.y - 64, (28 * m.hp) / TUNING.medicHealth, 4);
+      }
     }
-    for (let i = b.medics.length; i < this.medics.length; i++)
+    for (let i = b.medics.length; i < this.medics.length; i++) {
       this.medics[i].setVisible(false);
+      this.medicLabels[i].setVisible(false);
+    }
     for (const shot of b.winner === null ? b.shots : [])
       drawProjectile(g, shot, project(shot.from), project(shot.to));
     for (const e of b.winner === null ? b.effects : []) {
@@ -712,7 +741,8 @@ export class Battlefield extends Phaser.Scene {
   }
   pick(point: Point) {
     const cursor = project(point);
-    return this.battle?.soldiers
+    return this.battle
+      ?.combatants()
       .filter((s) => s.life !== "dead")
       .filter((s) => {
         const p = project(s);

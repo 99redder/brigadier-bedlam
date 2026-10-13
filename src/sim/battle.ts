@@ -64,12 +64,17 @@ export interface Soldier extends Point {
   retreatReady: number;
 }
 export interface Medic extends Point {
+  id: number;
+  hp: number;
+  life: "alive" | "dead";
+  death: "skeleton" | "ash" | null;
   side: Side;
   target: number;
   phase: "in" | "out";
   timer: number;
   path: Point[];
 }
+export type Combatant = Soldier | Medic;
 export interface Shot {
   id: number;
   from: Point;
@@ -139,6 +144,8 @@ export class Battle {
   time = 0;
   soldiers: Soldier[] = [];
   medics: Medic[] = [];
+  // -1 is reserved for projectiles aimed at terrain rather than a unit.
+  nextMedicId = -2;
   calls = [TUNING.medicCalls, TUNING.medicCalls];
   shots: Shot[] = [];
   effects: Effect[] = [];
@@ -225,6 +232,12 @@ export class Battle {
   get(id: number) {
     return this.soldiers.find((s) => s.id === id);
   }
+  combatants(): Combatant[] {
+    return [...this.soldiers, ...this.medics];
+  }
+  getCombatant(id: number) {
+    return this.get(id) ?? this.medics.find((m) => m.id === id);
+  }
   command(c: Command, record = true) {
     if (this.winner !== null) return;
     if (record)
@@ -277,7 +290,7 @@ export class Battle {
       this.setGoal(s, c.point);
     }
     if (c.type === "attack" && s.brawl === null) {
-      const t = this.get(c.target);
+      const t = this.getCombatant(c.target);
       if (t && t.side !== s.side && t.life === "alive") {
         s.terrainTarget = null;
         s.target = t.id;
@@ -370,12 +383,12 @@ export class Battle {
     }
     s.wasInWater = wet;
   }
-  canShoot(s: Soldier, t: Soldier) {
+  canShoot(s: Soldier, t: Combatant) {
     const w = CLASSES[s.classId];
     return (
       s.life === "alive" &&
       s.drowningTime <= 0 &&
-      t.drowningTime <= 0 &&
+      (!("classId" in t) || t.drowningTime <= 0) &&
       t.life === "alive" &&
       s.brawl === null &&
       s.fightMoveTime <= 0 &&
@@ -389,31 +402,48 @@ export class Battle {
     const w = CLASSES[s.classId];
     if (!w.radius || s.classId === "torch") return true;
     const impact = firstCoverHit(s, target, this.cover)?.point ?? target;
-    return !this.soldiers.some((friend) => {
+    return !this.combatants().some((friend) => {
       const point = friend.id === s.id ? s : friend;
       return (
         friend.side === s.side &&
         friend.life === "alive" &&
-        friend.drowningTime <= 0 &&
+        (!("classId" in friend) || friend.drowningTime <= 0) &&
         distance(point, impact) <= w.radius &&
         !blocked(impact, point, this.cover)
       );
     });
   }
-  canAutoShoot(s: Soldier, t: Soldier) {
+  canAutoShoot(s: Soldier, t: Combatant) {
     return (
       this.canShoot(s, t) &&
       (!this.aiSides.includes(s.side) || this.safeBlast(s, t))
     );
   }
   damage(
-    target: Soldier,
+    target: Combatant,
     amount: number,
     classId: ClassId | null = null,
     lethal = false,
   ) {
-    if (this.training || target.life !== "alive" || target.drowningTime > 0)
+    if (this.training || target.life !== "alive") return;
+    if (!("classId" in target)) {
+      const instant =
+        lethal ||
+        (classId !== null && this.random() < CLASSES[classId].instant);
+      target.hp = instant ? 0 : Math.max(0, target.hp - amount);
+      this.effects.push({ ...target, kind: "hit", time: 0.25, size: 10 });
+      if (target.hp === 0) {
+        target.life = "dead";
+        target.death = classId === "torch" ? "ash" : "skeleton";
+        target.path = [];
+        target.timer = 0;
+        this.note(
+          `${target.side === 0 ? "Your" : "Enemy"} medic was killed. The call is spent.`,
+        );
+      }
       return;
+    }
+    if (target.drowningTime > 0) return;
     const instant =
       lethal || (classId !== null && this.random() < CLASSES[classId].instant);
     if (instant) {
@@ -460,11 +490,12 @@ export class Battle {
         if (this.fireAt(s, s.terrainTarget)) fired++;
         continue;
       }
-      const ordered = s.target === null ? undefined : this.get(s.target);
+      const ordered =
+        s.target === null ? undefined : this.getCombatant(s.target);
       const target =
         ordered && ordered.side !== s.side && this.canShoot(s, ordered)
           ? ordered
-          : this.soldiers
+          : this.combatants()
               .filter((t) => t.side !== s.side && this.canShoot(s, t))
               .sort(
                 (a, b) => distance(s, a) - distance(s, b) || a.id - b.id,
@@ -478,7 +509,7 @@ export class Battle {
     );
     return fired;
   }
-  fire(s: Soldier, t: Soldier) {
+  fire(s: Soldier, t: Combatant) {
     if (s.cooldown > 0 || !this.canShoot(s, t)) return false;
     return this.fireAt(s, t, t.id);
   }
@@ -532,7 +563,7 @@ export class Battle {
     const terrainHit = !!hit || !!shot.hitCover;
     this.emitWeapon(shot.classId, "impact");
     if (w.radius) {
-      for (const t of this.soldiers) {
+      for (const t of this.combatants()) {
         if (t.life !== "alive") continue;
         if (shot.classId === "torch") {
           if (
@@ -568,7 +599,7 @@ export class Battle {
         size: w.radius,
       });
     } else if (!terrainHit) {
-      const t = this.get(shot.target);
+      const t = this.getCombatant(shot.target);
       if (
         t &&
         distance(t, impact) < 42 &&
@@ -622,7 +653,7 @@ export class Battle {
             s.safeRoute ? this.dryCover() : this.cover,
           );
       for (const m of this.medics)
-        if (m.phase === "in")
+        if (m.life === "alive" && m.phase === "in")
           m.path = pathfind(m, this.get(m.target)!, this.cover);
     }
   }
@@ -633,11 +664,17 @@ export class Battle {
       t.side !== side ||
       t.life !== "down" ||
       this.calls[side] <= 0 ||
-      this.medics.some((m) => m.target === id)
+      this.medics.some(
+        (m) => m.life === "alive" && m.phase === "in" && m.target === id,
+      )
     )
       return false;
     this.calls[side]--;
     this.medics.push({
+      id: this.nextMedicId--,
+      hp: TUNING.medicHealth,
+      life: "alive",
+      death: null,
       x: side === 0 ? 10 : FIELD.width - 10,
       y: t.y,
       target: id,
@@ -727,10 +764,10 @@ export class Battle {
   }
   chooseTarget(s: Soldier) {
     const w = CLASSES[s.classId];
-    return this.soldiers
+    return this.combatants()
       .filter((t) => t.side !== s.side && t.life === "alive")
       .sort((a, b) => {
-        const score = (t: Soldier) =>
+        const score = (t: Combatant) =>
           distance(s, t) +
           t.hp * 0.4 +
           (this.safeBlast(s, t) ? 0 : TUNING.aiUnsafeBlastPenalty) +
@@ -909,8 +946,9 @@ export class Battle {
           }
         }
       }
-      const target = s.target === null ? null : this.get(s.target);
-      if (target && target.life !== "alive") s.target = null;
+      const target = s.target === null ? null : this.getCombatant(s.target);
+      if (s.target !== null && (!target || target.life !== "alive"))
+        s.target = null;
       if (
         !this.aiSides.includes(s.side) &&
         target &&
@@ -977,7 +1015,7 @@ export class Battle {
       const aim =
         target && target.life === "alive" && this.canAutoShoot(s, target)
           ? target
-          : this.soldiers
+          : this.combatants()
               .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
       if (aim && !s.terrainTarget) this.fire(s, aim);
@@ -1039,6 +1077,7 @@ export class Battle {
       this.resolveShot(shot);
     this.shots = this.shots.filter((p) => p.time < p.duration);
     for (const m of this.medics) {
+      if (m.life !== "alive") continue;
       const t = this.get(m.target)!;
       const goal =
         m.path[0] ??
@@ -1083,7 +1122,7 @@ export class Battle {
       }
     }
     this.medics = this.medics.filter(
-      (m) => m.x > -25 && m.x < FIELD.width + 25,
+      (m) => m.life === "dead" || (m.x > -25 && m.x < FIELD.width + 25),
     );
     if (this.time >= this.nextMedic) {
       this.nextMedic = this.time + TUNING.aiMedicDelay;
@@ -1092,7 +1131,10 @@ export class Battle {
           (s) =>
             s.side === side &&
             s.life === "down" &&
-            !this.medics.some((m) => m.target === s.id),
+            !this.medics.some(
+              (m) =>
+                m.life === "alive" && m.phase === "in" && m.target === s.id,
+            ),
         );
         if (t) this.callMedic(t.id, side);
       }

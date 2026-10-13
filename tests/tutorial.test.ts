@@ -74,7 +74,7 @@ describe("interactive boot camp", () => {
     expect(b.get(2)!.life).toBe("down");
     b.command({ type: "medic", target: 2, side: 0 });
     run(t, () => t.id === "spar");
-    expect(b.calls[0]).toBe(2);
+    expect(b.calls[0]).toBe(1);
     b.command({ type: "punch", id: 0 });
     for (let i = 0; i < 30; i++) b.step();
     b.command({ type: "kick", id: 0 });
