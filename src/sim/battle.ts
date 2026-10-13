@@ -62,6 +62,7 @@ export interface Shot {
   duration: number;
 }
 export interface Effect extends Point {
+  classId?: ClassId;
   kind: "hit" | "boom" | "brawl" | "revive" | "jam";
   time: number;
   size: number;
@@ -80,7 +81,18 @@ export interface Replay {
   squad: number;
   commands: { tick: number; command: Command }[];
 }
+export interface CombatEvent {
+  id: number;
+  classId: ClassId;
+  kind: "fire" | "impact";
+}
 export class Battle {
+  combatEvents: CombatEvent[] = [];
+  combatEventId = 0;
+  emitWeapon(classId: ClassId, kind: CombatEvent["kind"]) {
+    this.combatEvents.push({ id: this.combatEventId++, classId, kind });
+    if (this.combatEvents.length > 64) this.combatEvents.shift();
+  }
   seed: number;
   rngState: number;
   squad: number;
@@ -211,10 +223,15 @@ export class Battle {
       (w.arc || !blocked(s, t, this.cover))
     );
   }
-  damage(target: Soldier, amount: number, classId: ClassId | null = null) {
+  damage(
+    target: Soldier,
+    amount: number,
+    classId: ClassId | null = null,
+    lethal = false,
+  ) {
     if (target.life !== "alive") return;
     const instant =
-      classId !== null && this.random() < CLASSES[classId].instant;
+      lethal || (classId !== null && this.random() < CLASSES[classId].instant);
     if (instant) {
       target.hp = 0;
       target.life = "dead";
@@ -259,6 +276,7 @@ export class Battle {
       this.note("Rifle jammed. Strongly worded memo pending.");
       return false;
     }
+    this.emitWeapon(s.classId, "fire");
     const duration = w.arc ? 0.65 : s.classId === "bazooka" ? 0.35 : 0.1;
     this.shots.push({
       id: this.shotId++,
@@ -276,6 +294,7 @@ export class Battle {
     const owner = this.get(shot.owner)!,
       w = CLASSES[shot.classId];
     if (!w.arc && blocked(shot.from, shot.to, this.cover)) return;
+    this.emitWeapon(shot.classId, "impact");
     if (w.radius) {
       for (const t of this.soldiers) {
         if (t.life !== "alive") continue;
@@ -297,11 +316,17 @@ export class Battle {
           )
             continue;
         } else if (distance(t, shot.to) > w.radius) continue;
-        this.damage(t, w.damage, shot.classId);
+        this.damage(
+          t,
+          w.damage,
+          shot.classId,
+          w.lethalRadius > 0 && distance(t, shot.to) <= w.lethalRadius,
+        );
       }
       this.effects.push({
         ...shot.to,
         kind: "boom",
+        classId: shot.classId,
         time: 0.5,
         size: w.radius,
       });

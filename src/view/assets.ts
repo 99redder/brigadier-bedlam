@@ -36,16 +36,48 @@ export function loadAssets(scene: Phaser.Scene) {
       shape(20, 80, 19, 8, outline);
       shape(41, 80, 19, 8, outline);
       if (classId === "torch") {
-        shape(10, 38, 16, 31, "#9b9273", 7);
+        shape(5, 32, 14, 39, "#bb5142", 6);
+        shape(14, 29, 14, 42, "#d56848", 6);
         shape(12, 41, 12, 6, accent);
       }
-      shape(23, 38, 32, 32, team, 8);
-      shape(25, 47, 28, 9, accent, 2);
+      const width =
+        classId === "bazooka"
+          ? 38
+          : classId === "rifleman"
+            ? 26
+            : classId === "sapper"
+              ? 28
+              : 32;
+      shape(23 + (32 - width) / 2, 38, width, 32, accent, 8);
+      shape(25, 58, 28, 7, team, 2);
       shape(19, 39, 12, 24, team, 6);
       shape(50, 38, 12, 25, team, 6);
       shape(23, 14, 31, 28, "#eac8a0", 10);
-      shape(21, 6, 35, 19, team, 12);
-      shape(17, 20, 44, 6, team, 3);
+      if (classId === "sapper") {
+        shape(23, 12, 31, 8, "#d86947", 3);
+        c.fillStyle = "#d86947";
+        c.beginPath();
+        c.moveTo(23, 17);
+        c.lineTo(12, 27);
+        c.lineTo(23, 25);
+        c.fill();
+      } else if (classId === "lobber") {
+        shape(19, 9, 39, 15, "#6b9b4f", 10);
+        shape(22, 18, 31, 5, team, 2);
+        shape(43, 4, 8, 9, "#6b9b4f", 3);
+      } else {
+        shape(
+          21,
+          classId === "bazooka" ? 3 : 6,
+          35,
+          classId === "bazooka" ? 23 : 19,
+          team,
+          12,
+        );
+        shape(17, 20, 44, 6, team, 3);
+      }
+      shape(25, 39, 12, 7, team, 2);
+      shape(44, 39, 12, 7, team, 2);
       c.fillStyle = "#fff2d5";
       c.fillRect(37, 8, 8, 5);
       c.fillStyle = outline;
@@ -54,13 +86,16 @@ export function loadAssets(scene: Phaser.Scene) {
       c.fillStyle = "#b46d50";
       c.fillRect(46, 34, 10, 4);
       if (classId === "rifleman") {
-        shape(38, 50, 35, 8, "#596059", 2);
+        for (let i = 0; i < 4; i++) shape(29 + i * 5, 46, 4, 12, "#e3c154", 1);
+        shape(35, 52, 41, 7, "#414d48", 2);
         shape(51, 57, 7, 9, outline, 1);
         c.fillStyle = accent;
         c.fillRect(68, 50, 6, 6);
       }
       if (classId === "bazooka") {
-        shape(33, 38, 43, 13, "#8d9976", 4);
+        shape(11, 34, 14, 28, "#d79558", 3);
+        shape(30, 32, 48, 19, "#566449", 5);
+        shape(48, 30, 9, 23, "#edb373", 2);
         shape(29, 36, 10, 17, "#445748", 2);
         c.fillStyle = outline;
         c.beginPath();
@@ -68,13 +103,19 @@ export function loadAssets(scene: Phaser.Scene) {
         c.fill();
       }
       if (classId === "lobber") {
-        shape(49, 47, 16, 17, "#849270", 7);
+        for (let i = 0; i < 3; i++) shape(27 + i * 9, 47, 8, 13, "#426539", 4);
+        shape(50, 30, 21, 25, "#659344", 9);
         c.fillStyle = outline;
         c.fillRect(54, 41, 5, 7);
         shape(32, 57, 9, 10, accent, 2);
       }
       if (classId === "torch") {
-        shape(42, 50, 32, 8, "#887965", 3);
+        shape(28, 25, 26, 12, "#343d37", 4);
+        shape(31, 27, 8, 5, "#e2c990", 2);
+        shape(44, 27, 8, 5, "#e2c990", 2);
+        shape(36, 36, 13, 9, "#515e4c", 4);
+        shape(39, 51, 32, 9, "#796342", 3);
+        shape(66, 47, 12, 16, "#cb7942", 2);
         c.strokeStyle = outline;
         c.lineWidth = 4;
         c.beginPath();
@@ -83,8 +124,9 @@ export function loadAssets(scene: Phaser.Scene) {
         c.stroke();
       }
       if (classId === "sapper") {
-        shape(47, 49, 7, 22, "#d87356", 2);
-        shape(56, 46, 7, 22, "#d87356", 2);
+        shape(25, 46, 26, 22, "#4d647a", 3);
+        shape(45, 43, 9, 27, "#df4b43", 2);
+        shape(56, 40, 9, 27, "#df4b43", 2);
         c.strokeStyle = "#eec57c";
         c.lineWidth = 2;
         c.beginPath();
@@ -156,44 +198,6 @@ export function loadAssets(scene: Phaser.Scene) {
     scene.textures.addCanvas(kind, canvas);
   }
 }
-export class Sound {
-  private context: AudioContext | null = null;
-  muted = false;
-  unlock() {
-    try {
-      this.context ??= new AudioContext();
-      void this.context.resume();
-    } catch {
-      /* audio is optional */
-    }
-  }
-  play(kind: "fire" | "boom" | "revive" | "brawl" | "click") {
-    if (this.muted || !this.context || this.context.state !== "running") return;
-    const ctx = this.context,
-      o = ctx.createOscillator(),
-      g = ctx.createGain();
-    o.type = kind === "boom" ? "sawtooth" : "square";
-    const now = ctx.currentTime,
-      f =
-        kind === "fire"
-          ? 170
-          : kind === "boom"
-            ? 75
-            : kind === "revive"
-              ? 620
-              : kind === "brawl"
-                ? 110
-                : 360;
-    o.frequency.setValueAtTime(f, now);
-    o.frequency.exponentialRampToValueAtTime(
-      kind === "revive" ? 1100 : 40,
-      now + 0.12,
-    );
-    g.gain.setValueAtTime(0.035, now);
-    g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-    o.stop(now + 0.16);
-  }
-}
+export { Sound } from "./audio";
+
+export { drawProjectile } from "./projectiles";

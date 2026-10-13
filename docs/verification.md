@@ -1,5 +1,15 @@
 # Prototype verification — October 13, 2026
 
+## v0.2 update
+
+- 43 tests pass, including new direct-hit, lethal-boundary, outer-splash, friendly-fire, short-range, and weapon-event regressions for dynamite.
+- A 12-match diagnostic with the same four seeds and three squads now takes 27–72 seconds, averaging 42 seconds. The v0.1 baseline averaged 159 seconds. Both sides use AI for this timing diagnostic.
+- Browser inspection confirms larger class sprites with distinct vest colors, headgear, and oversized equipment. All five projectile types were fired and inspected in a controlled fixture.
+- The browser audio context runs and each weapon dispatches its own fire identity; dynamite impact dispatch is also verified. Subjective listening quality still needs player feedback.
+- A full-health target in the dynamite core became a skeleton and rejected a medic call in the browser fixture. Test fixtures were cleared by reloading.
+
+## v0.1 baseline (historical)
+
 ## Automated checks
 
 - TypeScript check and Vite production build pass.

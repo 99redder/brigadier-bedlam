@@ -1,5 +1,7 @@
 # Brigadier Bedlam
 
+Current prototype: **v0.2 — faster rounds, distinct weapons, and clearer classes.**
+
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
 **Play:** https://99redder.github.io/brigadier-bedlam/
@@ -43,7 +45,9 @@ Open **Controls** from the title or pause menu to rebind any action, add an alte
 - `src/sim/battle.ts`: pure TypeScript simulation, 30 fixed steps per second, seeded RNG, commands, targeting, weapons, medics, brawls, and AI. No Phaser imports.
 - `src/sim/geometry.ts`: line-of-sight checks and deterministic A* movement around cover.
 - `src/input/bindings.ts`: input contexts, defaults, validation, conflict handling, persistence, and physical-key labels.
-- `src/view/assets.ts`: all code-generated placeholder soldier textures and synthesized sound effects. Replace this module's texture generation with atlas loading to introduce final art.
+- `src/view/assets.ts`: generated soldier textures and the shared asset exports. Replace texture generation with atlas loading to introduce final art.
+- `src/view/projectiles.ts`: bullet tracers, finned rockets, arcing grenades, flame jets, and red dynamite bundles with a lit fuse.
+- `src/view/audio.ts`: individual synthesized weapon sounds and explosive impact sounds, driven by simulation combat events.
 - `src/view/scene.ts`: Phaser rendering, projection, animation, and fixed-step scheduling.
 - `src/main.ts`: screens, action forwarding, squad selection, and HUD.
 
@@ -59,7 +63,8 @@ Use `replayBattle(replay, ticks)` from `src/sim/battle.ts` to reproduce the simu
 
 - Cover is indestructible and blocks movement. Medics route around it. Units and medics do not block shots.
 - Grenades and dynamite can damage allies. Flame attacks affect enemies in a cone; rockets hit one soldier.
-- Instant-kill probability is rolled per successful hit, independently of remaining health.
+- Dynamite throws have only 125 world units of range. Everyone within 24 units of the blast center is guaranteed to die permanently, including allies; the outer 60-unit blast radius deals normal splash damage. The bright central flash marks the lethal core.
+- Other permanent instant kills, including rare outer dynamite splash kills, use the configured per-hit probability. All values live in `src/sim/data.ts`.
 - A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants.
 - A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same three-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
@@ -72,6 +77,6 @@ Use `replayBattle(replay, ticks)` from `src/sim/battle.ts` to reproduce the simu
 
 Implemented: title, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Battles target roughly two to four minutes when squads engage; instant kills, positioning, and player orders can shorten or lengthen them. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, tutorials, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest 12-match diagnostic averaged 42 seconds (27–72 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, tutorials, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.

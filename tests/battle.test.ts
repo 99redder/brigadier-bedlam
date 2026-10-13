@@ -106,8 +106,8 @@ describe("weapon rules", () => {
       time: 1,
       duration: 1,
     });
-    expect(t.hp).toBe(1000 - CLASSES.torch.damage);
-    expect(e.hp).toBe(CLASSES[e.classId].hp - CLASSES.torch.damage);
+    expect(t.hp).toBeCloseTo(1000 - CLASSES.torch.damage);
+    expect(e.hp).toBeCloseTo(CLASSES[e.classId].hp - CLASSES.torch.damage);
     expect(a.hp).toBe(hp);
   });
 });
@@ -243,5 +243,73 @@ describe("movement, brawls and replay", () => {
     b.ai(t);
     expect(t.goal).not.toBeNull();
     expect(b.inWater(t.goal!)).toBe(false);
+  });
+});
+
+describe("dynamite lethal core and weapon events", () => {
+  const explode = (b: Battle, owner: number, target: number) =>
+    b.resolveShot({
+      id: 0,
+      from: { x: 200, y: 250 },
+      to: { x: 300, y: 250 },
+      owner,
+      classId: "sapper",
+      target,
+      time: 1,
+      duration: 1,
+    });
+  it("a direct dynamite hit guarantees a permanent kill even at full health with no lucky roll", () => {
+    const { b, a, t } = pair("sapper");
+    b.random = () => 1;
+    t.hp = 9999;
+    explode(b, a.id, t.id);
+    expect(t.life).toBe("dead");
+    expect(t.death).toBe("skeleton");
+    expect(b.callMedic(t.id, 1)).toBe(false);
+  });
+  it("the lethal core includes its boundary; outside it, normal splash rules apply", () => {
+    const { b, a, t } = pair("sapper");
+    b.random = () => 1;
+    t.x = 300 + CLASSES.sapper.lethalRadius;
+    explode(b, a.id, t.id);
+    expect(t.life).toBe("dead");
+    t.life = "alive";
+    t.hp = 1000;
+    t.x += 0.01;
+    explode(b, a.id, t.id);
+    expect(t.life).toBe("alive");
+    expect(t.hp).toBe(1000 - CLASSES.sapper.damage);
+  });
+  it("close dynamite kills allies too, but cannot hit outside the blast radius", () => {
+    const { b, a, t } = pair("sapper");
+    b.random = () => 1;
+    a.x = 300;
+    t.x = 300 + CLASSES.sapper.radius + 1;
+    explode(b, a.id, t.id);
+    expect(a.life).toBe("dead");
+    expect(t.hp).toBe(1000);
+  });
+  it("short-range dynamite cannot be thrown from rifle range", () => {
+    const { b, a, t } = pair("sapper");
+    t.x = a.x + CLASSES.sapper.range + 1;
+    expect(b.fire(a, t)).toBe(false);
+    expect(CLASSES.sapper.range).toBeLessThan(CLASSES.rifleman.range);
+  });
+  it("successful shots emit the correct weapon sound events; jams do not emit gunfire", () => {
+    for (const id of Object.keys(CLASSES) as ClassId[]) {
+      const { b, a, t } = pair(id);
+      b.random = () => 1;
+      expect(b.fire(a, t)).toBe(true);
+      expect(b.combatEvents[0]).toMatchObject({ classId: id, kind: "fire" });
+      b.resolveShot(b.shots[0]);
+      expect(b.combatEvents.at(-1)).toMatchObject({
+        classId: id,
+        kind: "impact",
+      });
+    }
+    const { b, a, t } = pair();
+    b.random = () => 0;
+    b.fire(a, t);
+    expect(b.combatEvents).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { Battle, type Soldier } from "../sim/battle";
 import { CLASSES, FIELD, type ClassId } from "../sim/data";
 import { type Point, distance } from "../sim/geometry";
-import { loadAssets, assetKey, Sound } from "./assets";
+import { loadAssets, assetKey, Sound, drawProjectile } from "./assets";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
   y: 124 + p.y * 0.74,
@@ -26,7 +26,7 @@ export class Battlefield extends Phaser.Scene {
   private labels = new Map<number, Phaser.GameObjects.Text>();
   private medics: Phaser.GameObjects.Image[] = [];
   private coverNodes: Phaser.GameObjects.Container[] = [];
-  private previousShots = 0;
+  private lastCombatEvent = -1;
   private previousRevives = 0;
   private previousBrawls = 0;
   constructor() {
@@ -181,7 +181,7 @@ export class Battlefield extends Phaser.Scene {
     this.battle = battle;
     this.paused = false;
     this.accumulator = 0;
-    this.previousShots = 0;
+    this.lastCombatEvent = -1;
     this.previousRevives = 0;
     this.previousBrawls = 0;
     this.drawTerrain();
@@ -195,12 +195,17 @@ export class Battlefield extends Phaser.Scene {
         this.battle.step();
         this.accumulator -= 1 / 30;
       }
-      if (this.battle.stats.shots > this.previousShots) this.sfx.play("fire");
+      for (const event of this.battle.combatEvents) {
+        if (event.id > this.lastCombatEvent) {
+          this.sfx.weapon(event.classId, event.kind);
+          this.lastCombatEvent = event.id;
+        }
+      }
       if (this.battle.stats.revives > this.previousRevives)
         this.sfx.play("revive");
       if (this.battle.stats.brawls > this.previousBrawls)
         this.sfx.play("brawl");
-      this.previousShots = this.battle.stats.shots;
+
       this.previousRevives = this.battle.stats.revives;
       this.previousBrawls = this.battle.stats.brawls;
       this.onTick();
@@ -261,7 +266,7 @@ export class Battlefield extends Phaser.Scene {
         .setPosition(p.x, p.y + anim)
         .setDepth(p.y)
         .setFlipX(s.facing < 0)
-        .setScale(0.67)
+        .setScale(0.79)
         .setAlpha(down ? 0.64 : 1)
         .setAngle(
           down
@@ -282,15 +287,15 @@ export class Battlefield extends Phaser.Scene {
         g.lineStyle(3, 0xffe5a1);
         g.strokeEllipse(p.x, p.y + 3, 45, 21);
         g.fillStyle(0xffe5a1);
-        g.fillTriangle(p.x - 5, p.y - 70, p.x + 5, p.y - 70, p.x, p.y - 64);
+        g.fillTriangle(p.x - 5, p.y - 85, p.x + 5, p.y - 85, p.x, p.y - 79);
       }
       if (alive) {
         g.fillStyle(0x314a3b);
-        g.fillRoundedRect(p.x - 16, p.y - 62, 32, 5, 2);
+        g.fillRoundedRect(p.x - 16, p.y - 75, 32, 5, 2);
         g.fillStyle(s.side === 0 ? 0xc7e0ac : 0xe2a47e);
         g.fillRoundedRect(
           p.x - 16,
-          p.y - 62,
+          p.y - 75,
           (32 * s.hp) / CLASSES[s.classId].hp,
           5,
           2,
@@ -336,30 +341,32 @@ export class Battlefield extends Phaser.Scene {
     }
     for (let i = b.medics.length; i < this.medics.length; i++)
       this.medics[i].setVisible(false);
-    for (const shot of b.shots) {
-      const f = project(shot.from),
-        t = project(shot.to),
-        progress = shot.time / shot.duration,
-        w = CLASSES[shot.classId],
-        x = f.x + (t.x - f.x) * progress,
-        y =
-          f.y +
-          (t.y - f.y) * progress -
-          26 -
-          (w.arc ? Math.sin(progress * Math.PI) * 90 : 0);
-      g.fillStyle(shot.classId === "torch" ? 0xf09a50 : 0xffeab0);
-      g.fillCircle(x, y, w.arc ? 5 : shot.classId === "bazooka" ? 5 : 2);
-      if (w.arc) {
-        g.lineStyle(1, 0xffe5a1, 0.4);
-        g.lineBetween(x, y, x - 4, y + 12);
-      } else {
-        g.lineStyle(2, 0xffe5a1, 0.7);
-        g.lineBetween(x, y, x - (t.x - f.x) * 0.035, y - (t.y - f.y) * 0.035);
-      }
-    }
+    for (const shot of b.shots)
+      drawProjectile(g, shot, project(shot.from), project(shot.to));
     for (const e of b.effects) {
       const p = project(e);
+      if (e.kind === "boom" && e.classId === "torch") {
+        g.fillStyle(0xf38c4b, e.time);
+        g.fillCircle(p.x, p.y - 22, 3 + e.time * 8);
+        continue;
+      }
       if (e.kind === "boom") {
+        if (e.classId === "sapper") {
+          g.fillStyle(0xfff0ce, e.time);
+          g.fillEllipse(
+            p.x,
+            p.y,
+            CLASSES.sapper.lethalRadius * 2,
+            CLASSES.sapper.lethalRadius * 1.48,
+          );
+          g.lineStyle(3, 0xf8a05b, e.time);
+          g.strokeEllipse(
+            p.x,
+            p.y,
+            CLASSES.sapper.lethalRadius * 2,
+            CLASSES.sapper.lethalRadius * 1.48,
+          );
+        }
         g.lineStyle(3, 0xffdc8d, e.time * 1.5);
         g.strokeEllipse(
           p.x,
@@ -390,8 +397,8 @@ export class Battlefield extends Phaser.Scene {
         const p = project(s);
         return s.life === "down"
           ? Math.abs(cursor.x - p.x) < 38 && Math.abs(cursor.y - p.y) < 28
-          : Math.abs(cursor.x - p.x) < 29 &&
-              cursor.y >= p.y - 65 &&
+          : Math.abs(cursor.x - p.x) < 34 &&
+              cursor.y >= p.y - 79 &&
               cursor.y <= p.y + 17;
       })
       .sort((a, b) => project(b).y - project(a).y)[0];
