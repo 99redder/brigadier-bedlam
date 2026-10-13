@@ -2,7 +2,13 @@ import Phaser from "phaser";
 import { Battle, type Soldier } from "../sim/battle";
 import { CLASSES, FIELD, type ClassId } from "../sim/data";
 import { type Point, distance } from "../sim/geometry";
-import { loadAssets, assetKey, Sound, drawProjectile } from "./assets";
+import {
+  loadAssets,
+  assetKey,
+  Sound,
+  drawProjectile,
+  CLASS_POSES,
+} from "./assets";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
   y: 124 + p.y * 0.74,
@@ -258,7 +264,11 @@ export class Battlefield extends Phaser.Scene {
       const p = project(s),
         alive = s.life === "alive",
         down = s.life === "down",
-        anim = s.moving ? Math.sin(b.time * 14 + s.id) * 2 : 0;
+        pose = CLASS_POSES[s.classId],
+        anim = alive
+          ? Math.sin(b.time * (s.moving ? 14 : pose.pace) + s.id) *
+            (s.moving ? 2 : pose.bob)
+          : 0;
       sprite.setTexture(
         s.life === "dead" ? s.death! : assetKey(s.classId, s.side),
       );
@@ -277,12 +287,18 @@ export class Battlefield extends Phaser.Scene {
               ? Math.sin(b.time * 18) * 9
               : s.flash > 0
                 ? -6
-                : 0,
+                : alive
+                  ? pose.lean + Math.sin(b.time * pose.pace + s.id) * pose.sway
+                  : 0,
         );
       if (down) sprite.setOrigin(0.5, 0.6);
       else sprite.setOrigin(0.5, 0.93);
       g.fillStyle(0x354638, 0.19);
       g.fillEllipse(p.x, p.y + 3, 33, 13);
+      if (alive) {
+        g.lineStyle(1.5, s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
+        g.strokeEllipse(p.x, p.y + 3, 34, 15);
+      }
       if (b.selected === s.id && alive) {
         g.lineStyle(3, 0xffe5a1);
         g.strokeEllipse(p.x, p.y + 3, 45, 21);
@@ -311,6 +327,7 @@ export class Battlefield extends Phaser.Scene {
       } else
         label!.setText(down ? "✚ MEDIC" : s.death === "ash" ? "ASH" : "R.I.P.");
       label!
+        .setBackgroundColor(s.side === 0 ? "#2b5845" : "#874536")
         .setPosition(p.x, p.y + 16)
         .setDepth(p.y + 1)
         .setAlpha(alive ? 1 : 0.8);

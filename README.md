@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.2 — faster rounds, distinct weapons, and clearer classes.**
+Current prototype: **v0.3 — five distinct specialist uniforms and personalities.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -46,6 +46,7 @@ Open **Controls** from the title or pause menu to rebind any action, add an alte
 - `src/sim/geometry.ts`: line-of-sight checks and deterministic A* movement around cover.
 - `src/input/bindings.ts`: input contexts, defaults, validation, conflict handling, persistence, and physical-key labels.
 - `src/view/assets.ts`: generated soldier textures and the shared asset exports. Replace texture generation with atlas loading to introduce final art.
+- `src/view/characters.ts`: class-specific uniforms, faces, equipment, and posture; shared team armbands and insignia.
 - `src/view/projectiles.ts`: bullet tracers, finned rockets, arcing grenades, flame jets, and red dynamite bundles with a lit fuse.
 - `src/view/audio.ts`: individual synthesized weapon sounds and explosive impact sounds, driven by simulation combat events.
 - `src/view/scene.ts`: Phaser rendering, projection, animation, and fixed-step scheduling.
@@ -58,6 +59,16 @@ The view uses a shallow oblique projection, depth-sorted sprites and cover, and 
 The pause and result screens include **Export replay**. The JSON contains the seed, squad, and tick-stamped commands. A seed alone reproduces the starting conditions; reproducing player decisions also requires commands.
 
 Use `replayBattle(replay, ticks)` from `src/sim/battle.ts` to reproduce the simulation in TypeScript. The replay version is `1`; replay compatibility is only guaranteed for the same game version. A development-only `window.bedlam` inspection object is available on the Vite dev server. It is absent from the production build.
+
+## Character identities
+
+- Rifleman: upright, moustached veteran in a tidy khaki field tunic and patrol cap.
+- Bazooka: broad, bare-armed bruiser in purple armor, with a square jaw and heavy boots.
+- Lobber: grinning grenadier in a flared green coat, yellow neckerchief, and tilted beret.
+- Torch: industrial fire specialist in orange padded coveralls, reflective bands, a respirator, and gauntlets.
+- Sapper: scruffy mechanic in blue overalls and rolled sleeves, with a bandana, spiky hair, and tool belt.
+
+Both teams use these class identities. Their armbands, insignia, ground markers, and nameplates carry team color.
 
 ## Prototype design choices
 

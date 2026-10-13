@@ -1,5 +1,11 @@
 # Prototype verification — October 13, 2026
 
+## v0.3 character update
+
+- Each class has a separate uniform, face, headgear, equipment silhouette, and idle posture. Team armbands, insignia, ground markers, and label colors distinguish the two sides.
+- Portraits and battlefield sprites share the same generated textures; downed and revived soldiers retain their class uniform.
+- Browser visual checks cover the title, squad portraits, and battlefield at playing size. This update changes presentation only; combat tuning remains the v0.2 values.
+
 ## v0.2 update
 
 - 43 tests pass, including new direct-hit, lethal-boundary, outer-splash, friendly-fire, short-range, and weapon-event regressions for dynamite.
