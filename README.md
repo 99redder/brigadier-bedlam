@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.8 — jagged river banks, with matching hazards and bridge routes.**
+Current prototype: **v0.9 — Fire all squad orders, a military helmet favicon, and the updated browser title.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -31,6 +31,7 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
+- **Fire all** orders stationary player soldiers to shoot at an available enemy in range, or their current demolition target. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
 - Right-click to deselect. Soldiers automatically shoot enemies in range. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.

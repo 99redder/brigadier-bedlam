@@ -643,3 +643,48 @@ it("jagged banks use the same outline and water hit areas, without filling dry n
   expect(b.inWater({ x: 630, y: 330 })).toBe(true);
   expect(b.inWater({ x: 630, y: 390 })).toBe(false);
 });
+
+describe("Fire all squad order", () => {
+  it("fires only stationary player soldiers, preserves routes, and respects cooldowns", () => {
+    const b = new Battle(42);
+    b.cover = [];
+    b.water = [];
+    b.random = () => 1;
+    for (const s of b.soldiers) {
+      s.cooldown = 0;
+      s.x = s.side === 0 ? 200 : 280;
+      s.y = 240 + s.slot * 3;
+      if (s.side === 1 && s.id !== 5) s.life = "dead";
+    }
+    b.get(5)!.hp = 1000;
+    const moving = b.get(2)!,
+      queued = b.get(4)!;
+    moving.moving = true;
+    queued.path = [{ x: 400, y: 250 }];
+    queued.goal = { x: 400, y: 250 };
+    b.command({ type: "fire-all" });
+    expect(b.shots.map((s) => s.owner)).toEqual([0, 1, 3]);
+    expect(queued.path).toEqual([{ x: 400, y: 250 }]);
+    expect(moving.moving).toBe(true);
+    b.command({ type: "fire-all" });
+    expect(b.shots).toHaveLength(3);
+    moving.moving = false;
+    queued.path = [];
+    b.command({ type: "fire-all" });
+    expect(b.shots.map((s) => s.owner)).toEqual([0, 1, 3, 2, 4]);
+    expect(b.commands.at(-1)!.command).toEqual({ type: "fire-all" });
+  });
+  it("cannot shoot through rifle cover, fire out of range, or make downed soldiers shoot", () => {
+    const { b, a, t } = pair();
+    b.random = () => 1;
+    b.cover = [{ x: 240, y: 220, w: 20, h: 60, hp: 100 }];
+    expect(b.fireAll()).toBe(0);
+    b.cover = [];
+    t.x = 1000;
+    expect(b.fireAll()).toBe(0);
+    t.x = 300;
+    a.life = "down";
+    expect(b.fireAll()).toBe(0);
+    expect(b.shots).toEqual([]);
+  });
+});

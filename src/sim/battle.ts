@@ -99,6 +99,7 @@ export interface Effect extends Point {
   size: number;
 }
 export type Command =
+  | { type: "fire-all" }
   | { type: "move"; id: number; point: Point }
   | { type: "bridge"; id: number; point: Point }
   | { type: "attack"; id: number; target: number }
@@ -226,6 +227,10 @@ export class Battle {
     if (this.winner !== null) return;
     if (record)
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
+    if (c.type === "fire-all") {
+      this.fireAll();
+      return;
+    }
     if (c.type === "select") {
       this.selected = c.id;
       for (const s of this.soldiers) s.blocking = false;
@@ -419,6 +424,33 @@ export class Battle {
       }
     }
     this.effects.push({ ...target, kind: "hit", time: 0.25, size: 10 });
+  }
+  fireAll() {
+    let fired = 0;
+    for (const s of this.soldiers) {
+      if (s.side !== 0 || s.life !== "alive" || s.moving || s.path.length > 0)
+        continue;
+      if (s.terrainTarget) {
+        if (this.fireAt(s, s.terrainTarget)) fired++;
+        continue;
+      }
+      const ordered = s.target === null ? undefined : this.get(s.target);
+      const target =
+        ordered && ordered.side !== s.side && this.canShoot(s, ordered)
+          ? ordered
+          : this.soldiers
+              .filter((t) => t.side !== s.side && this.canShoot(s, t))
+              .sort(
+                (a, b) => distance(s, a) - distance(s, b) || a.id - b.id,
+              )[0];
+      if (target && this.fire(s, target)) fired++;
+    }
+    this.note(
+      fired
+        ? `Fire all: ${fired} stationary soldier${fired === 1 ? "" : "s"} fired.`
+        : "Fire all: no stationary soldiers ready with a target in range.",
+    );
+    return fired;
   }
   fire(s: Soldier, t: Soldier) {
     if (s.cooldown > 0 || !this.canShoot(s, t)) return false;

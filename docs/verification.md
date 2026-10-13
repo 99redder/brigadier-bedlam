@@ -1,5 +1,12 @@
 # Prototype verification — October 13, 2026
 
+## v0.9 Fire all and browser identity
+
+- 71 tests pass. Fire all regressions cover stationary player ownership, moving and queued movement exclusion, retained routes, cooldowns, blocked rifle fire, range, and downed units.
+- Browser verified the native Fire all button and its no-ready-target feedback. A controlled UI-button volley produced shots from soldiers 0, 1, 3, and 4 while moving soldier 2 retained its route.
+- Browser reports the exact document title `Brigadier Bedlam - Squad Tactics`. The helmet SVG linked as the favicon decoded successfully; the production build copies it with a relative Pages-safe URL.
+- The HUD button, result feedback, and jagged river were visually inspected and saved in a screenshot. Fixture state was cleared by navigation. TypeScript and production build pass.
+
 ## v0.8 jagged river
 
 - 69 tests pass, including connected river coverage, dry notches and wet bends, a single shared bank outline, safe bridge routing, and the full interactive boot camp crossing sequence.
