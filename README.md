@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.10 — rebindable Fire all controls and an AI/balance pass.**
+Current prototype: **v0.11 — class-specific victory celebrations.**
+
+The surviving soldiers on the winning team celebrate for 3.5 seconds before the results modal opens. Riflemen salute, Bazookas flex, Lobbers dance a jig, Torches pump a fist, and Sappers hop with raised arms. This also applies to enemy victories. Pausing freezes the celebration; starting another battle resets it. The celebration uses presentation time, leaving combat results and deterministic replays unchanged.
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 

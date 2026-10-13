@@ -7,6 +7,7 @@ import {
   fighterKey,
   type FightPose,
 } from "./fighting";
+import { drawVictory, victoryKey } from "./victory";
 // All placeholder art lives here. Replace generated textures with atlas frames later.
 export const assetKey = (classId: ClassId, side: number) =>
   `soldier-${classId}-${side}`;
@@ -21,6 +22,15 @@ export function loadAssets(scene: Phaser.Scene) {
       const c = canvas.getContext("2d")!;
       drawCharacter(c, classId, side);
       scene.textures.addCanvas(key, canvas);
+      for (let frame = 0; frame < 8; frame++) {
+        const celebration = document.createElement("canvas");
+        celebration.width = 128;
+        celebration.height = 96;
+        const ctx = celebration.getContext("2d")!;
+        ctx.translate(24, 0);
+        drawVictory(ctx, classId, side, frame);
+        scene.textures.addCanvas(victoryKey(classId, side, frame), celebration);
+      }
       for (const pose of Object.keys(FIGHT_FRAMES) as FightPose[])
         for (let frame = 0; frame < FIGHT_FRAMES[pose]; frame++) {
           const fightCanvas = document.createElement("canvas");

@@ -20,6 +20,13 @@ import {
   fighterKey,
   fightFrame,
 } from "./assets";
+import {
+  VictoryClock,
+  EMOTES,
+  isCelebrating,
+  victoryKey,
+  victoryMotion,
+} from "./victory";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
   y: 124 + p.y * 0.74,
@@ -32,6 +39,8 @@ export class Battlefield extends Phaser.Scene {
   battle: Battle | null = null;
   paused = true;
   accumulator = 0;
+  victory = new VictoryClock();
+  private victoryBanner!: Phaser.GameObjects.Text;
   tutorialMarker: { point: Point; label: string } | null = null;
   cursor: Point = { x: 100, y: 280 };
   onTick = () => {};
@@ -60,6 +69,17 @@ export class Battlefield extends Phaser.Scene {
     this.world.add(this.ground);
     this.effects = this.add.graphics().setDepth(10000);
     this.drawTerrain();
+    this.victoryBanner = this.add
+      .text(640, 112, "", {
+        fontFamily: "monospace",
+        fontSize: "25px",
+        color: "#fff0b5",
+        backgroundColor: "#2b453b",
+        padding: { x: 20, y: 10 },
+      })
+      .setOrigin(0.5)
+      .setDepth(10001)
+      .setVisible(false);
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       this.cursor = unproject(p);
     });
@@ -293,6 +313,7 @@ export class Battlefield extends Phaser.Scene {
     this.render();
   }
   start(battle: Battle) {
+    this.victory.reset();
     this.battle = battle;
     this.paused = false;
     this.accumulator = 0;
@@ -329,18 +350,31 @@ export class Battlefield extends Phaser.Scene {
 
       this.previousRevives = this.battle.stats.revives;
       this.previousBrawls = this.battle.stats.brawls;
-      this.onTick();
     }
+    this.victory.advance(
+      Math.min(delta / 1000, 0.2),
+      this.battle.winner,
+      this.paused,
+    );
+    if (!this.paused) this.onTick();
     this.render();
   }
   render() {
     const b = this.battle;
     if (!b) return;
     if (this.terrainRevision !== b.terrainRevision) this.drawTerrain();
+    this.victoryBanner
+      .setVisible(b.winner !== null)
+      .setText(
+        b.winner === 0
+          ? "VICTORY!  TAKE A BOW, SQUAD."
+          : "ENEMY VICTORY!  THEY'RE SHOWING OFF.",
+      );
     const g = this.effects;
     g.clear();
     const selected = b.selected === null ? null : b.get(b.selected);
     if (
+      b.winner === null &&
       selected &&
       selected.life === "alive" &&
       selected.brawl === null &&
@@ -390,11 +424,14 @@ export class Battlefield extends Phaser.Scene {
           .setOrigin(0.5);
         this.labels.set(s.id, label);
       }
+      const celebrating = isCelebrating(s, b.winner);
+      const victoryPose = victoryMotion(s.classId, this.victory.elapsed, s.id);
       const fighting =
-        s.brawl !== null ||
-        s.fightMoveTime > 0 ||
-        s.recoilTime > 0 ||
-        (s.life === "down" && s.brawlKnockdown);
+        !celebrating &&
+        (s.brawl !== null ||
+          s.fightMoveTime > 0 ||
+          s.recoilTime > 0 ||
+          (s.life === "down" && s.brawlKnockdown));
       const anchor = project(s.fightAnchor ?? s),
         facing = fighting ? s.fightFacing : s.facing;
       const p =
@@ -419,7 +456,7 @@ export class Battlefield extends Phaser.Scene {
             : 1 - s.knockdownTime / TUNING.knockdownAnimation
           : 1;
       const strike =
-        s.fightMoveTime > 0
+        !celebrating && s.fightMoveTime > 0
           ? 8 *
             Math.min(
               1,
@@ -430,46 +467,53 @@ export class Battlefield extends Phaser.Scene {
             )
           : 0;
       const recoil =
-        s.recoilTime > 0 && !s.recoilBlocked
+        !celebrating && s.recoilTime > 0 && !s.recoilBlocked
           ? (-5 * s.recoilTime) / TUNING.recoilAnimation
           : 0;
       sprite.setTexture(
         s.life === "dead"
           ? s.death!
-          : fighting
-            ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
-            : assetKey(s.classId, s.side),
+          : celebrating
+            ? victoryKey(s.classId, s.side, victoryPose.frame)
+            : fighting
+              ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
+              : assetKey(s.classId, s.side),
       );
       sprite
         .setPosition(
           p.x + facing * (strike + recoil),
-          p.y + anim + (wet ? 9 + sink * 18 : 0),
+          p.y +
+            (celebrating ? victoryPose.hop : anim) +
+            (wet ? 9 + sink * 18 : 0),
         )
         .setDepth(p.y)
         .setFlipX(facing < 0)
         .setScale(0.79 * (1 - sink * 0.45))
         .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
         .setAngle(
-          down
-            ? s.brawlKnockdown
-              ? -facing * 82 * fall
-              : s.side === 0
-                ? -82
-                : 82
-            : fighting
-              ? facing *
-                (frame.pose === "hurt"
-                  ? -10
-                  : frame.pose === "kick"
-                    ? -7
-                    : frame.pose === "punch"
-                      ? 5
-                      : Math.sin(b.time * 6 + s.id) * 1.5)
-              : s.flash > 0
-                ? -6
-                : alive
-                  ? pose.lean + Math.sin(b.time * pose.pace + s.id) * pose.sway
-                  : 0,
+          celebrating
+            ? victoryPose.angle
+            : down
+              ? s.brawlKnockdown
+                ? -facing * 82 * fall
+                : s.side === 0
+                  ? -82
+                  : 82
+              : fighting
+                ? facing *
+                  (frame.pose === "hurt"
+                    ? -10
+                    : frame.pose === "kick"
+                      ? -7
+                      : frame.pose === "punch"
+                        ? 5
+                        : Math.sin(b.time * 6 + s.id) * 1.5)
+                : s.flash > 0
+                  ? -6
+                  : alive
+                    ? pose.lean +
+                      Math.sin(b.time * pose.pace + s.id) * pose.sway
+                    : 0,
         );
       if (down)
         sprite.setOrigin(0.5, s.brawlKnockdown ? 0.93 - 0.33 * fall : 0.6);
@@ -494,7 +538,7 @@ export class Battlefield extends Phaser.Scene {
         g.lineStyle(1.5, s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
         g.strokeEllipse(p.x, p.y + 3, 34, 15);
       }
-      if (b.selected === s.id && alive) {
+      if (b.winner === null && b.selected === s.id && alive) {
         g.lineStyle(3, 0xffe5a1);
         g.strokeEllipse(p.x, p.y + 3, 45, 21);
         g.fillStyle(0xffe5a1);
@@ -511,7 +555,8 @@ export class Battlefield extends Phaser.Scene {
           5,
           2,
         );
-        if (sinking) label!.setText("DROWNING!");
+        if (celebrating) label!.setText(EMOTES[s.classId]);
+        else if (sinking) label!.setText("DROWNING!");
         else if (wet) label!.setText("CROSSING");
         else if (s.jam > 0) {
           label!.setText("JAM!");
@@ -537,6 +582,7 @@ export class Battlefield extends Phaser.Scene {
         .setDepth(p.y + 1)
         .setAlpha(alive ? 1 : 0.8);
       if (
+        b.winner === null &&
         s.flash > 0 &&
         alive &&
         s.brawl === null &&
@@ -569,9 +615,9 @@ export class Battlefield extends Phaser.Scene {
     }
     for (let i = b.medics.length; i < this.medics.length; i++)
       this.medics[i].setVisible(false);
-    for (const shot of b.shots)
+    for (const shot of b.winner === null ? b.shots : [])
       drawProjectile(g, shot, project(shot.from), project(shot.to));
-    for (const e of b.effects) {
+    for (const e of b.winner === null ? b.effects : []) {
       const p = project(e);
       if (e.kind === "splash") {
         g.lineStyle(2, 0xd7efe5, e.time);
