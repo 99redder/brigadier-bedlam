@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.16 — opening deployment, slower movement, lethal explosives, and persistent burning.**
+Current prototype: **v0.17 — countdown ticks and a distinct GO sound.**
+
+Deployment sounds once per displayed countdown second. The final three seconds use a higher double beep, followed by an ascending start call exactly when GO releases combat. Pausing stops new cues; resuming does not repeat the current tick. Restarting resets the sequence, boot camp stays silent, and Sound off mutes every deployment cue.
 
 Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
 

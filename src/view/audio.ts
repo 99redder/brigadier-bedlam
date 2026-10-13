@@ -179,6 +179,21 @@ export class Sound {
     }
     if (classId === "lobber") this.tone(540, 390, 0.07, "sine", 0.035, 0.075);
   }
+  deployment(seconds: number) {
+    if (this.muted || !this.context || this.context.state !== "running") return;
+    if (seconds === 0) {
+      // An ascending start call, distinct from ticks and combat hit confirmations.
+      this.tone(440, 440, 0.12, "square", 0.065);
+      this.tone(554, 554, 0.12, "square", 0.06, 0.13);
+      this.tone(740, 740, 0.25, "triangle", 0.075, 0.26);
+      this.tone(120, 48, 0.18, "sine", 0.06);
+    } else if (seconds <= 3) {
+      this.tone(980, 880, 0.08, "square", 0.045);
+      this.tone(980, 880, 0.065, "square", 0.035, 0.13);
+    } else {
+      this.tone(620, 540, 0.08, "triangle", 0.05);
+    }
+  }
   melee(kind: "punch" | "kick", blocked: boolean) {
     if (this.muted || !this.context || this.context.state !== "running") return;
     const now = this.context.currentTime;

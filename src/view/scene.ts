@@ -27,6 +27,7 @@ import {
   victoryKey,
   victoryMotion,
 } from "./victory";
+import { DeploymentCues } from "./deployment-cues";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
   y: 124 + p.y * 0.74,
@@ -40,6 +41,7 @@ export class Battlefield extends Phaser.Scene {
   paused = true;
   accumulator = 0;
   victory = new VictoryClock();
+  private deploymentCues = new DeploymentCues();
   private victoryBanner!: Phaser.GameObjects.Text;
   tutorialMarker: { point: Point; label: string } | null = null;
   cursor: Point = { x: 100, y: 280 };
@@ -315,6 +317,7 @@ export class Battlefield extends Phaser.Scene {
   }
   start(battle: Battle) {
     this.victory.reset();
+    this.deploymentCues.reset(battle.planning);
     this.battle = battle;
     this.paused = false;
     this.accumulator = 0;
@@ -333,6 +336,8 @@ export class Battlefield extends Phaser.Scene {
         this.battle.step();
         this.accumulator -= 1 / 30;
       }
+      const cue = this.deploymentCues.poll(this.battle.countdown);
+      if (cue !== null) this.sfx.deployment(cue);
       for (const event of this.battle.combatEvents) {
         if (event.id > this.lastCombatEvent) {
           this.sfx.weapon(event.classId, event.kind);
