@@ -32,6 +32,7 @@ export class Battlefield extends Phaser.Scene {
   battle: Battle | null = null;
   paused = true;
   accumulator = 0;
+  tutorialMarker: { point: Point; label: string } | null = null;
   cursor: Point = { x: 100, y: 280 };
   onTick = () => {};
   onReady = () => {};
@@ -363,6 +364,14 @@ export class Battlefield extends Phaser.Scene {
         g.lineBetween(goal.x - 5, goal.y, goal.x + 5, goal.y);
         g.lineBetween(goal.x, goal.y - 4, goal.x, goal.y + 4);
       }
+    }
+    if (this.tutorialMarker) {
+      const p = project(this.tutorialMarker.point),
+        pulse = Math.sin(b.time * 5) * 4;
+      g.lineStyle(4, 0xffed9d, 0.9);
+      g.strokeEllipse(p.x, p.y, 56 + pulse, 28 + pulse);
+      g.fillStyle(0xffed9d);
+      g.fillTriangle(p.x - 7, p.y - 92, p.x + 7, p.y - 92, p.x, p.y - 80);
     }
     for (const s of b.soldiers) {
       let sprite = this.units.get(s.id),

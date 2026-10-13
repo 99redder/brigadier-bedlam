@@ -1,5 +1,13 @@
 # Prototype verification — October 13, 2026
 
+## v0.7 interactive boot camp
+
+- 68 tests pass. New checks cover no enemies/no premature victory, movement completion, correct weapon gating, the complete interactive lesson sequence, practice target recovery, training safety isolated from combat rules, and deterministic initial training replay.
+- Browser completed the course with real roster selection, native movement/demolition/bridge/water/medic clicks, F and slot shortcuts, native punch/kick clicks, a held Shift event through the input layer, native Space pause, Resume, Menu, Controls, and Done. Travel waits were accelerated by advancing the actual simulation and tutorial update; lessons were not skipped or assigned completion flags.
+- The coach reached 15/15 and TRAINING COMPLETE with five friendly soldiers and zero enemies. Deploy squad opened normal squad selection. Coach layout and highlighted routes were visually inspected, and a screenshot of the bridge lesson was saved.
+- The first synthetic held-key check targeted Window and caused a test-harness TypeError; the corrected held-key check targeted the page body and completed sparring. This was not a failure during native user input. Test state was cleared by navigation.
+- TypeScript and production build pass. CI repeats tests/build before GitHub Pages deployment.
+
 ## v0.6 river and bridge update
 
 - 62 tests pass, including class speed/risk thresholds, one roll per entry, permanent drowning and medic rejection, bridge immunity, longer dry routes, default-map routing around scenery, and seeded replay with both crossing options.

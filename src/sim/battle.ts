@@ -1,6 +1,7 @@
 import {
   CLASSES,
   COVER,
+  TRAINING_COVER,
   WATER,
   BRIDGES,
   FIELD,
@@ -111,6 +112,7 @@ export interface Replay {
   version: 1;
   seed: number;
   squad: number;
+  training?: boolean;
   commands: { tick: number; command: Command }[];
 }
 export interface CombatEvent {
@@ -149,12 +151,18 @@ export class Battle {
   shotId = 0;
   nextMedic = 5;
   stats = { shots: 0, revives: 0, brawls: 0, instantKills: 0, drownings: 0 };
-  constructor(seed: number, squad = 0) {
+  constructor(
+    seed: number,
+    squad = 0,
+    readonly training = false,
+  ) {
+    if (training)
+      this.cover = TRAINING_COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
     this.seed = seed >>> 0;
     this.rngState = this.seed;
     this.squad = squad;
     const enemy = Math.floor(this.random() * SQUADS.length);
-    for (const side of [0, 1] as Side[])
+    for (const side of (training ? [0] : [0, 1]) as Side[])
       (side === 0 ? SQUADS[squad] : SQUADS[enemy]).classes.forEach(
         (classId, slot) => {
           this.soldiers.push({
@@ -163,7 +171,7 @@ export class Battle {
             slot,
             classId,
             x: side === 0 ? 105 : 995,
-            y: 75 + slot * 99,
+            y: training ? 160 + slot * 70 : 75 + slot * 99,
             hp: CLASSES[classId].hp,
             life: "alive",
             death: null,
@@ -327,7 +335,7 @@ export class Battle {
     if (wet && !s.wasInWater) {
       this.effects.push({ ...s, kind: "splash", time: 0.6, size: 22 });
       // One seeded roll on entry, never a repeated chance on each frame.
-      if (this.random() < CLASSES[s.classId].drowningRisk) {
+      if (!this.training && this.random() < CLASSES[s.classId].drowningRisk) {
         s.drowningTime = TUNING.drowningDuration;
         s.path = [];
         s.goal = null;
@@ -373,7 +381,8 @@ export class Battle {
     classId: ClassId | null = null,
     lethal = false,
   ) {
-    if (target.life !== "alive" || target.drowningTime > 0) return;
+    if (this.training || target.life !== "alive" || target.drowningTime > 0)
+      return;
     const instant =
       lethal || (classId !== null && this.random() < CLASSES[classId].instant);
     if (instant) {
@@ -1021,7 +1030,7 @@ export class Battle {
     }
     const alive = (side: Side) =>
       this.soldiers.some((s) => s.side === side && s.life === "alive");
-    if (!alive(0) || !alive(1)) {
+    if (!this.training && (!alive(0) || !alive(1))) {
       this.winner = alive(0) ? 0 : 1;
       this.note(
         this.winner === 0
@@ -1035,12 +1044,17 @@ export class Battle {
       version: 1,
       seed: this.seed,
       squad: this.squad,
+      training: this.training,
       commands: this.commands,
     };
   }
 }
 export function replayBattle(replay: Replay, ticks: number) {
-  const battle = new Battle(replay.seed, replay.squad);
+  const battle = new Battle(
+    replay.seed,
+    replay.squad,
+    replay.training ?? false,
+  );
   let i = 0;
   for (let t = 0; t < ticks; t++) {
     while (

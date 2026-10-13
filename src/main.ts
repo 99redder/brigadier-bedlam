@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import "./style.css";
-import { Battle, type Soldier } from "./sim/battle";
+import { Tutorial } from "./sim/tutorial";
+import { Battle, type Command, type Soldier } from "./sim/battle";
 import { CLASSES, SQUADS, TUNING, type ClassId } from "./sim/data";
 import {
   InputLayer,
@@ -15,6 +16,10 @@ import { inside } from "./sim/geometry";
 import { assetKey } from "./view/assets";
 const ui = document.querySelector<HTMLDivElement>("#ui")!;
 const scene = new Battlefield();
+let tutorial: Tutorial | null = null;
+function issue(c: Command) {
+  if (!tutorial || tutorial.accepts(c)) scene.battle?.command(c);
+}
 let screen: "title" | "squad" | "battle" | "result" = "title",
   squad = 0,
   settingsOpen = false,
@@ -69,6 +74,8 @@ function btn(label: string, action: string, kind = "secondary") {
   return `<button class="btn ${kind}" data-do="${action}">${label}</button>`;
 }
 function title() {
+  tutorial = null;
+  scene.tutorialMarker = null;
   screen = "title";
   menuOpen = false;
   settingsOpen = false;
@@ -78,7 +85,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.6</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.7</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -92,13 +99,15 @@ function newSeed() {
   return n[0];
 }
 function select(id: number | null) {
-  scene.battle?.command({ type: "select", id });
+  issue({ type: "select", id });
   input.clear();
   scene.sfx.play("click");
   renderBattle();
   wire();
 }
 function renderBattle() {
+  tutorial?.update();
+  scene.tutorialMarker = tutorial?.marker ?? null;
   const b = scene.battle!;
   const s = b.get(b.selected ?? -1),
     alive = (side: number) =>
@@ -108,7 +117,7 @@ function renderBattle() {
     .padStart(2, "0")}:${Math.floor(b.time % 60)
     .toString()
     .padStart(2, "0")}`;
-  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>OPERATION: DISPUTED PICNIC</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">OPPOSITION &nbsp; ${alive(1)}/5</span></div><div class="hud-actions">${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
+  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : "OPERATION: DISPUTED PICNIC"}</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/5`}</span></div><div class="hud-actions">${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
     .slice(0, 2)
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
@@ -122,6 +131,13 @@ function renderBattle() {
     .join(
       "",
     )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${CLASSES[s.classId].description}<br>Click the bridge for a safe detour. River: ${Math.round(CLASSES[s.classId].waterSpeed * 100)}% speed · ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drowning risk<br>${esc(input.hint("hold"))}: hold · ${esc(input.hint("medic"))}: medic nearest cursor` : `Select a soldier, then order a move or attack.<br>Unselected soldiers fire at enemies in range.`}</p></div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+  if (tutorial) {
+    const [heading, text] = tutorial.copy((a) => input.hint(a));
+    ui.insertAdjacentHTML(
+      "beforeend",
+      `<aside class="tutorial-card" aria-label="Tutorial coach"><div class="eyebrow">BOOT CAMP · ${tutorial.step + 1} / 15</div><h3>${esc(heading)}</h3><p>${esc(text)}</p><div class="tutorial-progress" role="status">${tutorial.complete ? "TRAINING COMPLETE" : tutorial.id === "welcome" ? "READY WHEN YOU ARE" : "Complete the action to continue"}</div><div class="buttons">${tutorial.id === "welcome" ? btn("Begin lesson", "lesson-next", "primary") : tutorial.complete ? btn("Deploy squad", "graduate", "primary") : ""}${btn(tutorial.complete ? "Repeat lesson" : "Restart lesson", "tutorial")}${btn("Exit", "title")}</div></aside>`,
+    );
+  }
   if (scene.paused && !menuOpen && !settingsOpen)
     ui.insertAdjacentHTML(
       "beforeend",
@@ -130,7 +146,7 @@ function renderBattle() {
   if (menuOpen)
     ui.insertAdjacentHTML(
       "beforeend",
-      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>Battle paused. Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Controls", "controls")}${btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
+      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>Battle paused. Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Controls", "controls")}${tutorial ? "" : btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
     );
 }
 function updateBattleHud() {
@@ -146,7 +162,9 @@ function updateBattleHud() {
   );
   write(
     ".team-count.enemy",
-    `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/5`,
+    tutorial
+      ? "NO ENEMIES"
+      : `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/5`,
   );
   write(
     ".clock",
@@ -236,6 +254,7 @@ function action(a: Action, held = true, event?: Event) {
   }
   if (a === "pause" && held && screen === "battle" && !menuOpen) {
     scene.paused = !scene.paused;
+    tutorial?.ui(scene.paused ? "pause" : "resume");
     input.clear();
     render();
     return;
@@ -251,28 +270,28 @@ function action(a: Action, held = true, event?: Event) {
   const b = scene.battle!,
     s = b.get(b.selected ?? -1);
   if (a === "block") {
-    if (s) b.command({ type: "block", id: s.id, held });
+    if (s) issue({ type: "block", id: s.id, held });
     return;
   }
   if (!held) return;
   if (a === "punch" || a === "kick") {
-    if (s) b.command({ type: a, id: s.id });
+    if (s) issue({ type: a, id: s.id });
     return;
   }
   if (a === "interact") {
     const near = scene.pick(scene.cursor);
     if (near?.side === 0) {
       if (near.life === "down")
-        b.command({ type: "medic", target: near.id, side: 0 });
+        issue({ type: "medic", target: near.id, side: 0 });
       else select(near.id);
     } else if (s?.life === "alive") {
       if (near?.side === 1)
-        b.command({ type: "attack", id: s.id, target: near.id });
+        issue({ type: "attack", id: s.id, target: near.id });
       else if (b.bridges.some((r) => inside(scene.cursor, r)))
-        b.command({ type: "bridge", id: s.id, point: { ...scene.cursor } });
+        issue({ type: "bridge", id: s.id, point: { ...scene.cursor } });
       else if (b.cover.some((r) => inside(scene.cursor, r)))
-        b.command({ type: "demolish", id: s.id, point: { ...scene.cursor } });
-      else b.command({ type: "move", id: s.id, point: { ...scene.cursor } });
+        issue({ type: "demolish", id: s.id, point: { ...scene.cursor } });
+      else issue({ type: "move", id: s.id, point: { ...scene.cursor } });
     }
     return;
   }
@@ -298,18 +317,31 @@ function action(a: Action, held = true, event?: Event) {
       );
     return;
   }
-  if (a === "hold" && s) b.command({ type: "hold", id: s.id });
+  if (a === "hold" && s) issue({ type: "hold", id: s.id });
   if (a === "medic") {
     const down = scene.nearest(
       scene.cursor,
       (t) => t.side === 0 && t.life === "down",
       Infinity,
     );
-    if (down) b.command({ type: "medic", target: down.id, side: 0 });
+    if (down) issue({ type: "medic", target: down.id, side: 0 });
     else b.note("No downed soldier needs a medic.");
   }
 }
+function startTutorial() {
+  tutorial = new Tutorial();
+  renderAt = 0;
+  screen = "battle";
+  menuOpen = false;
+  settingsOpen = false;
+  input.clear();
+  scene.start(tutorial.battle);
+  scene.sfx.unlock();
+  render();
+}
 function start(seed: number) {
+  tutorial = null;
+  scene.tutorialMarker = null;
   renderAt = 0;
   screen = "battle";
   menuOpen = false;
@@ -335,6 +367,18 @@ function wire() {
       (button.onclick = () => {
         scene.sfx.unlock();
         const what = button.dataset.do;
+        if (what === "tutorial") startTutorial();
+        if (what === "lesson-next") {
+          tutorial?.advance();
+          render();
+        }
+        if (what === "graduate") {
+          tutorial = null;
+          scene.tutorialMarker = null;
+          scene.paused = true;
+          screen = "squad";
+          render();
+        }
         if (what === "deploy") {
           screen = "squad";
           render();
@@ -350,6 +394,7 @@ function wire() {
         if (what === "resume") {
           menuOpen = false;
           scene.paused = false;
+          tutorial?.ui("resume");
           render();
         }
         if (what === "retreat") {
@@ -365,6 +410,7 @@ function wire() {
         }
         if (what === "medic") action("medic");
         if (what === "controls") {
+          tutorial?.ui("settings-open");
           settingsReturn = scene.paused;
           settingsOpen = true;
           scene.paused = true;
@@ -429,6 +475,7 @@ function refreshSettings() {
 function wireSettings() {
   ui.querySelector<HTMLButtonElement>("#close-settings")!.onclick = () => {
     settingsOpen = false;
+    tutorial?.ui("settings-close");
     capturing = null;
     input.capture = null;
     scene.paused = settingsReturn;
@@ -512,6 +559,11 @@ scene.onTick = () => {
     input.clear();
     render();
     return;
+  }
+  if (tutorial?.update()) {
+    scene.tutorialMarker = tutorial.marker;
+    renderBattle();
+    wire();
   }
   if (scene.battle!.time - renderAt > 0.2) {
     renderAt = scene.battle!.time;

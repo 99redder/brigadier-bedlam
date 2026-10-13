@@ -195,3 +195,9 @@ export const WATER: Rect[] = [{ x: 505, y: 0, w: 90, h: FIELD.height }];
 
 // Deliberately far from the central fight: safe but a substantial detour.
 export const BRIDGES: Rect[] = [{ x: 485, y: 36, w: 130, h: 64 }];
+
+export const TRAINING_COVER: Cover[] = [
+  { x: 255, y: 250, w: 80, h: 40, material: "rock" },
+  { x: 365, y: 390, w: 70, h: 40, material: "crate" },
+  { x: 780, y: 360, w: 80, h: 44, material: "sandbags" },
+];

@@ -665,3 +665,38 @@ p {
     inset: 3% 4%;
   }
 }
+
+.tutorial-card {
+  position: absolute;
+  right: 1.6%;
+  top: 15%;
+  width: 28%;
+  padding: 1.2em;
+  background: #f0e8cd;
+  border: 2px solid #566c50;
+  box-shadow: 5px 5px 0 #23392f44;
+  pointer-events: auto;
+}
+.tutorial-card h3 {
+  margin: 0.4em 0;
+  font-size: 1.7em;
+}
+.tutorial-card p {
+  font-size: 0.82em;
+  line-height: 1.5;
+  margin: 0.6em 0;
+}
+.tutorial-card .buttons {
+  gap: 0.4em;
+  flex-wrap: wrap;
+}
+.tutorial-card .btn {
+  font-size: 0.75em;
+  padding: 0.65em 0.8em;
+}
+.tutorial-progress {
+  font-size: 0.72em;
+  font-weight: 700;
+  color: #4c7254;
+  padding: 0.6em 0;
+}

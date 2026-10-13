@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.6 — a river with class-based drowning risk and a safe bridge detour.**
+Current prototype: **v0.7 — an interactive, enemy-free Boot Camp tutorial.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -27,7 +27,7 @@ npm run preview
 
 ## How to play
 
-Choose a preset squad, optionally enter a battle seed, then deploy. Knock down all five enemy soldiers before they do the same to yours.
+Start with **Boot camp** on the title screen for guided practice, or choose a preset squad, optionally enter a battle seed, then deploy. Knock down all five enemy soldiers before they do the same to yours.
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
@@ -72,6 +72,14 @@ Use `replayBattle(replay, ticks)` from `src/sim/battle.ts` to reproduce the simu
 
 Both teams use these class identities. Their armbands, insignia, ground markers, and nameplates carry team color.
 
+## Boot camp
+
+The title screen's **Boot camp** opens a separate practice level with five friendly soldiers and no enemies. Its 15-step coach uses highlighted targets and advances after completed actions: selecting, moving, holding, slot shortcuts, firing bullets at cover, rocket and dynamite demolition, bridge and river crossings, medic rescue, friendly punch/kick/block sparring, pause/resume, and visiting Controls. The welcome and graduation cards frame the lesson.
+
+The lesson runs without a victory timer. Combat cannot injure soldiers and river entry cannot drown them; a staged downed ally teaches medic calls. These protections apply only in training. Guidance explains normal battle risks, automatic firing, attack orders, victory conditions, class identities, range, jams, friendly fire, permanent deaths, and saved control bindings. Hints use the current bindings. Early demolition does not break later exercises: their practice targets reset when needed.
+
+You can restart or exit any time. Graduation offers real squad deployment, repeating the course, or continued enemy-free practice. Replay export remains available in ordinary battles; tutorial progression uses instructor events as well as commands.
+
 ## River crossing tradeoff
 
 The river separates the two halves of the battlefield. Its bridge sits near the northern edge, well away from the central fighting. Click it to order a safe crossing; the highlighted route shows the detour. Direct ground orders retain the shorter water route.
@@ -103,8 +111,8 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 ## Scope and remaining work
 
-Implemented: title, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
+Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest 12-match diagnostic averaged 42 seconds (27–72 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, tutorials, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds now target a brisk roughly 30–90 seconds, replacing the initial brief's two-to-four-minute target. The latest 12-match diagnostic averaged 42 seconds (27–72 seconds); positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
