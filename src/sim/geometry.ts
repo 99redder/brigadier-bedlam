@@ -34,6 +34,43 @@ export function blocked(a: Point, b: Point, cover: Rect[] = COVER, pad = 0) {
     return true;
   });
 }
+// Earliest surface contact; the impact sits just outside the obstacle so a
+// blast reaches its near side while the intact obstacle shields the far side.
+export function firstCoverHit<T extends Rect>(a: Point, b: Point, cover: T[]) {
+  let result: { cover: T; point: Point; fraction: number } | null = null;
+  for (const r of cover) {
+    let lo = 0,
+      hi = 1;
+    let misses = false;
+    for (const [p, d, min, max] of [
+      [a.x, b.x - a.x, r.x, r.x + r.w],
+      [a.y, b.y - a.y, r.y, r.y + r.h],
+    ]) {
+      if (Math.abs(d) < 1e-8) {
+        if (p < min || p > max) misses = true;
+      } else {
+        const u = (min - p) / d,
+          v = (max - p) / d;
+        lo = Math.max(lo, Math.min(u, v));
+        hi = Math.min(hi, Math.max(u, v));
+      }
+    }
+    if (misses || lo > hi || (result && lo >= result.fraction)) continue;
+    const f = Math.max(0, lo - 0.01 / (distance(a, b) || 1));
+    result = {
+      cover: r,
+      fraction: lo,
+      point: { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f },
+    };
+  }
+  return result;
+}
+export function distanceToRect(p: Point, r: Rect) {
+  return Math.hypot(
+    p.x - clamp(p.x, r.x, r.x + r.w),
+    p.y - clamp(p.y, r.y, r.y + r.h),
+  );
+}
 export function legal(p: Point, cover: Rect[] = COVER) {
   return (
     p.x >= 16 &&

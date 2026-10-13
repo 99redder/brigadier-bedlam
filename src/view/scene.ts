@@ -1,6 +1,13 @@
 import Phaser from "phaser";
 import { Battle, type Soldier } from "../sim/battle";
-import { CLASSES, FIELD, TUNING, type ClassId } from "../sim/data";
+import {
+  CLASSES,
+  FIELD,
+  TUNING,
+  TERRAIN,
+  COVER,
+  type ClassId,
+} from "../sim/data";
 import { type Point, distance } from "../sim/geometry";
 import {
   loadAssets,
@@ -33,6 +40,7 @@ export class Battlefield extends Phaser.Scene {
   private units = new Map<number, Phaser.GameObjects.Image>();
   private labels = new Map<number, Phaser.GameObjects.Text>();
   private medics: Phaser.GameObjects.Image[] = [];
+  private terrainRevision = -1;
   private coverNodes: Phaser.GameObjects.Container[] = [];
   private lastCombatEvent = -1;
   private lastMeleeEvent = -1;
@@ -127,37 +135,108 @@ export class Battlefield extends Phaser.Scene {
     }
     for (const node of this.coverNodes) node.destroy();
     this.coverNodes = [];
-    for (const r of this.battle?.cover ?? [
-      { x: 230, y: 100, w: 100, h: 40 },
-      { x: 260, y: 370, w: 90, h: 44 },
-      { x: 492, y: 225, w: 112, h: 46 },
-      { x: 760, y: 110, w: 95, h: 42 },
-      { x: 790, y: 375, w: 80, h: 44 },
-      { x: 500, y: 460, w: 80, h: 34 },
-    ]) {
+    this.terrainRevision = this.battle?.terrainRevision ?? -1;
+    for (const r of this.battle?.rubble ?? []) {
+      const p = project({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+      g.fillStyle(r.material === "crate" ? 0x927451 : 0x7d806f, 0.6);
+      for (let i = 0; i < 9; i++)
+        g.fillEllipse(
+          p.x + (((i % 5) - 2) * r.w) / 5,
+          p.y + Math.floor(i / 5) * 9 - 5,
+          12 + (i % 3) * 4,
+          5,
+        );
+    }
+    for (const r of this.battle?.cover ?? COVER) {
       const p = project({ x: r.x, y: r.y + r.h }),
         node = this.add.container(p.x, p.y).setDepth(p.y),
         cg = this.add.graphics();
       node.add(cg);
       cg.fillStyle(0x586344, 0.3);
       cg.fillEllipse(r.w / 2 + 9, 8, r.w + 30, 18);
-      cg.fillStyle(0x837c51);
-      cg.fillRoundedRect(-3, -38, r.w + 6, 35, 8);
-      cg.lineStyle(2, 0x626644);
-      cg.strokeRoundedRect(-3, -38, r.w + 6, 35, 8);
-      for (let row = 0; row < 2; row++)
-        for (let j = 0; j < Math.ceil(r.w / 27); j++) {
-          cg.fillStyle(row ? 0xb0a374 : 0xc2b486);
-          cg.fillRoundedRect(j * 27 + (row ? 6 : 0), -43 + row * 16, 25, 15, 5);
-          cg.lineStyle(1, 0x827b50);
-          cg.strokeRoundedRect(
-            j * 27 + (row ? 6 : 0),
-            -43 + row * 16,
-            25,
-            15,
-            5,
-          );
-        }
+      if (r.material === "rock") {
+        cg.fillStyle(0x747b75);
+        cg.fillPoints(
+          [
+            { x: 0, y: -5 },
+            { x: 7, y: -30 },
+            { x: r.w * 0.35, y: -48 },
+            { x: r.w * 0.72, y: -43 },
+            { x: r.w, y: -24 },
+            { x: r.w + 2, y: -4 },
+          ],
+          true,
+        );
+        cg.lineStyle(3, 0x4f5e58);
+        cg.strokePoints(
+          [
+            { x: 0, y: -5 },
+            { x: 7, y: -30 },
+            { x: r.w * 0.35, y: -48 },
+            { x: r.w * 0.72, y: -43 },
+            { x: r.w, y: -24 },
+            { x: r.w + 2, y: -4 },
+          ],
+          true,
+          true,
+        );
+        cg.lineStyle(2, 0xa2aaa0);
+        cg.lineBetween(12, -28, r.w * 0.35, -41);
+        cg.lineBetween(r.w * 0.35, -41, r.w * 0.6, -30);
+      } else if (r.material === "crate") {
+        cg.fillStyle(0xa87949);
+        cg.fillRect(0, -43, r.w, 40);
+        cg.lineStyle(3, 0x624e34);
+        cg.strokeRect(0, -43, r.w, 40);
+        for (let x = 8; x < r.w; x += 22) cg.lineBetween(x, -42, x, -4);
+        cg.lineStyle(5, 0xc39e6a);
+        cg.lineBetween(4, -38, r.w - 4, -8);
+        cg.lineBetween(4, -8, r.w - 4, -38);
+      } else {
+        cg.fillStyle(0x837c51);
+        cg.fillRoundedRect(-3, -38, r.w + 6, 35, 8);
+        cg.lineStyle(2, 0x626644);
+        cg.strokeRoundedRect(-3, -38, r.w + 6, 35, 8);
+        for (let row = 0; row < 2; row++)
+          for (let j = 0; j < Math.ceil(r.w / 27); j++) {
+            cg.fillStyle(row ? 0xb0a374 : 0xc2b486);
+            cg.fillRoundedRect(
+              j * 27 + (row ? 6 : 0),
+              -43 + row * 16,
+              25,
+              15,
+              5,
+            );
+            cg.lineStyle(1, 0x827b50);
+            cg.strokeRoundedRect(
+              j * 27 + (row ? 6 : 0),
+              -43 + row * 16,
+              25,
+              15,
+              5,
+            );
+          }
+      }
+      const hp = r.hp ?? TERRAIN.hp;
+      if (hp < TERRAIN.hp) {
+        cg.lineStyle(3, 0x3b4238);
+        cg.strokePoints([
+          { x: r.w * 0.55, y: -40 },
+          { x: r.w * 0.4, y: -27 },
+          { x: r.w * 0.58, y: -22 },
+          { x: r.w * 0.35, y: -7 },
+        ]);
+        if (hp <= 40)
+          cg.strokePoints([
+            { x: r.w * 0.4, y: -27 },
+            { x: r.w * 0.2, y: -24 },
+            { x: r.w * 0.1, y: -10 },
+          ]);
+        cg.fillStyle(0x313c32);
+        cg.fillRoundedRect(0, 12, r.w, 5, 2);
+        cg.fillStyle(hp > 40 ? 0xf3d184 : 0xe97a5c);
+        cg.fillRoundedRect(0, 12, (r.w * hp) / TERRAIN.hp, 5, 2);
+      }
       this.coverNodes.push(node);
     }
     const makeText = (x: number, y: number, text: string) =>
@@ -230,6 +309,7 @@ export class Battlefield extends Phaser.Scene {
   render() {
     const b = this.battle;
     if (!b) return;
+    if (this.terrainRevision !== b.terrainRevision) this.drawTerrain();
     const g = this.effects;
     g.clear();
     const selected = b.selected === null ? null : b.get(b.selected);
@@ -428,6 +508,29 @@ export class Battlefield extends Phaser.Scene {
       drawProjectile(g, shot, project(shot.from), project(shot.to));
     for (const e of b.effects) {
       const p = project(e);
+      if (e.kind === "debris") {
+        const progress = 1 - e.time / 0.7;
+        g.fillStyle(0xb9af89, e.time / 0.7);
+        g.fillEllipse(
+          p.x,
+          p.y - 10,
+          30 + progress * e.size * 3,
+          20 + progress * 40,
+        );
+        g.fillStyle(0x686a57, e.time / 0.7);
+        for (let i = 0; i < 8; i++) {
+          const a = (i * Math.PI) / 4;
+          g.fillRect(
+            p.x + Math.cos(a) * progress * e.size * 1.5,
+            p.y -
+              20 +
+              Math.sin(a) * progress * 24 -
+              Math.sin(progress * Math.PI) * 25,
+            6,
+            5,
+          );
+        }
+      }
       if (e.kind === "boom" && e.classId === "torch") {
         g.fillStyle(0xf38c4b, e.time);
         g.fillCircle(p.x, p.y - 22, 3 + e.time * 8);

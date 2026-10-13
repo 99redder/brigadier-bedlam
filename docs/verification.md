@@ -1,5 +1,13 @@
 # Prototype verification — October 13, 2026
 
+## v0.5 destructible scenery update
+
+- 53 tests pass. New regressions cover zero bullet damage, three-rocket and one-dynamite demolition, lethal-core shielding, blast occlusion of adjacent scenery, all three material types, route reopening, explicit approach/demolition commands, and in-flight collision.
+- Replay checks also compare live cover health and rubble.
+- Browser fixture verified a real left-click on a rock creates a demolition order. The first rocket produced 60 health, visible cracks and a damage bar. After three hits the rock became rubble, the order cleared, and the soldier behind it retained all 1000 fixture health.
+- Rocks, sandbags, and crates have distinct shapes. Browser error logs were empty. Test fixtures were cleared by navigation.
+- TypeScript and production build pass; GitHub Actions repeats tests/build before Pages deployment.
+
 ## v0.4 brawl animation update
 
 - 46 tests pass, including melee cue/cooldown synchronization, guarded damage reactions, knockout pose state, and recovery before ranged fire.

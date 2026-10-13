@@ -44,12 +44,12 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     preferred: 300,
     cooldown: 3.4,
     damage: 26,
-    radius: 0,
+    radius: 28,
     lethalRadius: 0,
     arc: false,
     instant: 0.008,
     jam: 0,
-    description: "Long-range rockets. Cover gets the last word.",
+    description: "Long-range rockets. Three hits demolish solid cover.",
   },
   lobber: {
     name: "Lobber",
@@ -66,7 +66,7 @@ export const CLASSES: Record<ClassId, ClassStats> = {
     arc: true,
     instant: 0,
     jam: 0,
-    description: "Grenades go over cover. Also over common sense.",
+    description: "Grenades chip cover and blast exposed soldiers.",
   },
   torch: {
     name: "Torch",
@@ -162,12 +162,20 @@ export interface Rect {
   w: number;
   h: number;
 }
-export const COVER: Rect[] = [
-  { x: 230, y: 100, w: 100, h: 40 },
+export interface Cover extends Rect {
+  hp?: number;
+  material?: "rock" | "sandbags" | "crate";
+}
+export const TERRAIN = {
+  hp: 100,
+  damage: { rifleman: 0, bazooka: 40, lobber: 20, torch: 0, sapper: 100 },
+};
+export const COVER: Cover[] = [
+  { x: 230, y: 100, w: 100, h: 40, material: "rock" },
   { x: 260, y: 370, w: 90, h: 44 },
-  { x: 492, y: 225, w: 112, h: 46 },
+  { x: 492, y: 225, w: 112, h: 46, material: "crate" },
   { x: 760, y: 110, w: 95, h: 42 },
-  { x: 790, y: 375, w: 80, h: 44 },
+  { x: 790, y: 375, w: 80, h: 44, material: "rock" },
   { x: 500, y: 460, w: 80, h: 34 },
 ];
 export const WATER: Rect[] = [

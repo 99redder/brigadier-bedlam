@@ -5,11 +5,15 @@ import {
   FIELD,
   SQUADS,
   TUNING,
+  TERRAIN,
+  type Cover,
   type ClassId,
   type Rect,
 } from "./data";
 import {
   distance,
+  firstCoverHit,
+  distanceToRect,
   inside,
   blocked,
   legal,
@@ -28,6 +32,7 @@ export interface Soldier extends Point {
   life: Life;
   death: "skeleton" | "ash" | null;
   target: number | null;
+  terrainTarget: Point | null;
   goal: Point | null;
   path: Point[];
   hold: boolean;
@@ -69,18 +74,28 @@ export interface Shot {
   target: number;
   time: number;
   duration: number;
+  hitCover?: boolean;
 }
 export interface Effect extends Point {
   classId?: ClassId;
   impactFacing?: number;
   kind:
-    "hit" | "boom" | "brawl" | "revive" | "jam" | "punch" | "kick" | "block";
+    | "debris"
+    | "hit"
+    | "boom"
+    | "brawl"
+    | "revive"
+    | "jam"
+    | "punch"
+    | "kick"
+    | "block";
   time: number;
   size: number;
 }
 export type Command =
   | { type: "move"; id: number; point: Point }
   | { type: "attack"; id: number; target: number }
+  | { type: "demolish"; id: number; point: Point }
   | { type: "hold"; id: number }
   | { type: "medic"; target: number; side: Side }
   | { type: "punch" | "kick"; id: number }
@@ -116,7 +131,9 @@ export class Battle {
   calls = [TUNING.medicCalls, TUNING.medicCalls];
   shots: Shot[] = [];
   effects: Effect[] = [];
-  cover: Rect[] = COVER.map((r) => ({ ...r }));
+  cover: Cover[] = COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
+  rubble: Cover[] = [];
+  terrainRevision = 0;
   water: Rect[] = WATER.map((r) => ({ ...r }));
   winner: Side | null = null;
   selected: number | null = null;
@@ -144,6 +161,7 @@ export class Battle {
             life: "alive",
             death: null,
             target: null,
+            terrainTarget: null,
             goal: null,
             path: [],
             hold: false,
@@ -201,7 +219,18 @@ export class Battle {
     }
     const s = this.get(c.id);
     if (!s || s.life !== "alive") return;
+    if (c.type === "demolish" && s.brawl === null) {
+      const r = this.cover.find((r) => inside(c.point, r));
+      if (r) {
+        s.terrainTarget = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+        s.target = null;
+        s.goal = null;
+        s.path = [];
+        s.hold = false;
+      }
+    }
     if (c.type === "move" && s.brawl === null) {
+      s.terrainTarget = null;
       s.target = null;
       s.hold = false;
       this.setGoal(s, c.point);
@@ -209,6 +238,7 @@ export class Battle {
     if (c.type === "attack" && s.brawl === null) {
       const t = this.get(c.target);
       if (t && t.side !== s.side && t.life === "alive") {
+        s.terrainTarget = null;
         s.target = t.id;
         s.hold = false;
         s.goal = null;
@@ -217,6 +247,7 @@ export class Battle {
       }
     }
     if (c.type === "hold") {
+      s.terrainTarget = null;
       s.hold = true;
       s.target = null;
       s.goal = null;
@@ -243,7 +274,7 @@ export class Battle {
       s.jam <= 0 &&
       distance(s, t) <= w.range &&
       !(s.classId === "torch" && this.inWater(s)) &&
-      (w.arc || !blocked(s, t, this.cover))
+      (w.arc || s.classId === "bazooka" || !blocked(s, t, this.cover))
     );
   }
   damage(
@@ -292,10 +323,24 @@ export class Battle {
   }
   fire(s: Soldier, t: Soldier) {
     if (s.cooldown > 0 || !this.canShoot(s, t)) return false;
+    return this.fireAt(s, t, t.id);
+  }
+  fireAt(s: Soldier, point: Point, target = -1) {
     const w = CLASSES[s.classId];
+    const hit = firstCoverHit(s, point, this.cover);
+    if (
+      s.life !== "alive" ||
+      s.brawl !== null ||
+      s.fightMoveTime > 0 ||
+      s.cooldown > 0 ||
+      s.jam > 0 ||
+      distance(s, hit?.point ?? point) > w.range ||
+      (s.classId === "torch" && this.inWater(s))
+    )
+      return false;
     s.cooldown = w.cooldown;
     s.flash = 0.2;
-    s.facing = t.x >= s.x ? 1 : -1;
+    s.facing = point.x >= s.x ? 1 : -1;
     this.stats.shots++;
     if (w.jam && this.random() < w.jam) {
       s.jam = TUNING.jamDuration;
@@ -308,19 +353,25 @@ export class Battle {
     this.shots.push({
       id: this.shotId++,
       from: { x: s.x, y: s.y },
-      to: { x: t.x, y: t.y },
+      to: hit?.point ?? { ...point },
+      hitCover: !!hit,
       owner: s.id,
       classId: s.classId,
-      target: t.id,
+      target,
       time: 0,
       duration,
     });
     return true;
   }
   resolveShot(shot: Shot) {
-    const owner = this.get(shot.owner)!,
-      w = CLASSES[shot.classId];
-    if (!w.arc && blocked(shot.from, shot.to, this.cover)) return;
+    const owner = this.get(shot.owner);
+    if (!owner) return;
+    const w = CLASSES[shot.classId];
+    // Snapshot cover: even a demolition blast is stopped by the cover it destroys.
+    const cover = [...this.cover];
+    const hit = firstCoverHit(shot.from, shot.to, cover);
+    const impact = hit?.point ?? shot.to;
+    const terrainHit = !!hit || !!shot.hitCover;
     this.emitWeapon(shot.classId, "impact");
     if (w.radius) {
       for (const t of this.soldiers) {
@@ -329,7 +380,7 @@ export class Battle {
           if (
             t.side === owner.side ||
             distance(shot.from, t) > w.range ||
-            blocked(shot.from, t, this.cover)
+            blocked(shot.from, t, cover)
           )
             continue;
           const ax = shot.to.x - shot.from.x,
@@ -342,29 +393,73 @@ export class Battle {
             0.8
           )
             continue;
-        } else if (distance(t, shot.to) > w.radius) continue;
+        } else if (distance(t, impact) > w.radius || blocked(impact, t, cover))
+          continue;
         this.damage(
           t,
           w.damage,
           shot.classId,
-          w.lethalRadius > 0 && distance(t, shot.to) <= w.lethalRadius,
+          w.lethalRadius > 0 && distance(t, impact) <= w.lethalRadius,
         );
       }
       this.effects.push({
-        ...shot.to,
+        ...impact,
         kind: "boom",
         classId: shot.classId,
         time: 0.5,
         size: w.radius,
       });
-    } else {
+    } else if (!terrainHit) {
       const t = this.get(shot.target);
       if (
         t &&
-        distance(t, shot.to) < 42 &&
+        distance(t, impact) < 42 &&
         (owner.side === 0 || this.random() < TUNING.aiAccuracy)
       )
         this.damage(t, w.damage, shot.classId);
+    } else {
+      this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 10 });
+    }
+    const amount = TERRAIN.damage[shot.classId];
+    if (!amount) return;
+    let demolished = false;
+    for (const r of cover) {
+      const nearest = {
+        x: Math.max(r.x, Math.min(impact.x, r.x + r.w)),
+        y: Math.max(r.y, Math.min(impact.y, r.y + r.h)),
+      };
+      if (
+        distanceToRect(impact, r) > w.radius ||
+        blocked(
+          impact,
+          nearest,
+          cover.filter((other) => other !== r),
+        )
+      )
+        continue;
+      r.hp = Math.max(0, (r.hp ?? TERRAIN.hp) - amount);
+      this.terrainRevision++;
+      if (r.hp === 0) {
+        demolished = true;
+        this.cover = this.cover.filter((other) => other !== r);
+        this.rubble.push({ ...r });
+        this.effects.push({
+          x: r.x + r.w / 2,
+          y: r.y + r.h / 2,
+          kind: "debris",
+          time: 0.7,
+          size: r.w / 2,
+        });
+        this.note("Cover demolished. New route, new problems.");
+      }
+    }
+    // Recompute active routes immediately when the obstacle layout changes.
+    if (demolished) {
+      for (const s of this.soldiers)
+        if (s.goal) s.path = pathfind(s, s.goal, this.cover);
+      for (const m of this.medics)
+        if (m.phase === "in")
+          m.path = pathfind(m, this.get(m.target)!, this.cover);
     }
   }
   callMedic(id: number, side: Side) {
@@ -600,6 +695,33 @@ export class Battle {
         s.think = TUNING.aiThink;
         this.ai(s);
       }
+      if (s.terrainTarget && s.brawl === null) {
+        const r = this.cover.find((r) => inside(s.terrainTarget!, r));
+        if (!r) {
+          s.terrainTarget = null;
+          s.goal = null;
+          s.path = [];
+        } else {
+          const contact =
+            firstCoverHit(s, s.terrainTarget, this.cover)?.point ??
+            s.terrainTarget;
+          if (
+            distance(s, contact) > CLASSES[s.classId].range &&
+            s.repath <= 0
+          ) {
+            const angle = Math.atan2(s.y - contact.y, s.x - contact.x);
+            this.setGoal(s, {
+              x: contact.x + Math.cos(angle) * CLASSES[s.classId].preferred,
+              y: contact.y + Math.sin(angle) * CLASSES[s.classId].preferred,
+            });
+          }
+          if (distance(s, contact) <= CLASSES[s.classId].range) {
+            s.goal = null;
+            s.path = [];
+            this.fireAt(s, s.terrainTarget);
+          }
+        }
+      }
       const target = s.target === null ? null : this.get(s.target);
       if (target && target.life !== "alive") s.target = null;
       if (
@@ -668,7 +790,7 @@ export class Battle {
           : this.soldiers
               .filter((t) => t.side !== s.side && this.canShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
-      if (aim) this.fire(s, aim);
+      if (aim && !s.terrainTarget) this.fire(s, aim);
     }
     // Soft separation keeps allied silhouettes readable without moving held units far.
     for (let i = 0; i < this.soldiers.length; i++)

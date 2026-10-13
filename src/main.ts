@@ -11,6 +11,7 @@ import {
   type Context,
 } from "./input/bindings";
 import { Battlefield, unproject } from "./view/scene";
+import { inside } from "./sim/geometry";
 import { assetKey } from "./view/assets";
 const ui = document.querySelector<HTMLDivElement>("#ui")!;
 const scene = new Battlefield();
@@ -77,7 +78,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.4</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.5</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<img alt="${CLASSES[id].name}" class="hero-unit u${i}" src="${portrait(id)}">`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -112,7 +113,7 @@ function renderBattle() {
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
       "",
-    )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${esc(input.hint("interact"))}: select / move / attack / revive &nbsp; · &nbsp; ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
+    )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${esc(input.hint("interact"))}: select / move / attack / demolish / revive &nbsp; · &nbsp; ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
     .filter((t) => t.side === 0)
     .map(
       (t) =>
@@ -172,7 +173,7 @@ function updateBattleHud() {
     ".battle-help",
     s?.brawl !== null && s?.brawl !== undefined
       ? `BRAWL! ${input.hint("punch")}: punch · ${input.hint("kick")}: kick · hold ${input.hint("block")}: block`
-      : `${input.hint("interact")}: select / move / attack / revive   ·   ${input.hint("deselect")}: deselect`,
+      : `${input.hint("interact")}: select / move / attack / demolish / revive   ·   ${input.hint("deselect")}: deselect`,
   );
   const log = ui.querySelector(".radio-log"),
     markup = b.log
@@ -261,6 +262,8 @@ function action(a: Action, held = true, event?: Event) {
     } else if (s?.life === "alive") {
       if (near?.side === 1)
         b.command({ type: "attack", id: s.id, target: near.id });
+      else if (b.cover.some((r) => inside(scene.cursor, r)))
+        b.command({ type: "demolish", id: s.id, point: { ...scene.cursor } });
       else b.command({ type: "move", id: s.id, point: { ...scene.cursor } });
     }
     return;

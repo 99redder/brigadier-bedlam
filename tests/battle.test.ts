@@ -38,14 +38,14 @@ describe("weapon rules", () => {
       expect(a.cooldown).toBe(CLASSES[id].cooldown);
       expect(b.fire(a, t)).toBe(false);
     });
-  it("sandbags block direct weapons, but grenades and dynamite arc over them", () => {
+  it("rifles and flames avoid blocked targets; explosive classes can attack the cover", () => {
     const { b, a, t } = pair();
     b.cover = [{ x: 240, y: 200, w: 20, h: 100 }];
-    for (const id of ["rifleman", "bazooka", "torch"] as ClassId[]) {
+    for (const id of ["rifleman", "torch"] as ClassId[]) {
       a.classId = id;
       expect(b.canShoot(a, t)).toBe(false);
     }
-    for (const id of ["lobber", "sapper"] as ClassId[]) {
+    for (const id of ["bazooka", "lobber", "sapper"] as ClassId[]) {
       a.classId = id;
       expect(b.canShoot(a, t)).toBe(true);
     }
@@ -234,6 +234,8 @@ describe("movement, brawls and replay", () => {
     expect(replay.soldiers).toEqual(b.soldiers);
     expect(replay.rngState).toBe(b.rngState);
     expect(replay.shots).toEqual(b.shots);
+    expect(replay.cover).toEqual(b.cover);
+    expect(replay.rubble).toEqual(b.rubble);
   });
   it("enemy AI moves into range and avoids water as Torch", () => {
     const { b, a, t } = pair();
@@ -360,5 +362,110 @@ describe("melee animation synchronization", () => {
     expect(t.knockdownTime).toBe(0);
     enemy.x = 300;
     expect(b.canShoot(a, enemy)).toBe(true);
+  });
+});
+
+describe("destructible scenery", () => {
+  function fixture(id: ClassId = "bazooka") {
+    const setup = pair(id);
+    setup.b.random = () => 1;
+    setup.b.cover = [
+      { x: 240, y: 220, w: 10, h: 60, hp: 100, material: "rock" },
+    ];
+    setup.t.x = 260;
+    return setup;
+  }
+  function shoot(
+    b: Battle,
+    a: Battle["soldiers"][number],
+    t: Battle["soldiers"][number],
+  ) {
+    a.cooldown = 0;
+    expect(b.fire(a, t)).toBe(true);
+    const shot = b.shots.pop()!;
+    b.resolveShot(shot);
+    return shot;
+  }
+  it("bullets hit the surface without damaging scenery or the soldier behind it", () => {
+    const { b, a, t } = fixture("rifleman");
+    for (let i = 0; i < 20; i++) {
+      a.cooldown = 0;
+      expect(b.fireAt(a, { x: 245, y: 250 })).toBe(true);
+      b.resolveShot(b.shots.pop()!);
+    }
+    expect(b.cover[0].hp).toBe(100);
+    expect(t.hp).toBe(1000);
+    expect(b.rubble).toHaveLength(0);
+  });
+  it("three rockets demolish a rock; the destroying blast still protects its far side", () => {
+    const { b, a, t } = fixture();
+    expect(shoot(b, a, t).to.x).toBeCloseTo(239.99);
+    expect(b.cover[0].hp).toBe(60);
+    shoot(b, a, t);
+    expect(b.cover[0].hp).toBe(20);
+    shoot(b, a, t);
+    expect(b.cover).toHaveLength(0);
+    expect(b.rubble).toHaveLength(1);
+    expect(t.hp).toBe(1000);
+    shoot(b, a, t);
+    expect(t.hp).toBe(1000 - CLASSES.bazooka.damage);
+  });
+  it("one dynamite destroys cover but cannot kill through it, including within the lethal core", () => {
+    const { b, a, t } = fixture("sapper");
+    shoot(b, a, t);
+    expect(b.cover).toHaveLength(0);
+    expect(t.life).toBe("alive");
+    expect(t.hp).toBe(1000);
+    shoot(b, a, t);
+    expect(t.life).toBe("dead");
+  });
+  it("a blast shields soldiers and other scenery behind intact cover", () => {
+    const { b, a, t } = fixture("sapper");
+    b.cover.push({ x: 255, y: 240, w: 5, h: 20, hp: 100, material: "crate" });
+    b.resolveShot({
+      id: 0,
+      from: { x: 200, y: 180 },
+      to: { x: 230, y: 250 },
+      owner: a.id,
+      classId: "sapper",
+      target: t.id,
+      time: 1,
+      duration: 1,
+    });
+    expect(t.hp).toBe(1000);
+    expect(b.cover).toHaveLength(1);
+    expect(b.cover[0].material).toBe("crate");
+    expect(b.cover[0].hp).toBe(100);
+  });
+  it("all scenery materials use the same rules and destroyed cover opens movement routes", () => {
+    for (const material of ["rock", "sandbags", "crate"] as const) {
+      const { b, a, t } = fixture("sapper");
+      b.cover[0].material = material;
+      b.command({ type: "move", id: a.id, point: { x: 320, y: 250 } });
+      expect(a.path.length).toBeGreaterThan(1);
+      shoot(b, a, t);
+      expect(blocked(a, { x: 320, y: 250 }, b.cover, 14)).toBe(false);
+      expect(a.path).toEqual([{ x: 320, y: 250 }]);
+    }
+  });
+  it("a click order approaches out-of-range cover and stops targeting it after demolition", () => {
+    const { b, a, t } = fixture("sapper");
+    a.x = 80;
+    t.x = 900;
+    b.command({ type: "demolish", id: a.id, point: { x: 245, y: 250 } });
+    b.step();
+    expect(a.goal).not.toBeNull();
+    for (let i = 0; i < 150; i++) b.step();
+    expect(b.cover).toHaveLength(0);
+    expect(a.terrainTarget).toBeNull();
+  });
+  it("projectiles also collide with scenery introduced while they are in flight", () => {
+    const { b, a, t } = pair("bazooka");
+    b.random = () => 1;
+    b.fire(a, t);
+    b.cover = [{ x: 240, y: 220, w: 20, h: 60, hp: 100 }];
+    b.resolveShot(b.shots[0]);
+    expect(b.cover[0].hp).toBe(60);
+    expect(t.hp).toBe(1000);
   });
 });
