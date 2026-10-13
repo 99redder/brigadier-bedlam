@@ -14,6 +14,8 @@ export function drawCharacter(
   c: CanvasRenderingContext2D,
   id: ClassId,
   side: number,
+  unarmed = false,
+  lifting = false,
 ) {
   const ink = "#27362f",
     team = side === 0 ? "#477963" : "#c45e48",
@@ -72,16 +74,16 @@ export function drawCharacter(
   };
   const boots = (left: number, right: number, color: string, wide = false) => {
     box(left, 65, wide ? 15 : 11, 19, color);
-    box(right, 65, wide ? 15 : 11, 19, color);
+    if (!lifting) box(right, 65, wide ? 15 : 11, 19, color);
     box(left - 3, 80, wide ? 21 : 17, 8, "#35443a");
-    box(right - 1, 80, wide ? 21 : 17, 8, "#35443a");
+    if (!lifting) box(right - 1, 80, wide ? 21 : 17, 8, "#35443a");
   };
   if (id === "rifleman") {
     // Straight-backed veteran: tidy khaki tunic, patrol cap, moustache and chevrons.
     boots(25, 43, "#647759");
     box(25, 38, 28, 34, "#c9bd83", 4);
-    box(17, 40, 11, 24, "#758161", 4);
-    box(51, 40, 10, 22, "#758161", 4);
+    box(17, 40, 11, unarmed ? 12 : 24, "#758161", 4);
+    box(51, 40, 10, unarmed ? 12 : 22, "#758161", 4);
     line(
       [
         [39, 41],
@@ -133,9 +135,11 @@ export function drawCharacter(
       ink,
     );
     for (let i = 0; i < 4; i++) box(28 + i * 5, 54, 4, 10, "#dbb757", 1);
-    box(37, 49, 40, 7, "#465348", 2);
-    box(49, 56, 6, 9, "#725b39", 1);
-    box(20, 53, 12, 9, "#d8b187", 4);
+    if (!unarmed) {
+      box(37, 49, 40, 7, "#465348", 2);
+      box(49, 56, 6, 9, "#725b39", 1);
+      box(20, 53, 12, 9, "#d8b187", 4);
+    }
     line(
       [
         [22, 41],
@@ -152,8 +156,8 @@ export function drawCharacter(
     box(18, 37, 42, 35, "#8b77a4", 7);
     box(24, 41, 29, 22, accent, 4);
     box(25, 63, 32, 7, "#665746", 1);
-    box(8, 38, 15, 26, "#b78058", 6);
-    box(57, 37, 14, 25, "#b78058", 6);
+    box(8, 38, 15, unarmed ? 14 : 26, "#b78058", 6);
+    box(57, 37, 14, unarmed ? 14 : 25, "#b78058", 6);
     patch(9, 40);
     box(23, 11, 34, 30, "#b78058", 7);
     box(21, 4, 37, 15, "#5d6463", 6);
@@ -192,20 +196,22 @@ export function drawCharacter(
         "#735337",
         1,
       );
-    box(4, 49, 14, 19, "#d8a76b", 3);
-    box(31, 36, 47, 19, "#536449", 5);
-    box(49, 34, 8, 23, "#c7b57a", 1);
-    box(28, 34, 9, 23, "#374c3b", 2);
-    ellipse(74, 45, 4, 6, "#253a2f");
-    box(23, 48, 15, 10, "#b78058", 4);
-    line(
-      [
-        [26, 57],
-        [26, 65],
-      ],
-      "#e3c897",
-      2,
-    );
+    if (!unarmed) {
+      box(4, 49, 14, 19, "#d8a76b", 3);
+      box(31, 36, 47, 19, "#536449", 5);
+      box(49, 34, 8, 23, "#c7b57a", 1);
+      box(28, 34, 9, 23, "#374c3b", 2);
+      ellipse(74, 45, 4, 6, "#253a2f");
+      box(23, 48, 15, 10, "#b78058", 4);
+      line(
+        [
+          [26, 57],
+          [26, 65],
+        ],
+        "#e3c897",
+        2,
+      );
+    }
   }
   if (id === "lobber") {
     // Gleeful grenadier: flared long coat, neckerchief, tilted beret and toothy grin.
@@ -221,8 +227,8 @@ export function drawCharacter(
     c.closePath();
     c.fill();
     c.stroke();
-    box(14, 42, 13, 25, "#8dac60", 5);
-    box(54, 32, 12, 25, "#8dac60", 5);
+    box(14, 42, 13, unarmed ? 12 : 25, "#8dac60", 5);
+    box(54, unarmed ? 40 : 32, 12, unarmed ? 12 : 25, "#8dac60", 5);
     patch(14, 46);
     line(
       [
@@ -274,9 +280,11 @@ export function drawCharacter(
     c.strokeStyle = ink;
     c.stroke();
     for (let i = 0; i < 3; i++) box(25 + i * 9, 51, 8, 12, "#355d36", 4);
-    ellipse(65, 35, 10, 12, "#6fa343");
-    box(62, 20, 5, 7, "#374e32", 1);
-    box(54, 41, 13, 9, "#edc69c", 4);
+    if (!unarmed) {
+      ellipse(65, 35, 10, 12, "#6fa343");
+      box(62, 20, 5, 7, "#374e32", 1);
+      box(54, 41, 13, 9, "#edc69c", 4);
+    }
   }
   if (id === "torch") {
     // Industrial fire specialist: padded orange coveralls, mask, gauntlets, reflective stripes.
@@ -287,8 +295,8 @@ export function drawCharacter(
     box(20, 37, 40, 36, "#d78b43", 7);
     box(22, 46, 36, 6, "#f2d796", 1);
     box(22, 65, 36, 6, "#f2d796", 1);
-    box(12, 39, 13, 27, "#c0793d", 5);
-    box(55, 39, 13, 24, "#c0793d", 5);
+    box(12, 39, 13, unarmed ? 14 : 27, "#c0793d", 5);
+    box(55, 39, 13, unarmed ? 14 : 24, "#c0793d", 5);
     patch(12, 42);
     box(20, 57, 14, 12, "#655d48", 3);
     box(23, 12, 33, 31, "#544b3b", 8);
@@ -313,19 +321,21 @@ export function drawCharacter(
       ],
       "#273b32",
     );
-    line(
-      [
-        [13, 67],
-        [26, 78],
-        [45, 70],
-        [53, 57],
-      ],
-      "#344638",
-      5,
-    );
-    box(38, 53, 30, 9, "#796947", 3);
-    box(65, 48, 13, 17, "#444d40", 2);
-    box(55, 56, 14, 11, "#6b604c", 3);
+    if (!unarmed) {
+      line(
+        [
+          [13, 67],
+          [26, 78],
+          [45, 70],
+          [53, 57],
+        ],
+        "#344638",
+        5,
+      );
+      box(38, 53, 30, 9, "#796947", 3);
+      box(65, 48, 13, 17, "#444d40", 2);
+      box(55, 56, 14, 11, "#6b604c", 3);
+    }
     line(
       [
         [23, 74],
@@ -351,7 +361,7 @@ export function drawCharacter(
     box(54, 37, 11, 17, "#e4dcc0", 4);
     box(13, 51, 13, 8, "#b6c0b3", 2);
     box(53, 49, 13, 7, "#b6c0b3", 2);
-    box(14, 58, 12, 12, "#d7a072", 4);
+    if (!unarmed) box(14, 58, 12, 12, "#d7a072", 4);
     patch(14, 43);
     box(25, 46, 29, 25, "#5b91b1", 3);
     box(27, 39, 5, 20, accent, 1);
@@ -428,20 +438,22 @@ export function drawCharacter(
       ink,
       1,
     );
-    box(54, 42, 8, 25, "#db5245", 2);
-    box(63, 39, 8, 25, "#db5245", 2);
-    box(51, 51, 23, 5, "#564a36", 1);
-    line(
-      [
-        [65, 39],
-        [65, 29],
-        [74, 28],
-      ],
-      "#eac777",
-      2,
-    );
-    ellipse(74, 28, 2, 2, "#f9d375");
-    box(45, 55, 13, 10, "#d7a072", 4);
+    if (!unarmed) {
+      box(54, 42, 8, 25, "#db5245", 2);
+      box(63, 39, 8, 25, "#db5245", 2);
+      box(51, 51, 23, 5, "#564a36", 1);
+      line(
+        [
+          [65, 39],
+          [65, 29],
+          [74, 28],
+        ],
+        "#eac777",
+        2,
+      );
+      ellipse(74, 28, 2, 2, "#f9d375");
+      box(45, 55, 13, 10, "#d7a072", 4);
+    }
   }
   // This visible shoulder tab is common across all five distinct uniforms.
   c.fillStyle = light;

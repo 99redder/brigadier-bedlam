@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.3 — five distinct specialist uniforms and personalities.**
+Current prototype: **v0.4 — animated fist fights with punches, kicks, guards, reactions, and knockdowns.**
 
 Five soldiers. Questionable leadership. An original, cartoonish single-player squad tactics prototype, inspired by the genre of 1990s console tactics games. No names or assets from General Chaos are used.
 
@@ -46,6 +46,7 @@ Open **Controls** from the title or pause menu to rebind any action, add an alte
 - `src/sim/geometry.ts`: line-of-sight checks and deterministic A* movement around cover.
 - `src/input/bindings.ts`: input contexts, defaults, validation, conflict handling, persistence, and physical-key labels.
 - `src/view/assets.ts`: generated soldier textures and the shared asset exports. Replace texture generation with atlas loading to introduce final art.
+- `src/view/fighting.ts`: unarmed fight frames, including guard, punch extension/retraction, kicks, blocking, and recoil.
 - `src/view/characters.ts`: class-specific uniforms, faces, equipment, and posture; shared team armbands and insignia.
 - `src/view/projectiles.ts`: bullet tracers, finned rockets, arcing grenades, flame jets, and red dynamite bundles with a lit fuse.
 - `src/view/audio.ts`: individual synthesized weapon sounds and explosive impact sounds, driven by simulation combat events.
@@ -76,7 +77,7 @@ Both teams use these class identities. Their armbands, insignia, ground markers,
 - Grenades and dynamite can damage allies. Flame attacks affect enemies in a cone; rockets hit one soldier.
 - Dynamite throws have only 125 world units of range. Everyone within 24 units of the blast center is guaranteed to die permanently, including allies; the outer 60-unit blast radius deals normal splash damage. The bright central flash marks the lethal core.
 - Other permanent instant kills, including rare outer dynamite splash kills, use the configured per-hit probability. All values live in `src/sim/data.ts`.
-- A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants.
+- A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants. Weapons are stowed during the fight; guards, punches, kicks, blocked hits, recoil, and knockdowns use separate generated frames. Strike follow-through completes before ranged fire resumes. AI guards are held briefly so blocks are readable.
 - A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same three-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
 - An attack order chases the named target into range. Hold cancels movement and pursuit but keeps automatic firing. Explicit orders persist after deselection.

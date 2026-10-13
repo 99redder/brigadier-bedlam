@@ -169,6 +169,24 @@ export class Sound {
     }
     if (classId === "lobber") this.tone(540, 390, 0.07, "sine", 0.035, 0.075);
   }
+  melee(kind: "punch" | "kick", blocked: boolean) {
+    if (this.muted || !this.context || this.context.state !== "running") return;
+    const now = this.context.currentTime;
+    if (now - (this.last.get("melee") ?? -1) < 0.06) return;
+    this.last.set("melee", now);
+    this.tone(
+      blocked ? 230 : kind === "kick" ? 75 : 145,
+      blocked ? 130 : 40,
+      0.14,
+      "triangle",
+      blocked ? 0.025 : 0.065,
+    );
+    this.hiss(
+      blocked ? 0.06 : 0.12,
+      blocked ? 0.035 : 0.07,
+      blocked ? 1700 : 650,
+    );
+  }
   play(kind: "revive" | "brawl" | "click") {
     if (this.muted || !this.context || this.context.state !== "running") return;
     this.tone(

@@ -313,3 +313,52 @@ describe("dynamite lethal core and weapon events", () => {
     expect(b.combatEvents).toEqual([]);
   });
 });
+
+describe("melee animation synchronization", () => {
+  it("accepted strikes produce one move and impact cue, while cooldown clicks produce none", () => {
+    const { b, a, t } = pair();
+    b.startBrawl(a, t);
+    a.brawlCd = 0;
+    b.command({ type: "punch", id: a.id });
+    expect(a.fightMove).toBe("punch");
+    expect(a.fightMoveTime).toBe(TUNING.punchAnimation);
+    expect(t.recoilTime).toBe(TUNING.recoilAnimation);
+    expect(b.meleeEvents).toHaveLength(1);
+    b.command({ type: "kick", id: a.id });
+    expect(b.meleeEvents).toHaveLength(1);
+    expect(a.fightMove).toBe("punch");
+  });
+  it("a block produces a guarded reaction and reduced damage", () => {
+    const { b, a, t } = pair();
+    b.startBrawl(a, t);
+    a.brawlCd = 0;
+    t.blocking = true;
+    const hp = t.hp;
+    b.command({ type: "kick", id: a.id });
+    expect(t.hp).toBeCloseTo(hp - TUNING.kickDamage * TUNING.blockReduction);
+    expect(t.recoilBlocked).toBe(true);
+    expect(b.meleeEvents.at(-1)).toMatchObject({ kind: "kick", blocked: true });
+    expect(b.effects.some((e) => e.kind === "block")).toBe(true);
+  });
+  it("knockouts leave an unarmed fallen pose and strikes recover before ranged fire resumes", () => {
+    const { b, a, t } = pair();
+    b.startBrawl(a, t);
+    a.brawlCd = 0;
+    t.hp = 1;
+    b.command({ type: "punch", id: a.id });
+    expect(t.life).toBe("down");
+    expect(t.brawlKnockdown).toBe(true);
+    expect(t.knockdownTime).toBe(TUNING.knockdownAnimation);
+    const enemy = b.soldiers[6];
+    enemy.life = "alive";
+    enemy.hp = 1000;
+    enemy.x = 900;
+    enemy.y = 250;
+    enemy.think = 1e6;
+    for (let i = 0; i < 15; i++) b.step();
+    expect(a.fightMoveTime).toBe(0);
+    expect(t.knockdownTime).toBe(0);
+    enemy.x = 300;
+    expect(b.canShoot(a, enemy)).toBe(true);
+  });
+});

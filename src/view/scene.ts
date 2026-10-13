@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { Battle, type Soldier } from "../sim/battle";
-import { CLASSES, FIELD, type ClassId } from "../sim/data";
+import { CLASSES, FIELD, TUNING, type ClassId } from "../sim/data";
 import { type Point, distance } from "../sim/geometry";
 import {
   loadAssets,
@@ -8,6 +8,8 @@ import {
   Sound,
   drawProjectile,
   CLASS_POSES,
+  fighterKey,
+  fightFrame,
 } from "./assets";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
@@ -33,6 +35,7 @@ export class Battlefield extends Phaser.Scene {
   private medics: Phaser.GameObjects.Image[] = [];
   private coverNodes: Phaser.GameObjects.Container[] = [];
   private lastCombatEvent = -1;
+  private lastMeleeEvent = -1;
   private previousRevives = 0;
   private previousBrawls = 0;
   constructor() {
@@ -188,6 +191,7 @@ export class Battlefield extends Phaser.Scene {
     this.paused = false;
     this.accumulator = 0;
     this.lastCombatEvent = -1;
+    this.lastMeleeEvent = -1;
     this.previousRevives = 0;
     this.previousBrawls = 0;
     this.drawTerrain();
@@ -207,6 +211,11 @@ export class Battlefield extends Phaser.Scene {
           this.lastCombatEvent = event.id;
         }
       }
+      for (const event of this.battle.meleeEvents)
+        if (event.id > this.lastMeleeEvent) {
+          this.sfx.melee(event.kind, event.blocked);
+          this.lastMeleeEvent = event.id;
+        }
       if (this.battle.stats.revives > this.previousRevives)
         this.sfx.play("revive");
       if (this.battle.stats.brawls > this.previousBrawls)
@@ -224,7 +233,12 @@ export class Battlefield extends Phaser.Scene {
     const g = this.effects;
     g.clear();
     const selected = b.selected === null ? null : b.get(b.selected);
-    if (selected && selected.life === "alive") {
+    if (
+      selected &&
+      selected.life === "alive" &&
+      selected.brawl === null &&
+      selected.fightMoveTime <= 0
+    ) {
       const p = project(selected);
       g.lineStyle(2, 0xffefd0, 0.3);
       g.strokeEllipse(
@@ -261,7 +275,17 @@ export class Battlefield extends Phaser.Scene {
           .setOrigin(0.5);
         this.labels.set(s.id, label);
       }
-      const p = project(s),
+      const fighting =
+        s.brawl !== null ||
+        s.fightMoveTime > 0 ||
+        s.recoilTime > 0 ||
+        (s.life === "down" && s.brawlKnockdown);
+      const anchor = project(s.fightAnchor ?? s),
+        facing = fighting ? s.fightFacing : s.facing;
+      const p =
+          fighting && s.fightAnchor
+            ? { x: anchor.x - facing * 30, y: anchor.y }
+            : project(s),
         alive = s.life === "alive",
         down = s.life === "down",
         pose = CLASS_POSES[s.classId],
@@ -269,29 +293,65 @@ export class Battlefield extends Phaser.Scene {
           ? Math.sin(b.time * (s.moving ? 14 : pose.pace) + s.id) *
             (s.moving ? 2 : pose.bob)
           : 0;
+      const frame = fightFrame(s, b.time);
+      const fall =
+        down && s.brawlKnockdown
+          ? b.winner !== null
+            ? 1
+            : 1 - s.knockdownTime / TUNING.knockdownAnimation
+          : 1;
+      const strike =
+        s.fightMoveTime > 0
+          ? 8 *
+            Math.min(
+              1,
+              s.fightMoveTime /
+                (s.fightMove === "kick"
+                  ? TUNING.kickAnimation
+                  : TUNING.punchAnimation),
+            )
+          : 0;
+      const recoil =
+        s.recoilTime > 0 && !s.recoilBlocked
+          ? (-5 * s.recoilTime) / TUNING.recoilAnimation
+          : 0;
       sprite.setTexture(
-        s.life === "dead" ? s.death! : assetKey(s.classId, s.side),
+        s.life === "dead"
+          ? s.death!
+          : fighting
+            ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
+            : assetKey(s.classId, s.side),
       );
       sprite
-        .setPosition(p.x, p.y + anim)
+        .setPosition(p.x + facing * (strike + recoil), p.y + anim)
         .setDepth(p.y)
-        .setFlipX(s.facing < 0)
+        .setFlipX(facing < 0)
         .setScale(0.79)
         .setAlpha(down ? 0.64 : 1)
         .setAngle(
           down
-            ? s.side === 0
-              ? -82
-              : 82
-            : s.brawl !== null
-              ? Math.sin(b.time * 18) * 9
+            ? s.brawlKnockdown
+              ? -facing * 82 * fall
+              : s.side === 0
+                ? -82
+                : 82
+            : fighting
+              ? facing *
+                (frame.pose === "hurt"
+                  ? -10
+                  : frame.pose === "kick"
+                    ? -7
+                    : frame.pose === "punch"
+                      ? 5
+                      : Math.sin(b.time * 6 + s.id) * 1.5)
               : s.flash > 0
                 ? -6
                 : alive
                   ? pose.lean + Math.sin(b.time * pose.pace + s.id) * pose.sway
                   : 0,
         );
-      if (down) sprite.setOrigin(0.5, 0.6);
+      if (down)
+        sprite.setOrigin(0.5, s.brawlKnockdown ? 0.93 - 0.33 * fall : 0.6);
       else sprite.setOrigin(0.5, 0.93);
       g.fillStyle(0x354638, 0.19);
       g.fillEllipse(p.x, p.y + 3, 33, 13);
@@ -331,7 +391,13 @@ export class Battlefield extends Phaser.Scene {
         .setPosition(p.x, p.y + 16)
         .setDepth(p.y + 1)
         .setAlpha(alive ? 1 : 0.8);
-      if (s.flash > 0 && alive && s.brawl === null && s.jam <= 0) {
+      if (
+        s.flash > 0 &&
+        alive &&
+        s.brawl === null &&
+        s.fightMoveTime <= 0 &&
+        s.jam <= 0
+      ) {
         g.fillStyle(s.classId === "torch" ? 0xee8450 : 0xffdf86, 0.9);
         g.fillTriangle(
           p.x + s.facing * 23,
@@ -393,6 +459,21 @@ export class Battlefield extends Phaser.Scene {
         );
         g.fillStyle(0xebad69, e.time * 0.35);
         g.fillEllipse(p.x, p.y, e.size, e.size * 0.74);
+      }
+      if (e.kind === "punch" || e.kind === "kick" || e.kind === "block") {
+        const x = p.x + (e.impactFacing ?? 1) * 18,
+          y = p.y - (e.kind === "kick" ? 32 : 46),
+          radius = (1 - e.time / 0.28) * 12 + 6;
+        g.fillStyle(e.kind === "block" ? 0xc8e3dd : 0xffe6a0, e.time / 0.28);
+        const points = [];
+        for (let i = 0; i < 16; i++) {
+          const a = (i * Math.PI) / 8,
+            r = i % 2 ? radius * 0.4 : radius;
+          points.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
+        }
+        g.fillPoints(points, true);
+        g.lineStyle(2, e.kind === "block" ? 0x90b7ae : 0xe8a362, e.time / 0.28);
+        g.strokeCircle(x, y, radius + 3);
       }
       if (e.kind === "hit") {
         g.lineStyle(2, 0xffefd0, e.time * 3);

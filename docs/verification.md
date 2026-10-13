@@ -1,5 +1,13 @@
 # Prototype verification — October 13, 2026
 
+## v0.4 brawl animation update
+
+- 46 tests pass, including melee cue/cooldown synchronization, guarded damage reactions, knockout pose state, and recovery before ranged fire.
+- Browser fixtures verified player left-click Punch and right-click Kick selecting the matching animated textures; blocked kicks selected the defender's raised guard.
+- Fighters face each other, put their weapons away, and use extended/retracting fists or a raised kicking leg. Rendering spaces the two fighters apart for readability.
+- A knockout was inspected halfway through its fall: the character retained its uniform and an unarmed hurt pose.
+- A short recording of the actual running canvas captures automatically resolved fist-fight animations. Fixtures, zoom changes, and recording state were cleared by navigation.
+
 ## v0.3 character update
 
 - Each class has a separate uniform, face, headgear, equipment silhouette, and idle posture. Team armbands, insignia, ground markers, and label colors distinguish the two sides.

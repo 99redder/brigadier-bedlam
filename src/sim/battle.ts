@@ -36,6 +36,15 @@ export interface Soldier extends Point {
   flash: number;
   brawl: number | null;
   brawlCd: number;
+  fightMove: "punch" | "kick" | null;
+  fightMoveTime: number;
+  recoilTime: number;
+  recoilBlocked: boolean;
+  knockdownTime: number;
+  brawlKnockdown: boolean;
+  fightAnchor: Point | null;
+  fightFacing: number;
+  autoGuardTime: number;
   blocking: boolean;
   facing: number;
   think: number;
@@ -63,7 +72,9 @@ export interface Shot {
 }
 export interface Effect extends Point {
   classId?: ClassId;
-  kind: "hit" | "boom" | "brawl" | "revive" | "jam";
+  impactFacing?: number;
+  kind:
+    "hit" | "boom" | "brawl" | "revive" | "jam" | "punch" | "kick" | "block";
   time: number;
   size: number;
 }
@@ -89,6 +100,8 @@ export interface CombatEvent {
 export class Battle {
   combatEvents: CombatEvent[] = [];
   combatEventId = 0;
+  meleeEvents: { id: number; kind: "punch" | "kick"; blocked: boolean }[] = [];
+  meleeEventId = 0;
   emitWeapon(classId: ClassId, kind: CombatEvent["kind"]) {
     this.combatEvents.push({ id: this.combatEventId++, classId, kind });
     if (this.combatEvents.length > 64) this.combatEvents.shift();
@@ -139,6 +152,15 @@ export class Battle {
             flash: 0,
             brawl: null,
             brawlCd: 0,
+            fightMove: null,
+            fightMoveTime: 0,
+            recoilTime: 0,
+            recoilBlocked: false,
+            knockdownTime: 0,
+            brawlKnockdown: false,
+            fightAnchor: null,
+            fightFacing: 1,
+            autoGuardTime: 0,
             blocking: false,
             facing: side === 0 ? 1 : -1,
             think: this.random(),
@@ -217,6 +239,7 @@ export class Battle {
       s.life === "alive" &&
       t.life === "alive" &&
       s.brawl === null &&
+      s.fightMoveTime <= 0 &&
       s.jam <= 0 &&
       distance(s, t) <= w.range &&
       !(s.classId === "torch" && this.inWater(s)) &&
@@ -246,6 +269,10 @@ export class Battle {
           `${target.side === 0 ? "Your" : "Enemy"} ${CLASSES[target.classId].name} needs a medic.`,
         );
       }
+    }
+    if (target.life !== "alive" && target.brawl !== null) {
+      target.brawlKnockdown = true;
+      target.knockdownTime = TUNING.knockdownAnimation;
     }
     if (target.life !== "alive") {
       target.path = [];
@@ -372,10 +399,21 @@ export class Battle {
     b.brawl = a.id;
     a.blocking = false;
     b.blocking = false;
+    a.autoGuardTime = 0;
+    b.autoGuardTime = 0;
     a.path = [];
     b.path = [];
     a.goal = null;
     b.goal = null;
+    a.facing = a.x < b.x || (a.x === b.x && a.id < b.id) ? 1 : -1;
+    b.facing = -a.facing;
+    const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    a.fightAnchor = { ...anchor };
+    b.fightAnchor = { ...anchor };
+    a.fightFacing = a.facing;
+    b.fightFacing = b.facing;
+    a.fightMoveTime = 0;
+    b.fightMoveTime = 0;
     a.brawlCd = 0.3;
     b.brawlCd = 0.5;
     this.stats.brawls++;
@@ -404,7 +442,26 @@ export class Battle {
     if (s.brawl === null || s.brawlCd > 0 || s.blocking) return;
     const t = this.get(s.brawl);
     if (!t || t.life !== "alive") return;
-    s.flash = 0.22;
+    s.flash = 0;
+    s.fightMove = kind;
+    s.fightMoveTime =
+      kind === "kick" ? TUNING.kickAnimation : TUNING.punchAnimation;
+    t.recoilTime = TUNING.recoilAnimation;
+    t.recoilBlocked = t.blocking;
+    this.meleeEvents.push({
+      id: this.meleeEventId++,
+      kind,
+      blocked: t.blocking,
+    });
+    if (this.meleeEvents.length > 32) this.meleeEvents.shift();
+    this.effects.push({
+      x: (s.x + t.x) / 2,
+      y: (s.y + t.y) / 2,
+      impactFacing: s.fightFacing,
+      kind: t.blocking ? "block" : kind,
+      time: 0.28,
+      size: 18,
+    });
     s.brawlCd = kind === "kick" ? TUNING.kickCooldown : TUNING.brawlCooldown;
     const amount = kind === "kick" ? TUNING.kickDamage : TUNING.brawlDamage;
     this.damage(t, amount * (t.blocking ? TUNING.blockReduction : 1));
@@ -515,6 +572,10 @@ export class Battle {
       s.jam -= dt;
       s.flash -= dt;
       s.brawlCd -= dt;
+      s.autoGuardTime = Math.max(0, s.autoGuardTime - dt);
+      s.fightMoveTime = Math.max(0, s.fightMoveTime - dt);
+      s.recoilTime = Math.max(0, s.recoilTime - dt);
+      s.knockdownTime = Math.max(0, s.knockdownTime - dt);
       s.repath -= dt;
       s.think -= dt;
       s.moving = false;
@@ -526,8 +587,11 @@ export class Battle {
           s.blocking = false;
         } else {
           if (s.id !== this.selected) {
-            s.blocking = this.random() < 0.15;
-            this.brawlHit(s, this.random() < 0.4 ? "kick" : "punch");
+            if (s.autoGuardTime <= 0 && s.brawlCd <= 0 && this.random() < 0.15)
+              s.autoGuardTime = TUNING.autoBlockDuration;
+            s.blocking = s.autoGuardTime > 0;
+            if (!s.blocking && s.brawlCd <= 0)
+              this.brawlHit(s, this.random() < 0.4 ? "kick" : "punch");
           }
           continue;
         }
@@ -679,6 +743,12 @@ export class Battle {
             t.cooldown = 1;
             t.target = null;
             t.brawl = null;
+            t.fightMove = null;
+            t.fightMoveTime = 0;
+            t.recoilTime = 0;
+            t.brawlKnockdown = false;
+            t.knockdownTime = 0;
+            t.fightAnchor = null;
             t.blocking = false;
             this.stats.revives++;
             this.effects.push({ ...t, kind: "revive", time: 1, size: 25 });

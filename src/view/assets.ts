@@ -1,6 +1,12 @@
 import Phaser from "phaser";
 import { CLASSES, type ClassId } from "../sim/data";
 import { drawCharacter } from "./characters";
+import {
+  FIGHT_FRAMES,
+  drawFighter,
+  fighterKey,
+  type FightPose,
+} from "./fighting";
 // All placeholder art lives here. Replace generated textures with atlas frames later.
 export const assetKey = (classId: ClassId, side: number) =>
   `soldier-${classId}-${side}`;
@@ -15,6 +21,19 @@ export function loadAssets(scene: Phaser.Scene) {
       const c = canvas.getContext("2d")!;
       drawCharacter(c, classId, side);
       scene.textures.addCanvas(key, canvas);
+      for (const pose of Object.keys(FIGHT_FRAMES) as FightPose[])
+        for (let frame = 0; frame < FIGHT_FRAMES[pose]; frame++) {
+          const fightCanvas = document.createElement("canvas");
+          fightCanvas.width = 128;
+          fightCanvas.height = 96;
+          const ctx = fightCanvas.getContext("2d")!;
+          ctx.translate(24, 0);
+          drawFighter(ctx, classId, side, pose, frame);
+          scene.textures.addCanvas(
+            fighterKey(classId, side, pose, frame),
+            fightCanvas,
+          );
+        }
     }
   for (const kind of ["skeleton", "ash", "medic"]) {
     if (scene.textures.exists(kind)) continue;
@@ -82,3 +101,5 @@ export { Sound } from "./audio";
 export { drawProjectile } from "./projectiles";
 
 export { CLASS_POSES } from "./characters";
+
+export { fighterKey, fightFrame } from "./fighting";
