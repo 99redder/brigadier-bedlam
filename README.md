@@ -1,6 +1,10 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.19 — expanded cover and contested super-weapon drops.**
+Current prototype: **v0.20 — deliberate movement and unmistakable airstrikes.**
+
+All regular soldiers on both teams now move about 40% slower than v0.19. Medics and reinforcements are slower by the same proportion. Class speed differences, river penalties, weapon reloads and the ten-second deployment phase remain. This gives opening routes, repositioning and leaving cover more weight.
+
+Airstrikes now announce FRIENDLY or ENEMY AIRSTRIKE in a large banner and mark the blast zone in gold or red. A 4.5-second warning gives troops time to leave the danger zone. A large four-engine bomber crosses the battlefield and visibly drops five bombs into the marked area. Bombs hit together at the actual damage moment, followed by fireballs, an expanding shockwave and 2.4 seconds of smoke. Warning sirens, engine rumble, a falling-bomb whistle and a distinct series of blasts distinguish airstrikes from rocket hits. Pause freezes the animation and Sound off respects every new cue. The aftermath also finishes during victory celebrations.
 
 The central wooden crate is gone. Each bank now has five broad rock/sandbag shelters, all using the existing destruction rules. Three glowing supply drops offer a reason to leave cover: one in the river, one in a southern alcove, and one in a northern alcove. Walk a living squad member onto a drop to claim it. Both teams compete for the same drops, each collected only once. River entry still carries normal class drowning risks.
 
@@ -8,7 +12,7 @@ Each drop rolls one random one-use reward:
 
 | Reward | How to use it | Tradeoff |
 | --- | --- | --- |
-| Airstrike | Click its Supply rewards button, then a point on the map | 1.8-second visible warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
+| Airstrike | Click its Supply rewards button, then a point on the map | 4.5-second visible warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
 | Sniper shot | Click its button, then an enemy | One guaranteed kill, including behind cover; only one shot. An empty click keeps it ready. |
 | Reinforcements | Click its button, then a lane | Three fast unarmed recruits arrive from your edge and automatically pursue enemies. They have 18 HP, expire after 18 seconds, and can only kill by contact. They cannot be controlled or revived and do not count toward squad victory. |
 
@@ -20,15 +24,15 @@ Deployment sounds once per displayed countdown second. The final three seconds u
 
 Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
 
-Movement remains slower for every class and medics. Weapon strengths and weaknesses:
+Movement is slower for every class and medics (62 units/second); recruits charge at 105 units/second. Weapon strengths and weaknesses:
 
 | Class | Land speed | Seconds between shots | Effect on an exposed soldier |
 | --- | ---: | ---: | --- |
-| Rifleman | 47 | 0.65 | 18 damage; quick, accurate fire with medium armor (230 HP) |
-| Bazooka | 40 | 4 auto / 6 manual | One rocket blast kills; heavy armor (330 HP); automatic scatter |
-| Lobber | 44 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
-| Torch | 49 | 2 | 12 contact damage, then 35 damage/second while burning |
-| Sapper | 52 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
+| Rifleman | 28 | 0.65 | 18 damage; quick, accurate fire with medium armor (230 HP) |
+| Bazooka | 24 | 4 auto / 6 manual | One rocket blast kills; heavy armor (330 HP); automatic scatter |
+| Lobber | 26 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
+| Torch | 29 | 2 | 12 contact damage, then 35 damage/second while burning |
+| Sapper | 31 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
 
 A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing most full-health soldiers as ash; heavy rocket armor can survive one burn. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
 
@@ -156,7 +160,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.19 matched 36-game diagnostic averaged 22 seconds of combat (13–38 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.20 matched 36-game diagnostic averaged 32 seconds of combat (21–52 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 

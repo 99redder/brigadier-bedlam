@@ -131,6 +131,22 @@ export class Sound {
       g.disconnect();
     };
   }
+  airstrike(kind: "warning" | "drop" | "impact") {
+    if (this.muted || !this.context || this.context.state !== "running") return;
+    if (kind === "warning") {
+      for (let i = 0; i < 3; i++)
+        this.tone(440, 880, 0.22, "sawtooth", 0.07, i * 0.28);
+      this.hiss(1.5, 0.065, 750);
+    } else if (kind === "drop") {
+      this.tone(1500, 150, 1.25, "triangle", 0.09);
+      this.hiss(1.2, 0.05, 2300);
+    } else {
+      for (let i = 0; i < 4; i++) {
+        this.tone(80 - i * 8, 22, 0.65, "sine", 0.14, i * 0.12);
+        this.hiss(0.65, 0.13, 1800, i * 0.12);
+      }
+    }
+  }
   weapon(classId: ClassId, kind: CombatEvent["kind"]) {
     if (this.muted || !this.context || this.context.state !== "running") return;
     const ctx = this.context,

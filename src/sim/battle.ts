@@ -151,7 +151,21 @@ export class Battle {
     claimedBy: null as Side | null,
   }));
   powers: [SuperWeapon[], SuperWeapon[]] = [[], []];
-  strikes: { side: Side; point: Point; remaining: number }[] = [];
+  strikes: {
+    id: number;
+    side: Side;
+    point: Point;
+    remaining: number;
+    impacted: boolean;
+    dropped: boolean;
+  }[] = [];
+  airstrikeEvents: { id: number; kind: "warning" | "drop" | "impact" }[] = [];
+  private airstrikeId = 0;
+  private airstrikeEventId = 0;
+  emitAirstrike(kind: "warning" | "drop" | "impact") {
+    this.airstrikeEvents.push({ id: this.airstrikeEventId++, kind });
+    if (this.airstrikeEvents.length > 32) this.airstrikeEvents.shift();
+  }
   supplyRevision = 0;
   nextReinforcementId = 100;
   aiSides: Side[] = [1];
@@ -1240,7 +1254,15 @@ export class Battle {
       this.effects.push({ ...target, kind: "hit", time: 0.7, size: 26 });
       this.emitWeapon("rifleman", "fire");
     } else if (weapon === "airstrike") {
-      this.strikes.push({ side, point: { ...point }, remaining: 1.8 });
+      this.strikes.push({
+        id: this.airstrikeId++,
+        side,
+        point: { ...point },
+        remaining: TUNING.airstrikeWarning,
+        impacted: false,
+        dropped: false,
+      });
+      this.emitAirstrike("warning");
     } else {
       const template = this.soldiers.find(
         (s) => s.side === side && !s.reinforcement,
@@ -1288,7 +1310,7 @@ export class Battle {
     inventory.splice(index, 1);
     this.supplyRevision++;
     this.note(
-      `${side === 0 ? "Your squad" : "Enemy"}: ${SUPER_LABELS[weapon]} deployed!${weapon === "airstrike" ? " Impact in 1.8s — clear the circle!" : ""}`,
+      `${side === 0 ? "Your squad" : "Enemy"}: ${SUPER_LABELS[weapon]} deployed!${weapon === "airstrike" ? ` AIRSTRIKE IN ${TUNING.airstrikeWarning}s — clear the marked zone!` : ""}`,
     );
     return true;
   }
@@ -1313,7 +1335,7 @@ export class Battle {
     const p = s.path[0];
     if (!p) return;
     const d = distance(s, p),
-      travel = Math.min(d, 175 * dt);
+      travel = Math.min(d, TUNING.reinforcementSpeed * dt);
     if (d < 1) {
       s.path.shift();
       return;
@@ -1334,19 +1356,24 @@ export class Battle {
     this.collectSupplies();
     for (const strike of this.strikes) {
       strike.remaining -= dt;
-      if (strike.remaining > 0) continue;
+      if (!strike.dropped && strike.remaining <= 1.8) {
+        strike.dropped = true;
+        this.emitAirstrike("drop");
+      }
+      if (strike.remaining > 0 || strike.impacted) continue;
+      strike.impacted = true;
       const snapshot = [...this.cover];
       for (const t of this.combatants())
         if (
           t.life === "alive" &&
-          distance(t, strike.point) <= 105 &&
+          distance(t, strike.point) <= TUNING.airstrikeRadius &&
           !blocked(strike.point, t, snapshot)
         )
           this.damage(t, 9999, "bazooka", true);
       // Airstrike craters obey the same shielding/destruction rules as other blasts.
       for (const r of [...this.cover])
         if (
-          distanceToRect(strike.point, r) <= 105 &&
+          distanceToRect(strike.point, r) <= TUNING.airstrikeRadius &&
           !blocked(
             strike.point,
             { x: r.x + r.w / 2, y: r.y + r.h / 2 },
@@ -1354,16 +1381,12 @@ export class Battle {
           )
         )
           this.damageCover(r, 100);
-      this.effects.push({
-        ...strike.point,
-        kind: "boom",
-        classId: "bazooka",
-        time: 0.8,
-        size: 105,
-      });
-      this.emitWeapon("bazooka", "impact");
+      this.emitAirstrike("impact");
     }
-    this.strikes = this.strikes.filter((s) => s.remaining > 0);
+    this.strikes = this.strikes.filter(
+      (s) => s.remaining > -TUNING.airstrikeAftermath,
+    );
+
     if (this.combatTicks % 30 === 0)
       for (const side of this.aiSides) {
         const weapon = this.powers[side][0],

@@ -98,7 +98,7 @@ describe("contested supply drops", () => {
     expect(a.life).toBe("alive");
     expect(t.life).toBe("alive");
     expect(b.strikes).toHaveLength(1);
-    advance(b, 0.9);
+    advance(b, TUNING.airstrikeWarning - 1 + 0.1);
     expect(a.life).toBe("dead");
     expect(t.life).toBe("dead");
     expect(protectedUnit.life).toBe("alive");
@@ -116,8 +116,9 @@ describe("contested supply drops", () => {
     advance(b, 1);
     expect(t.life).toBe("alive");
     expect(b.stats.shots).toBe(0);
-    expect(recruits[0].x).toBeGreaterThan(150);
-    advance(b, 6);
+    expect(recruits[0].x).toBeGreaterThan(100);
+    expect(recruits[0].x).toBeLessThan(150);
+    advance(b, 10);
     expect(t.life).toBe("dead");
     expect(b.stats.shots).toBe(0);
   });

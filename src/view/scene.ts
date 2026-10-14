@@ -27,6 +27,7 @@ import {
   victoryKey,
   victoryMotion,
 } from "./victory";
+import { drawAirstrike } from "./airstrike";
 import { DeploymentCues } from "./deployment-cues";
 export const project = (p: Point) => ({
   x: 90 + p.x + (p.y - 280) * 0.12,
@@ -42,6 +43,8 @@ export class Battlefield extends Phaser.Scene {
   accumulator = 0;
   victory = new VictoryClock();
   private deploymentCues = new DeploymentCues();
+  private airstrikeBanner!: Phaser.GameObjects.Text;
+  private lastAirstrikeEvent = -1;
   private victoryBanner!: Phaser.GameObjects.Text;
   tutorialMarker: { point: Point; label: string } | null = null;
   aimPoint(): Point {
@@ -90,6 +93,18 @@ export class Battlefield extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(10001)
+      .setVisible(false);
+    this.airstrikeBanner = this.add
+      .text(640, 91, "", {
+        fontFamily: "monospace",
+        fontSize: "19px",
+        fontStyle: "bold",
+        color: "#fff1bc",
+        backgroundColor: "#8c3429",
+        padding: { x: 18, y: 9 },
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(10005)
       .setVisible(false);
     this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
       this.cursor = unproject(p);
@@ -330,6 +345,7 @@ export class Battlefield extends Phaser.Scene {
     this.paused = false;
     this.accumulator = 0;
     this.lastCombatEvent = -1;
+    this.lastAirstrikeEvent = -1;
     this.lastMeleeEvent = -1;
     this.previousRevives = 0;
     this.previousBrawls = 0;
@@ -352,6 +368,11 @@ export class Battlefield extends Phaser.Scene {
           this.lastCombatEvent = event.id;
         }
       }
+      for (const event of this.battle.airstrikeEvents)
+        if (event.id > this.lastAirstrikeEvent) {
+          this.sfx.airstrike(event.kind);
+          this.lastAirstrikeEvent = event.id;
+        }
       for (const event of this.battle.meleeEvents)
         if (event.id > this.lastMeleeEvent) {
           this.sfx.melee(event.kind, event.blocked);
@@ -424,20 +445,32 @@ export class Battlefield extends Phaser.Scene {
     }
     for (let i = b.supplies.length; i < this.supplyLabels.length; i++)
       this.supplyLabels[i].setVisible(false);
-    for (const strike of b.winner === null ? b.strikes : []) {
-      const p = project(strike.point);
-      g.fillStyle(0xe34c31, 0.13);
-      g.fillEllipse(p.x, p.y, 210, 155);
-      g.lineStyle(3, 0xf67d4f, 0.7 + 0.3 * Math.sin(strike.remaining * 20));
-      g.strokeEllipse(p.x, p.y, 210, 155);
-      g.lineBetween(p.x - 16, p.y, p.x + 16, p.y);
-      g.lineBetween(p.x, p.y - 12, p.x, p.y + 12);
-      // Incoming aircraft silhouette sweeps toward the marked circle.
-      const x = p.x - 450 * (strike.remaining / 1.8);
-      g.fillStyle(0x263d36);
-      g.fillTriangle(x - 26, p.y - 95, x + 26, p.y - 95, x, p.y - 115);
-      g.fillRect(x - 4, p.y - 120, 8, 44);
-    }
+    const visibleStrikes = b.strikes.filter(
+      (s) => b.winner === null || s.impacted,
+    );
+    const activeStrike =
+      visibleStrikes.find((s) => s.remaining > 0) ??
+      visibleStrikes.find(
+        (s) =>
+          s.remaining - (b.winner === null ? 0 : this.victory.elapsed) >
+          -TUNING.airstrikeAftermath,
+      );
+    this.airstrikeBanner.setVisible(!!activeStrike);
+    if (activeStrike)
+      this.airstrikeBanner
+        .setText(
+          activeStrike.remaining > 0
+            ? `${activeStrike.side === 0 ? "FRIENDLY" : "ENEMY"} AIRSTRIKE — CLEAR THE ${activeStrike.side === 0 ? "GOLD" : "RED"} ZONE! ${activeStrike.remaining.toFixed(1)}s`
+            : "AIRSTRIKE IMPACT — BOMBS AWAY!",
+        )
+        .setBackgroundColor(activeStrike.side === 0 ? "#695324" : "#8c3429");
+    for (const strike of visibleStrikes)
+      drawAirstrike(
+        g,
+        project(strike.point),
+        strike.remaining - (b.winner === null ? 0 : this.victory.elapsed),
+        strike.side,
+      );
     if (this.superAim && b.winner === null && !b.planning) {
       const p = project(this.cursor),
         radius = this.superAim === "airstrike" ? 105 : 22;

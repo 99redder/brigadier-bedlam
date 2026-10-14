@@ -132,7 +132,7 @@ describe("life, medics, battle end", () => {
     expect(b.callMedic(a.id, 0)).toBe(true);
     expect(b.calls[0]).toBe(1);
     expect(b.callMedic(a.id, 0)).toBe(false);
-    advance(b, 3.5);
+    advance(b, 5);
     expect(a.life).toBe("alive");
     expect(a.hp).toBe(CLASSES[a.classId].hp * TUNING.reviveHealth);
     expect(b.stats.revives).toBe(1);
@@ -209,7 +209,7 @@ describe("movement, brawls and replay", () => {
     const { b, a, t } = pair();
     t.x = 1000;
     b.command({ type: "move", id: a.id, point: { x: 400, y: 250 } });
-    advance(b, 5);
+    advance(b, 8);
     expect(distance(a, { x: 400, y: 250 })).toBeLessThan(2);
   });
   it("close enemies brawl; selected soldier uses punch, kick and block", () => {
