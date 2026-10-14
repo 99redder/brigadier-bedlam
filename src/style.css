@@ -812,3 +812,17 @@ p {
 .super-panel .armed {
   background: #e9865a;
 }
+
+.cover-order {
+  padding: 0.3em 0.65em;
+  font-size: 0.68em;
+  margin-top: 0.25em;
+  margin-right: 0.5em;
+  box-shadow: none;
+  background: #345c54;
+  color: #fff0bf;
+}
+.cover-order:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

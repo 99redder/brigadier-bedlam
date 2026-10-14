@@ -91,7 +91,7 @@ export class Tutorial {
       case "hold":
         return [
           "Stand your ground",
-          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement. Troops take 0.7 seconds to aim after stopping, then fire automatically. Moving troops hold fire. With no enemy in range, stationary units aim at the closest enemy and miss; the circle shows effective range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
+          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement. Troops take 0.7 seconds to aim after stopping, then fire automatically. Take cover (${h("cover")}) locks a troop in place with a low profile and half fire rate; use it again to leave cover before moving. It protects against rifles, especially at range, but explosions, fire and close combat still hurt. Moving troops hold fire. With no enemy in range, stationary units aim at the closest enemy and miss; the circle shows effective range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
         ];
       case "slots":
         return [

@@ -28,6 +28,7 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  takingCover?: boolean;
   steadyTime?: number;
   formationSpeed?: number;
   reinforcement?: boolean;
@@ -120,6 +121,7 @@ export const SUPER_LABELS: Record<SuperWeapon, string> = {
   reinforcements: "Reinforcements",
 };
 export type Command =
+  | { type: "cover"; id: number; active: boolean }
   | { type: "squad-move"; point: Point }
   | { type: "super"; side: Side; weapon: SuperWeapon; point: Point }
   | { type: "fire-all" }
@@ -301,7 +303,9 @@ export class Battle {
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
     if (
       this.planning &&
-      !["select", "move", "squad-move", "bridge", "hold"].includes(c.type)
+      !["select", "move", "squad-move", "bridge", "hold", "cover"].includes(
+        c.type,
+      )
     ) {
       this.note("Deployment: queue movement orders. Weapons unlock at GO.");
       return;
@@ -339,6 +343,32 @@ export class Battle {
       ["move", "bridge", "attack", "demolish", "hold", "aim"].includes(c.type)
     )
       s.formationSpeed = undefined;
+    if (c.type === "cover") {
+      if (c.active && (s.brawl !== null || this.inWater(s))) {
+        this.note("Take cover on dry ground, outside a brawl.");
+        return;
+      }
+      if (c.active && !s.takingCover) {
+        s.cooldown = Math.max(0, s.cooldown) * TUNING.coverReloadMultiplier;
+        s.steadyTime = 0;
+      }
+      s.takingCover = c.active;
+      s.hold = true;
+      s.path = [];
+      s.goal = null;
+      s.target = null;
+      s.terrainTarget = null;
+      s.formationSpeed = undefined;
+      s.moving = false;
+      this.note(
+        `${CLASSES[s.classId].name}: ${c.active ? "taking cover. Harder to hit; fires half as often. Leave cover before moving." : "left cover. Ready for movement orders."}`,
+      );
+      return;
+    }
+    if (s.takingCover && (c.type === "move" || c.type === "bridge")) {
+      this.note("Leave cover before moving this soldier.");
+      return;
+    }
     if (c.type === "aim") {
       this.aimRocket(s, c.point);
       return;
@@ -374,7 +404,7 @@ export class Battle {
         s.target = null;
         s.goal = null;
         s.path = [];
-        s.hold = false;
+        s.hold = !!s.takingCover;
       }
     }
     if (c.type === "move" && s.brawl === null) {
@@ -392,7 +422,7 @@ export class Battle {
         }
         s.terrainTarget = null;
         s.target = t.id;
-        s.hold = false;
+        s.hold = !!s.takingCover;
         s.goal = null;
         s.path = [];
         s.repath = 0;
@@ -414,6 +444,7 @@ export class Battle {
         (s) =>
           s.side === 0 &&
           !s.reinforcement &&
+          !s.takingCover &&
           s.life === "alive" &&
           s.drowningTime <= 0 &&
           s.brawl === null,
@@ -469,6 +500,7 @@ export class Battle {
     return [...this.cover, ...water];
   }
   setGoal(s: Soldier, p: Point, bridge = false) {
+    if (s.takingCover) return;
     const preferBridge =
       bridge ||
       (this.aiSides.includes(s.side) &&
@@ -498,6 +530,7 @@ export class Battle {
       this.effects.push({ ...s, kind: "splash", time: 0.6, size: 22 });
       // One seeded roll on entry, never a repeated chance on each frame.
       if (!this.training && this.random() < CLASSES[s.classId].drowningRisk) {
+        s.takingCover = false;
         s.drowningTime = TUNING.drowningDuration;
         s.path = [];
         s.goal = null;
@@ -622,6 +655,7 @@ export class Battle {
       target.knockdownTime = TUNING.knockdownAnimation;
     }
     if (target.life !== "alive") {
+      target.takingCover = false;
       target.burnRemaining = 0;
       target.path = [];
       target.goal = null;
@@ -779,9 +813,9 @@ export class Battle {
     )
       return false;
     s.cooldown =
-      manual && s.classId === "bazooka"
+      (manual && s.classId === "bazooka"
         ? TUNING.manualRocketReload
-        : w.cooldown;
+        : w.cooldown) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
     s.flash = 0.2;
     s.facing = point.x >= s.x ? 1 : -1;
     this.stats.shots++;
@@ -792,9 +826,15 @@ export class Battle {
       return false;
     }
     let endpoint = { x: point.x, y: point.y };
+    const intendedTarget = this.getCombatant(target);
+    const coveredTarget =
+      s.classId === "rifleman" &&
+      intendedTarget &&
+      "takingCover" in intendedTarget &&
+      intendedTarget.takingCover;
     const spread = manual
       ? 0
-      : w.spread *
+      : (w.spread + (coveredTarget ? TUNING.coverRifleSpread : 0)) *
         (s.classId === "bazooka" && s.side === 1
           ? TUNING.enemyRocketScatter
           : 1);
@@ -903,7 +943,13 @@ export class Battle {
       });
     } else if (!terrainHit) {
       const t = this.getCombatant(shot.target);
-      if (t && distance(t, impact) < 42) this.damage(t, w.damage, shot.classId);
+      if (
+        t &&
+        distance(t, impact) <
+          ("takingCover" in t && t.takingCover ? TUNING.coverHitRadius : 42)
+      )
+        this.damage(t, w.damage, shot.classId);
+      else this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 8 });
     } else {
       this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 10 });
     }
@@ -1023,6 +1069,8 @@ export class Battle {
     return true;
   }
   startBrawl(a: Soldier, b: Soldier) {
+    a.takingCover = false;
+    b.takingCover = false;
     a.brawl = b.id;
     b.brawl = a.id;
     a.blocking = false;
@@ -1248,6 +1296,7 @@ export class Battle {
         .filter(
           (s) =>
             !s.reinforcement &&
+            !s.takingCover &&
             s.life === "alive" &&
             s.drowningTime <= 0 &&
             s.brawl === null &&
@@ -1709,6 +1758,7 @@ export class Battle {
         if (m.timer > 0.8) {
           if (t.life === "down") {
             t.life = "alive";
+            t.takingCover = false;
             t.burnRemaining = 0;
             t.wasInWater = false;
             t.drowningTime = 0;

@@ -10,6 +10,7 @@ export const ACTIONS = {
   previous: { label: "Previous living soldier", context: "field" },
   next: { label: "Next living soldier", context: "field" },
   medic: { label: "Medic nearest cursor", context: "field" },
+  cover: { label: "Take / leave cover", context: "field" },
   hold: { label: "Hold position", context: "field" },
   rocketFire: { label: "Fire selected rocket at cursor", context: "field" },
   fireAll: { label: "Fire all stationary soldiers", context: "global" },
@@ -42,6 +43,7 @@ export function defaults(leftHanded = false): Bindings {
     next: "KeyE",
     medic: "KeyR",
     hold: "KeyF",
+    cover: "KeyC",
     fireAll: "KeyG",
     rocketFire: "KeyT",
     punch: "Mouse0",
@@ -61,6 +63,7 @@ export function defaults(leftHanded = false): Bindings {
       next: "KeyO",
       medic: "KeyP",
       hold: "KeyJ",
+      cover: "KeyK",
       fireAll: "KeyH",
       rocketFire: "KeyL",
       block: "ShiftRight",
@@ -132,6 +135,21 @@ export function loadBindings(storage: StorageLike): Bindings {
           ),
       );
       raw.rocketFire = [key ?? preferred, null];
+    }
+    if (!("cover" in raw)) {
+      const preferred = raw.hold?.includes?.("KeyJ") ? "KeyK" : "KeyC";
+      const key = [
+        preferred,
+        ..."BCIJKLMNOPRTUVXYZ".split("").map((k) => `Key${k}`),
+        "F6",
+        "F7",
+      ].find(
+        (code) =>
+          !Object.values(raw).some(
+            (value) => Array.isArray(value) && value.includes(code),
+          ),
+      );
+      raw.cover = [key ?? preferred, null];
     }
     for (const a of Object.keys(ACTIONS) as Action[]) {
       if (

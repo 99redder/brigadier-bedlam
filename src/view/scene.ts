@@ -641,12 +641,17 @@ export class Battlefield extends Phaser.Scene {
         .setPosition(
           p.x + facing * (strike + recoil),
           p.y +
-            (celebrating ? victoryPose.hop : anim) +
+            (celebrating ? victoryPose.hop : s.takingCover ? 0 : anim) +
             (wet ? 9 + sink * 18 : 0),
         )
         .setDepth(p.y)
         .setFlipX(facing < 0)
-        .setScale((s.reinforcement ? 0.68 : 0.79) * (1 - sink * 0.45))
+        .setScale(
+          (s.reinforcement ? 0.68 : 0.79) * (1 - sink * 0.45),
+          (s.reinforcement ? 0.68 : 0.79) *
+            (1 - sink * 0.45) *
+            (s.takingCover && alive && !celebrating ? 0.66 : 1),
+        )
         .setTint(s.reinforcement ? 0xffdf87 : 0xffffff)
         .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
         .setAngle(
@@ -693,6 +698,19 @@ export class Battlefield extends Phaser.Scene {
               2 + (i % 2),
             );
       }
+      if (alive && s.takingCover) {
+        g.lineStyle(3, 0xa4e6d2, 0.9);
+        g.strokeEllipse(p.x, p.y + 3, 43, 21);
+        g.fillStyle(0xa4e6d2, 0.9);
+        g.fillTriangle(
+          p.x + 18,
+          p.y - 42,
+          p.x + 32,
+          p.y - 42,
+          p.x + 25,
+          p.y - 26,
+        );
+      }
       if (alive) {
         g.lineStyle(1.5, s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
         g.strokeEllipse(p.x, p.y + 3, 34, 15);
@@ -718,6 +736,7 @@ export class Battlefield extends Phaser.Scene {
           this.drawBurning(p, s.id);
           label!.setText("ON FIRE!");
         } else if (celebrating) label!.setText(EMOTES[s.classId]);
+        else if (s.takingCover) label!.setText("IN COVER");
         else if (sinking) label!.setText("DROWNING!");
         else if (wet) label!.setText("CROSSING");
         else if (s.jam > 0) {
@@ -741,8 +760,14 @@ export class Battlefield extends Phaser.Scene {
                 : "R.I.P.",
         );
       label!
-        .setBackgroundColor(s.side === 0 ? "#2b5845" : "#874536")
-        .setPosition(p.x, p.y + 16)
+        .setBackgroundColor(
+          s.takingCover && alive
+            ? "#2d665e"
+            : s.side === 0
+              ? "#2b5845"
+              : "#874536",
+        )
+        .setPosition(p.x, p.y + (s.takingCover && alive ? -57 : 16))
         .setDepth(p.y + 1)
         .setAlpha(alive ? 1 : 0.8);
       if (

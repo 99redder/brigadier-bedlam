@@ -151,3 +151,23 @@ describe("manual rocket controls", () => {
     );
   });
 });
+
+describe("take-cover controls", () => {
+  it("has rebindable standard and mirrored keys", () => {
+    expect(defaults().cover[0]).toBe("KeyC");
+    expect(defaults(true).cover[0]).toBe("KeyK");
+    const b = defaults();
+    expect(rebind(b, "cover", 1, "Mouse4")).toBe(true);
+  });
+  it("preserves existing saves and selects a free key if C is occupied", () => {
+    const s = store(),
+      old = defaults() as Partial<ReturnType<typeof defaults>>;
+    delete old.cover;
+    old.hold = ["KeyC", null];
+    s.setItem(STORAGE_KEY, JSON.stringify(old));
+    const b = loadBindings(s);
+    expect(b.hold[0]).toBe("KeyC");
+    expect(b.cover[0]).not.toBe("KeyC");
+    expect(conflicts(b, "cover", b.cover[0]!)).toEqual([]);
+  });
+});

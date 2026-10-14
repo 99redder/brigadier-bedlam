@@ -101,7 +101,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.21</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.22</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -153,7 +153,7 @@ function renderBattle() {
     )
     .join(
       "",
-    )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; other units fire automatically.`}</p>${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+    )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; other units fire automatically.`}</p>${s?.life === "alive" && !s.reinforcement ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
   if (!tutorial) {
     const description =
       armedSuper === "airstrike"
@@ -174,6 +174,14 @@ function renderBattle() {
     if (armedSuper)
       ui.querySelector(".battle-help")!.textContent =
         `${input.hint("interact")}: deploy ${SUPER_LABELS[armedSuper]} · ${input.hint("deselect")}: cancel`;
+  }
+  const coverButton = ui.querySelector<HTMLButtonElement>(".cover-order");
+  if (coverButton && s) {
+    coverButton.disabled =
+      !s.takingCover &&
+      (s.brawl !== null || s.drowningTime > 0 || b.inWater(s));
+    coverButton.title =
+      "Duck down: harder for rifles to hit; double reload time. Explosions, fire and close combat still hurt.";
   }
   if (b.planning)
     ui.insertAdjacentHTML(
@@ -244,6 +252,12 @@ function updateBattleHud() {
     if (hp) hp.style.width = `${(t.hp / CLASSES[t.classId].hp) * 100}%`;
     write(`[data-unit="${t.id}"] .unit-status`, unitStatus(t));
   }
+  const coverControl = ui.querySelector<HTMLButtonElement>(".cover-order");
+  if (coverControl && s)
+    coverControl.disabled =
+      s.life !== "alive" ||
+      (!s.takingCover &&
+        (s.brawl !== null || s.drowningTime > 0 || b.inWater(s)));
   const rocketButton = ui.querySelector<HTMLButtonElement>(".rocket-fire");
   if (rocketButton && s) {
     rocketButton.disabled =
@@ -288,8 +302,10 @@ function unitStatus(t: Soldier) {
     (t.steadyTime ?? TUNING.aimSettleTime) < TUNING.aimSettleTime
   )
     return "AIMING";
-  if (scene.battle?.planning) return t.goal ? "MOVE QUEUED" : "DEPLOYING";
+  if (scene.battle?.planning)
+    return t.takingCover ? "IN COVER" : t.goal ? "MOVE QUEUED" : "DEPLOYING";
   if (t.life === "alive" && t.burnRemaining > 0) return "ON FIRE";
+  if (t.life === "alive" && t.takingCover) return "IN COVER";
   if (t.life === "alive" && scene.battle?.isManualRocket(t))
     return t.cooldown > 0 ? `RELOAD ${t.cooldown.toFixed(1)}s` : "MANUAL READY";
   return t.life === "dead"
@@ -372,6 +388,14 @@ function action(a: Action, held = true, event?: Event) {
   if (a === "rocketFire") {
     if (s && b.isManualRocket(s))
       issue({ type: "aim", id: s.id, point: scene.aimPoint() });
+    return;
+  }
+  if (a === "cover") {
+    if (s) {
+      issue({ type: "cover", id: s.id, active: !s.takingCover });
+      renderBattle();
+      wire();
+    }
     return;
   }
   if (a === "fireAll") {
@@ -536,6 +560,7 @@ function wire() {
           renderBattle();
           wire();
         }
+        if (what === "cover") action("cover");
         if (what === "fire-all") action("fireAll");
         if (what === "rocket-fire") action("rocketFire");
         if (
