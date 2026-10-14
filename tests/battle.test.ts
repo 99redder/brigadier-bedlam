@@ -14,7 +14,7 @@ function pair(classId: ClassId = "rifleman") {
   const a = b.soldiers[0],
     t = b.soldiers[5];
   a.classId = classId;
-  a.x = 200;
+  a.x = classId === "sapper" ? 225 : 200;
   a.y = 250;
   a.cooldown = 0;
   t.x = 300;
@@ -45,6 +45,7 @@ describe("weapon rules", () => {
     });
   it("rifles and flames avoid blocked targets; explosive classes can attack the cover", () => {
     const { b, a, t } = pair();
+    t.x = 275;
     b.cover = [{ x: 240, y: 200, w: 20, h: 100 }];
     for (const id of ["rifleman", "torch"] as ClassId[]) {
       a.classId = id;
@@ -306,7 +307,7 @@ describe("dynamite lethal core and weapon events", () => {
   it("successful shots emit the correct weapon sound events; jams do not emit gunfire", () => {
     for (const id of Object.keys(CLASSES) as ClassId[]) {
       const { b, a, t } = pair(id);
-      b.random = () => 1;
+      b.random = () => 0.5;
       expect(b.fire(a, t)).toBe(true);
       expect(b.combatEvents[0]).toMatchObject({ classId: id, kind: "fire" });
       b.resolveShot(b.shots[0]);
@@ -374,11 +375,11 @@ describe("melee animation synchronization", () => {
 describe("destructible scenery", () => {
   function fixture(id: ClassId = "bazooka") {
     const setup = pair(id);
-    setup.b.random = () => 1;
+    setup.b.random = () => 0.5;
     setup.b.cover = [
       { x: 240, y: 220, w: 10, h: 60, hp: 100, material: "rock" },
     ];
-    setup.a.x = 160;
+    setup.a.x = id === "sapper" ? 185 : 160;
     setup.t.x = 260;
     return setup;
   }
@@ -703,7 +704,7 @@ describe("autonomous blast safety and river tactics", () => {
       life: "alive",
       hp: 210,
       x: 300,
-      y: 285,
+      y: 275,
       cooldown: 999,
       think: 999,
     });

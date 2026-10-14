@@ -86,6 +86,8 @@ export interface Shot {
   target: number;
   time: number;
   duration: number;
+  aim?: Point;
+  manual?: boolean;
   hitCover?: boolean;
   miss?: boolean;
 }
@@ -108,6 +110,7 @@ export interface Effect extends Point {
 }
 export type Command =
   | { type: "fire-all" }
+  | { type: "aim"; id: number; point: Point }
   | { type: "move"; id: number; point: Point }
   | { type: "bridge"; id: number; point: Point }
   | { type: "attack"; id: number; target: number }
@@ -272,6 +275,11 @@ export class Battle {
     }
     if (c.type === "select") {
       this.selected = c.id;
+      const selected = c.id === null ? undefined : this.get(c.id);
+      if (selected && this.isManualRocket(selected)) {
+        selected.target = null;
+        selected.terrainTarget = null;
+      }
       for (const s of this.soldiers) s.blocking = false;
       return;
     }
@@ -281,6 +289,10 @@ export class Battle {
     }
     const s = this.get(c.id);
     if (!s || s.life !== "alive" || s.drowningTime > 0) return;
+    if (c.type === "aim") {
+      this.aimRocket(s, c.point);
+      return;
+    }
     if (c.type === "bridge" && s.brawl === null) {
       const bridge = this.bridges.find((r) => inside(c.point, r));
       if (bridge) {
@@ -300,6 +312,14 @@ export class Battle {
     if (c.type === "demolish" && s.brawl === null) {
       const r = this.cover.find((r) => inside(c.point, r));
       if (r) {
+        if (
+          s.classId === "bazooka" &&
+          s.side === 0 &&
+          !this.aiSides.includes(0)
+        ) {
+          this.aimRocket(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
+          return;
+        }
         s.terrainTarget = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
         s.target = null;
         s.goal = null;
@@ -316,6 +336,10 @@ export class Battle {
     if (c.type === "attack" && s.brawl === null) {
       const t = this.getCombatant(c.target);
       if (t && t.side !== s.side && t.life === "alive") {
+        if (this.isManualRocket(s)) {
+          this.aimRocket(s, t);
+          return;
+        }
         s.terrainTarget = null;
         s.target = t.id;
         s.hold = false;
@@ -519,10 +543,56 @@ export class Battle {
     }
     this.effects.push({ ...target, kind: "hit", time: 0.25, size: 10 });
   }
+  isManualRocket(s: Soldier) {
+    return (
+      s.side === 0 &&
+      s.classId === "bazooka" &&
+      s.id === this.selected &&
+      !this.aiSides.includes(0)
+    );
+  }
+  aimRocket(s: Soldier, point: Point) {
+    if (
+      !this.isManualRocket(s) ||
+      this.planning ||
+      s.life !== "alive" ||
+      s.brawl !== null ||
+      s.drowningTime > 0
+    )
+      return false;
+    if (s.cooldown > 0) {
+      this.note(`Rocket reloading: ${s.cooldown.toFixed(1)}s.`);
+      return false;
+    }
+    const d = distance(s, point),
+      range = CLASSES.bazooka.range;
+    const endpoint =
+      d > range
+        ? {
+            x: s.x + ((point.x - s.x) / d) * range,
+            y: s.y + ((point.y - s.y) / d) * range,
+          }
+        : point;
+    const fired = this.fireAt(s, endpoint, -1, d > range, true);
+    if (fired) {
+      s.target = null;
+      s.terrainTarget = null;
+      s.goal = null;
+      s.path = [];
+      s.moving = false;
+    }
+    return fired;
+  }
   fireAll() {
     let fired = 0;
     for (const s of this.soldiers) {
-      if (s.side !== 0 || s.life !== "alive" || s.moving || s.path.length > 0)
+      if (
+        s.side !== 0 ||
+        s.life !== "alive" ||
+        s.moving ||
+        s.path.length > 0 ||
+        this.isManualRocket(s)
+      )
         continue;
       if (s.terrainTarget) {
         if (this.fireAt(s, s.terrainTarget)) fired++;
@@ -589,9 +659,11 @@ export class Battle {
     if (s.cooldown > 0 || !this.canShoot(s, t)) return false;
     return this.fireAt(s, t, t.id);
   }
-  fireAt(s: Soldier, point: Point, target = -1, miss = false) {
+  fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
-    const hit = firstCoverHit(s, point, this.cover);
+    const d = distance(s, point);
+    // Validate intended range before scattering; cover may be closer than the target.
+    const intendedHit = firstCoverHit(s, point, this.cover);
     if (
       this.planning ||
       s.life !== "alive" ||
@@ -600,7 +672,7 @@ export class Battle {
       s.fightMoveTime > 0 ||
       s.cooldown > 0 ||
       s.jam > 0 ||
-      distance(s, hit?.point ?? point) > w.range + 1e-8 ||
+      distance(s, intendedHit?.point ?? point) > w.range + 1e-8 ||
       (s.classId === "torch" && this.inWater(s))
     )
       return false;
@@ -614,12 +686,41 @@ export class Battle {
       this.note("Rifle jammed. Strongly worded memo pending.");
       return false;
     }
+    let endpoint = { x: point.x, y: point.y };
+    const spread = manual
+      ? 0
+      : w.spread *
+        (s.classId === "bazooka" && s.side === 1
+          ? TUNING.enemyRocketScatter
+          : 1);
+    if (spread > 0 && (!miss || s.classId === "bazooka")) {
+      const angle =
+        Math.atan2(point.y - s.y, point.x - s.x) +
+        ((this.random() * 2 - 1) * spread * Math.PI) / 180;
+      const radial =
+        s.classId === "bazooka"
+          ? 0.06 * (s.side === 1 ? TUNING.enemyRocketScatter : 1)
+          : w.arc
+            ? 0.015
+            : 0;
+      const reach = Math.min(
+        w.range,
+        d * (1 + (this.random() * 2 - 1) * radial),
+      );
+      endpoint = {
+        x: s.x + Math.cos(angle) * reach,
+        y: s.y + Math.sin(angle) * reach,
+      };
+    }
+    const hit = firstCoverHit(s, endpoint, this.cover);
     this.emitWeapon(s.classId, "fire");
-    const duration = w.arc ? 0.65 : s.classId === "bazooka" ? 0.35 : 0.1;
+    const duration = w.arc ? 0.65 : s.classId === "bazooka" ? 0.55 : 0.1;
     this.shots.push({
       id: this.shotId++,
       from: { x: s.x, y: s.y },
-      to: hit?.point ?? { ...point },
+      to: hit?.point ?? endpoint,
+      aim: { x: point.x, y: point.y },
+      manual,
       hitCover: !!hit,
       miss,
       owner: s.id,
@@ -1128,7 +1229,7 @@ export class Battle {
           : this.combatants()
               .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
-      if (!s.terrainTarget) {
+      if (!s.terrainTarget && !this.isManualRocket(s)) {
         if (aim) this.fire(s, aim);
         else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s));
       }

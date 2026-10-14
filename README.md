@@ -1,28 +1,30 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.17 — countdown ticks and a distinct GO sound.**
+Current prototype: **v0.18 — precise manual rockets and distinct weapon tradeoffs.**
+
+Select a Bazooka for manual control: click an enemy to fire once, or point at the map and press **T** (left-handed preset: **L**). The aiming line and reticle show the impact point and range. Manual rockets have no random scatter, but travel to a fixed point rather than homing. Lead moving targets. Each shot stops movement to brace and starts a four-second reload. Selected Bazookas never auto-fire, including through Fire all. Deselect to resume inaccurate automatic rockets; enemy rockets scatter more. Only one launcher can be manually controlled at a time. Controls are rebindable and existing saved bindings are preserved.
 
 Deployment sounds once per displayed countdown second. The final three seconds use a higher double beep, followed by an ascending start call exactly when GO releases combat. Pausing stops new cues; resuming does not repeat the current tick. Restarting resets the sequence, boot camp stays silent, and Sound off mutes every deployment cue.
 
 Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
 
-Movement is about 35% slower for every class and medics. Weapon cooldowns are longer, with stronger damage:
+Movement remains slower for every class and medics. Weapon strengths and weaknesses:
 
 | Class | Land speed | Seconds between shots | Effect on an exposed soldier |
 | --- | ---: | ---: | --- |
-| Rifleman | 47 | 1.2 | 30 damage; several hits to kill |
-| Bazooka | 40 | 6 | One rocket blast kills |
-| Lobber | 44 | 5 | 130 damage; two hits kill any full-health class |
+| Rifleman | 47 | 0.65 | 18 damage; quick, accurate fire with medium armor (230 HP) |
+| Bazooka | 40 | 4 | One rocket blast kills; heavy armor (330 HP); automatic scatter |
+| Lobber | 44 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
 | Torch | 49 | 2 | 12 contact damage, then 35 damage/second while burning |
-| Sapper | 52 | 7.5 | One dynamite blast kills within its 60-unit radius |
+| Sapper | 52 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
 
-A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing a full-health soldier as ash. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
+A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing most full-health soldiers as ash; heavy rocket armor can survive one burn. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
 
 Rockets and dynamite still respect cover and friendly fire. Cover damage stays unchanged: three rockets or one dynamite demolish a rock, while grenades chip it and bullets/flames cannot damage it.
 
 When a rocket blast actually damages a soldier or medic, it plays a distinct crack/boom with a bright two-note confirmation instead of the normal rocket explosion. Cover hits, empty explosions, out-of-range misses, downed units, and protected training targets keep the ordinary impact sound. Each rocket emits one hit cue even if its blast damages several units. The cue respects Sound off and has a separate playback throttle so a nearby terrain impact cannot suppress it.
 
-If no enemy is in effective range, units keep firing toward the closest living enemy. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
+Except for a selected, manually controlled Bazooka, if no enemy is in effective range units keep firing toward the closest living enemy. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
 
 Title-screen illustrations are rendered directly at high resolution with larger, distinct weapons and class/weapon nameplates. The rifle has a wood stock and long barrel; the rocket launcher has a wide muzzle; the grenade has segmentation and a pull ring; the flamethrower has a fuel hose and pilot flame; dynamite is a tied bundle with a sparking fuse. Squad-selection and roster portraits also render at higher resolution.
 
@@ -59,8 +61,8 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
-- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy beyond range. Moving soldiers keep their routes. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
-- Right-click to deselect. Soldiers automatically fire at enemies; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
+- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
+- Right-click to deselect. Soldiers automatically fire at enemies, except the selected manual Bazooka; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
 - In a selected soldier's brawl: left-click punches, right-click kicks, and hold Left Shift to block. Other brawls resolve automatically.
@@ -126,14 +128,14 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 ## Prototype design choices
 
 - Every solid scenery object has 100 health. Rockets deal 40 terrain damage, dynamite 100, and grenades 20. Bullets and flames deal zero terrain damage. Cracks and health bars show damage; destruction creates debris and permanent passable rubble. Soldiers and medics recalculate active routes when cover is destroyed. Units do not intercept shots aimed at others; medics can be targeted directly and take blast damage.
-- Rockets, grenades, and dynamite can damage allies. Flame attacks affect enemies in a cone. Rockets have a small 28-unit blast radius.
-- Dynamite throws have only 125 world units of range. Exposed soldiers anywhere within the 60-unit blast radius die permanently, including allies. Rockets are likewise lethal inside their 28-unit blast radius.
+- Rockets, grenades, and dynamite can damage allies. Flame attacks affect enemies in a cone. Rockets have a small 24-unit blast radius.
+- Dynamite throws have only 80 world units of range. Exposed soldiers anywhere within the 34-unit blast radius die permanently, including allies. Rockets are likewise lethal inside their 24-unit blast radius.
 - All projectiles stop at the first intact obstacle, including thrown explosives. Blast visibility uses the obstacle layout before destruction: the blast that removes cover still shields soldiers and other scenery behind it. Subsequent attacks can pass through the cleared route. This applies to every solid prop on the current battlefield and any new props added through the same cover data. Water, the bridge, and the ground remain terrain.
 - Explosive lethality is guaranteed rather than random. Burning causes permanent ash deaths over time. All values live in `src/sim/data.ts`.
 - A brawl begins within 28 world units and cannot be interrupted by a move order. Nearby living soldiers get a small knockback. Third parties may still shoot combatants. Weapons are stowed during the fight; guards, punches, kicks, blocked hits, recoil, and knockdowns use separate generated frames. Strike follow-through completes before ranged fire resumes. AI guards are held briefly so blocks are readable.
 - A medic call is spent when dispatched, and duplicate calls for a soldier are rejected. Enemies get the same two-call allowance.
 - A battle ends immediately when a side has no living soldiers, even if its medic is inbound. Simultaneous elimination counts as a player defeat.
-- An attack order chases the named target into range. Hold cancels movement and pursuit but keeps automatic firing. Explicit orders persist after deselection.
+- A manual Bazooka attack fires once at the target’s current point; it never chases or repeats. Other attack orders chase the named target into range. Hold cancels movement and pursuit but keeps automatic firing. Explicit orders persist after deselection.
 - Enemy AI avoids unsafe allied blast zones, chooses dry firing positions, completes surviving crossings, favors suitable targets and firing positions, penalizes exposed positions and clustering, avoids water as Torch, and retreats briefly when hurt before re-engaging.
 - The left-handed preset moves keyboard shortcuts to the specified right-hand keys; mouse buttons retain their standard primary/secondary roles.
 - Browser keyboard-layout labels are used where supported. Observed key labels and physical-code labels provide fallbacks elsewhere.
@@ -142,7 +144,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.16 matched 36-game diagnostic averaged 21 seconds of combat (16–33 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.18 matched 36-game diagnostic averaged 31 seconds of combat (20–54 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 

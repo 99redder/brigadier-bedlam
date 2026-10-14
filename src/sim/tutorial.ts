@@ -106,12 +106,12 @@ export class Tutorial {
       case "rockets":
         return [
           "Make a new route",
-          `Select the Bazooka (${h("slot2")}) and click the same rock. Wait for three rockets to demolish it. Cracks show damage; rubble is passable. The blast that destroys cover still shields soldiers behind it.`,
+          `Select the Bazooka (${h("slot2")}). Click the rock three times, waiting four seconds to reload between shots, or point at it and press ${h("rocketFire")}. Selected Bazookas require manual shots; deselected ones fire automatically with heavy scatter. Cracks show damage; rubble is passable. The blast that destroys cover still shields soldiers behind it.`,
         ];
       case "dynamite":
         return [
           "Short range, big consequence",
-          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, one rocket or dynamite hit kills; two grenades kill a full-health soldier. Explosions hurt allies. Torch ignites an eight-second burn; water extinguishes it. Riflemen sometimes jam.`,
+          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, one rocket or dynamite hit kills; accurate grenades need two hits against most soldiers, three against heavy rocket armor. Explosions hurt allies. Torch ignites an eight-second burn; water extinguishes it. Riflemen sometimes jam.`,
         ];
       case "bridge":
         return [
@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Then click an enemy to pursue and attack; units fire automatically, but shots outside the range circle miss. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }
@@ -159,7 +159,7 @@ export class Tutorial {
           : this.id === "dynamite"
             ? 4
             : null;
-    if (c.type === "demolish" && required !== null) {
+    if ((c.type === "demolish" || c.type === "aim") && required !== null) {
       const target = this.id === "dynamite" ? this.crate : this.rock;
       if (c.id !== required || !inside(c.point, target)) {
         this.battle.note(

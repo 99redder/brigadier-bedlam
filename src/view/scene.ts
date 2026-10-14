@@ -44,6 +44,12 @@ export class Battlefield extends Phaser.Scene {
   private deploymentCues = new DeploymentCues();
   private victoryBanner!: Phaser.GameObjects.Text;
   tutorialMarker: { point: Point; label: string } | null = null;
+  aimPoint(): Point {
+    const near = this.pick(this.cursor);
+    return near && near.side === 1 && near.life === "alive"
+      ? { x: near.x, y: near.y }
+      : { ...this.cursor };
+  }
   cursor: Point = { x: 100, y: 280 };
   onTick = () => {};
   onReady = () => {};
@@ -399,6 +405,29 @@ export class Battlefield extends Phaser.Scene {
         CLASSES[selected.classId].range * 2,
         CLASSES[selected.classId].range * 1.48,
       );
+      if (b.isManualRocket(selected) && !b.planning) {
+        const aim = this.aimPoint(),
+          d = distance(selected, aim),
+          range = CLASSES.bazooka.range;
+        const end = project(
+          d > range
+            ? {
+                x: selected.x + ((aim.x - selected.x) / d) * range,
+                y: selected.y + ((aim.y - selected.y) / d) * range,
+              }
+            : aim,
+        );
+        g.lineStyle(2, d > range ? 0x93896d : 0xe87852, 0.85);
+        g.lineBetween(p.x, p.y, end.x, end.y);
+        g.strokeEllipse(
+          end.x,
+          end.y,
+          CLASSES.bazooka.radius * 2,
+          CLASSES.bazooka.radius * 1.48,
+        );
+        g.lineBetween(end.x - 8, end.y, end.x + 8, end.y);
+        g.lineBetween(end.x, end.y - 6, end.x, end.y + 6);
+      }
       if (selected.goal) {
         const goal = project(selected.goal);
         g.lineStyle(2, 0xffe5a1, 0.65);
@@ -453,7 +482,13 @@ export class Battlefield extends Phaser.Scene {
           s.recoilTime > 0 ||
           (s.life === "down" && s.brawlKnockdown));
       const anchor = project(s.fightAnchor ?? s),
-        facing = fighting ? s.fightFacing : s.facing;
+        facing = fighting
+          ? s.fightFacing
+          : b.isManualRocket(s) && !b.planning
+            ? this.aimPoint().x >= s.x
+              ? 1
+              : -1
+            : s.facing;
       const p =
           fighting && s.fightAnchor
             ? { x: anchor.x - facing * 30, y: anchor.y }

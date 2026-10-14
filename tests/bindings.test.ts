@@ -131,3 +131,23 @@ describe("Fire all bindings and saved-control upgrades", () => {
     expect(loadBindings(s)).toEqual(upgraded);
   });
 });
+
+describe("manual rocket controls", () => {
+  it("offers normal and mirrored defaults", () => {
+    expect(defaults().rocketFire[0]).toBe("KeyT");
+    expect(defaults(true).rocketFire[0]).toBe("KeyL");
+  });
+  it("preserves saved controls when the new default is occupied", () => {
+    const s = store(),
+      old = defaults() as Partial<ReturnType<typeof defaults>>;
+    delete old.rocketFire;
+    old.hold = ["KeyT", null];
+    s.setItem(STORAGE_KEY, JSON.stringify(old));
+    const upgraded = loadBindings(s);
+    expect(upgraded.hold[0]).toBe("KeyT");
+    expect(upgraded.rocketFire[0]).not.toBe("KeyT");
+    expect(conflicts(upgraded, "rocketFire", upgraded.rocketFire[0]!)).toEqual(
+      [],
+    );
+  });
+});

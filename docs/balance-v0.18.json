@@ -1,0 +1,432 @@
+{
+  "rows": [
+    {
+      "seed": 42,
+      "squad": 0,
+      "opposition": 0,
+      "seconds": 54,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 42,
+      "squad": 0,
+      "opposition": 1,
+      "seconds": 21,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 42,
+      "squad": 0,
+      "opposition": 2,
+      "seconds": 20,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 42,
+      "squad": 1,
+      "opposition": 0,
+      "seconds": 21,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 42,
+      "squad": 1,
+      "opposition": 1,
+      "seconds": 25,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 42,
+      "squad": 1,
+      "opposition": 2,
+      "seconds": 20,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 42,
+      "squad": 2,
+      "opposition": 0,
+      "seconds": 34,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 42,
+      "squad": 2,
+      "opposition": 1,
+      "seconds": 25,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 42,
+      "squad": 2,
+      "opposition": 2,
+      "seconds": 26,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 81,
+      "squad": 0,
+      "opposition": 0,
+      "seconds": 33,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 81,
+      "squad": 0,
+      "opposition": 1,
+      "seconds": 51,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 4,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 81,
+      "squad": 0,
+      "opposition": 2,
+      "seconds": 23,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 81,
+      "squad": 1,
+      "opposition": 0,
+      "seconds": 37,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 2
+    },
+    {
+      "seed": 81,
+      "squad": 1,
+      "opposition": 1,
+      "seconds": 33,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 81,
+      "squad": 1,
+      "opposition": 2,
+      "seconds": 21,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 81,
+      "squad": 2,
+      "opposition": 0,
+      "seconds": 48,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 81,
+      "squad": 2,
+      "opposition": 1,
+      "seconds": 33,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 81,
+      "squad": 2,
+      "opposition": 2,
+      "seconds": 29,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 234,
+      "squad": 0,
+      "opposition": 0,
+      "seconds": 34,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 234,
+      "squad": 0,
+      "opposition": 1,
+      "seconds": 49,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 234,
+      "squad": 0,
+      "opposition": 2,
+      "seconds": 31,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 234,
+      "squad": 1,
+      "opposition": 0,
+      "seconds": 33,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 234,
+      "squad": 1,
+      "opposition": 1,
+      "seconds": 29,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 234,
+      "squad": 1,
+      "opposition": 2,
+      "seconds": 21,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 234,
+      "squad": 2,
+      "opposition": 0,
+      "seconds": 33,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 2,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 234,
+      "squad": 2,
+      "opposition": 1,
+      "seconds": 36,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 234,
+      "squad": 2,
+      "opposition": 2,
+      "seconds": 35,
+      "winner": 0,
+      "brawls": 1,
+      "revives": 3,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 0,
+      "opposition": 0,
+      "seconds": 21,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 0,
+      "opposition": 1,
+      "seconds": 29,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 831,
+      "squad": 0,
+      "opposition": 2,
+      "seconds": 30,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 2,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 831,
+      "squad": 1,
+      "opposition": 0,
+      "seconds": 25,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 1,
+      "opposition": 1,
+      "seconds": 25,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 1
+    },
+    {
+      "seed": 831,
+      "squad": 1,
+      "opposition": 2,
+      "seconds": 21,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 0,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 2,
+      "opposition": 0,
+      "seconds": 44,
+      "winner": 0,
+      "brawls": 0,
+      "revives": 4,
+      "drownings": 1,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 2,
+      "opposition": 1,
+      "seconds": 26,
+      "winner": 1,
+      "brawls": 0,
+      "revives": 1,
+      "drownings": 0,
+      "coverDestroyed": 0
+    },
+    {
+      "seed": 831,
+      "squad": 2,
+      "opposition": 2,
+      "seconds": 45,
+      "winner": 1,
+      "brawls": 1,
+      "revives": 4,
+      "drownings": 0,
+      "coverDestroyed": 0
+    }
+  ],
+  "classes": {
+    "rifleman": {
+      "shots": 1959,
+      "damage": 28547.666666666664,
+      "drownings": 2,
+      "deployments": 96
+    },
+    "bazooka": {
+      "shots": 414,
+      "damage": 11821,
+      "drownings": 0,
+      "deployments": 72
+    },
+    "lobber": {
+      "shots": 189,
+      "damage": 20048.333333333332,
+      "drownings": 6,
+      "deployments": 72
+    },
+    "torch": {
+      "shots": 78,
+      "damage": 6646.16666666705,
+      "drownings": 0,
+      "deployments": 72
+    },
+    "sapper": {
+      "shots": 11,
+      "damage": 2132.833333333334,
+      "drownings": 0,
+      "deployments": 48
+    }
+  }
+}

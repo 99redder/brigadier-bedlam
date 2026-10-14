@@ -115,18 +115,22 @@ describe("slower, more lethal combat", () => {
       expect(f.t.hp).toBe(0);
     });
   for (const victim of Object.keys(CLASSES) as ClassId[])
-    it(`two grenades kill a full-health ${victim}`, () => {
+    it(`grenades respect ${victim} armor`, () => {
       const f = combat("lobber", victim);
       impact(f);
       expect(f.t.life).toBe("alive");
       impact(f);
+      if (victim === "bazooka") {
+        expect(f.t.life).toBe("alive");
+        impact(f);
+      }
       expect(f.t.life).toBe("down");
       expect(f.t.hp).toBe(0);
     });
   it("slows movement and fire while rifle damage still takes multiple hits", () => {
     const f = combat("rifleman");
     expect(Object.values(CLASSES).every((c) => c.speed <= 52)).toBe(true);
-    expect(CLASSES.rifleman.cooldown).toBeGreaterThan(1);
+    expect(CLASSES.rifleman.cooldown).toBeLessThan(CLASSES.bazooka.cooldown);
     impact(f);
     expect(f.t.life).toBe("alive");
     expect(f.t.hp).toBeLessThan(CLASSES.rifleman.hp);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Tutorial } from "../src/sim/tutorial";
 import { Battle, replayBattle } from "../src/sim/battle";
-import { TUNING } from "../src/sim/data";
+import { CLASSES, TUNING } from "../src/sim/data";
 function run(t: Tutorial, predicate: () => boolean, max = 1200) {
   for (let i = 0; i < max && !predicate(); i++) {
     t.battle.step();
@@ -57,8 +57,13 @@ describe("interactive boot camp", () => {
     run(t, () => t.id === "rockets");
     expect(t.rock.hp).toBe(100);
     b.command({ type: "select", id: 1 });
-    b.command({ type: "demolish", id: 1, point: { x: 295, y: 270 } });
-    run(t, () => t.id === "dynamite");
+    for (let i = 0; i < 600 && t.id === "rockets"; i++) {
+      if (b.get(1)!.cooldown <= 0)
+        b.command({ type: "demolish", id: 1, point: { x: 295, y: 270 } });
+      b.step();
+      t.update();
+    }
+    expect(t.id).toBe("dynamite");
     b.command({ type: "select", id: 4 });
     b.command({ type: "demolish", id: 4, point: { x: 400, y: 410 } });
     run(t, () => t.id === "bridge");
@@ -80,7 +85,7 @@ describe("interactive boot camp", () => {
     b.command({ type: "kick", id: 0 });
     b.command({ type: "block", id: 0, held: true });
     run(t, () => t.id === "pause");
-    expect(b.get(3)!.hp).toBe(260);
+    expect(b.get(3)!.hp).toBe(CLASSES.torch.hp);
     t.ui("pause");
     t.update();
     expect(t.id).toBe("pause");

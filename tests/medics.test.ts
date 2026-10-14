@@ -7,7 +7,7 @@ function rescue(side: 0 | 1 = 0) {
   b.aiSides = [];
   b.cover = [];
   b.water = [];
-  b.random = () => 0.99;
+  b.random = () => 0.5;
   for (const s of b.soldiers) {
     s.x = 950;
     s.y = 500;
@@ -34,6 +34,7 @@ function hit(classId: ClassId, friendly = false) {
   const fixture = rescue();
   const { b, shooter, medic } = fixture;
   shooter.classId = classId;
+  if (classId === "sapper") shooter.x = 270;
   if (friendly) shooter.side = medic.side;
   b.fireAt(shooter, medic, medic.id);
   b.resolveShot(b.shots.at(-1)!);

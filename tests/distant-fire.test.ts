@@ -7,7 +7,7 @@ function distant(classId: ClassId = "rifleman") {
   b.aiSides = [];
   b.cover = [];
   b.water = [];
-  b.random = () => 0.99;
+  b.random = () => 0.5;
   for (const s of b.soldiers) {
     s.life = "dead";
     s.path = [];
@@ -69,7 +69,7 @@ describe("out-of-range automatic fire", () => {
   it("preserves destructible cover when distant fire is intercepted", () => {
     for (const id of ["bazooka", "sapper"] as ClassId[]) {
       const { b, a, target } = distant(id);
-      b.cover = [{ x: 180, y: 210, w: 20, h: 50, hp: 100 }];
+      b.cover = [{ x: 170, y: 210, w: 20, h: 50, hp: 100 }];
       const hits = id === "bazooka" ? 3 : 1;
       for (let n = 0; n < hits; n++) {
         a.cooldown = 0;

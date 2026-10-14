@@ -764,3 +764,13 @@ p {
   opacity: 0.45;
   cursor: default;
 }
+
+.rocket-fire {
+  padding: 0.25em 0.65em;
+  margin-top: 0.25em;
+  font-size: 0.72em;
+}
+.rocket-fire:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
