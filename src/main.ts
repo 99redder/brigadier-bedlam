@@ -1,7 +1,13 @@
 import Phaser from "phaser";
 import "./style.css";
 import { Tutorial } from "./sim/tutorial";
-import { Battle, type Command, type Soldier } from "./sim/battle";
+import {
+  Battle,
+  SUPER_LABELS,
+  type SuperWeapon,
+  type Command,
+  type Soldier,
+} from "./sim/battle";
 import { CLASSES, SQUADS, TUNING, type ClassId } from "./sim/data";
 import {
   InputLayer,
@@ -18,6 +24,8 @@ import { drawShowcase, WEAPON_LABELS } from "./view/showcase";
 const ui = document.querySelector<HTMLDivElement>("#ui")!;
 const scene = new Battlefield();
 let tutorial: Tutorial | null = null;
+let armedSuper: SuperWeapon | null = null;
+let supplyRevision = -1;
 function issue(c: Command) {
   if (!tutorial || tutorial.accepts(c)) scene.battle?.command(c);
 }
@@ -92,7 +100,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.18</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.19</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -106,6 +114,8 @@ function newSeed() {
   return n[0];
 }
 function select(id: number | null) {
+  armedSuper = null;
+  scene.superAim = null;
   issue({ type: "select", id });
   input.clear();
   scene.sfx.play("click");
@@ -119,7 +129,9 @@ function renderBattle() {
   ui.classList.toggle("planning", b.planning);
   const s = b.get(b.selected ?? -1),
     alive = (side: number) =>
-      b.soldiers.filter((s) => s.side === side && s.life === "alive").length;
+      b.soldiers.filter(
+        (s) => !s.reinforcement && s.side === side && s.life === "alive",
+      ).length;
   const time = `${Math.floor(b.time / 60)
     .toString()
     .padStart(2, "0")}:${Math.floor(b.time % 60)
@@ -131,7 +143,7 @@ function renderBattle() {
     .join(
       "",
     )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${s && b.isManualRocket(s) ? `${esc(input.hint("rocketFire"))}: fire at cursor · click enemy: fire once · ground: move` : `${esc(input.hint("interact"))}: select / move / attack / demolish / revive`} · ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
-    .filter((t) => t.side === 0)
+    .filter((t) => t.side === 0 && !t.reinforcement)
     .map(
       (t) =>
         `<button class="unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}" data-unit="${t.id}" aria-label="${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health"><img alt="" src="${portrait(t.classId)}"><div><div class="slot">${esc(input.hint(`slot${t.slot + 1}` as Action))}</div><div class="unit-name">${CLASSES[t.classId].name}</div><div class="hp"><div style="width:${(t.hp / CLASSES[t.classId].hp) * 100}%"></div></div><div class="unit-status">${unitStatus(t)}</div></div></button>`,
@@ -139,6 +151,24 @@ function renderBattle() {
     .join(
       "",
     )}</div><div class="orders"><h3>${s ? CLASSES[s.classId].name : "Awaiting orders"}</h3><p>${s ? `${CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; other units fire automatically.`}</p>${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+  if (!tutorial) {
+    const description =
+      armedSuper === "airstrike"
+        ? "Click ground: call strike · 1.8s warning · friendly fire"
+        : armedSuper === "sniper"
+          ? "Click an enemy: one guaranteed kill"
+          : armedSuper === "reinforcements"
+            ? "Click a lane: 3 fragile recruits charge for 18s"
+            : "Move onto a ? drop to claim a random one-use weapon";
+    ui.insertAdjacentHTML(
+      "beforeend",
+      `<aside class="super-panel" aria-label="Supply rewards"><strong>${armedSuper ? `TARGET: ${SUPER_LABELS[armedSuper]}` : "SUPPLY REWARDS"}</strong><span>${description}${armedSuper ? " · Right-click cancels" : ""}</span><div>${b.powers[0].map((w) => btn(SUPER_LABELS[w], `super:${w}`, armedSuper === w ? "armed" : "")).join("")}</div></aside>`,
+    );
+    supplyRevision = b.supplyRevision;
+    if (armedSuper)
+      ui.querySelector(".battle-help")!.textContent =
+        `${input.hint("interact")}: deploy ${SUPER_LABELS[armedSuper]} · ${input.hint("deselect")}: cancel`;
+  }
   if (b.planning)
     ui.insertAdjacentHTML(
       "beforeend",
@@ -178,13 +208,13 @@ function updateBattleHud() {
   };
   write(
     ".team-count",
-    `YOUR SQUAD   ${b.soldiers.filter((s) => s.side === 0 && s.life === "alive").length}/5`,
+    `YOUR SQUAD   ${b.soldiers.filter((s) => !s.reinforcement && s.side === 0 && s.life === "alive").length}/5`,
   );
   write(
     ".team-count.enemy",
     tutorial
       ? "NO ENEMIES"
-      : `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/5`,
+      : `OPPOSITION   ${b.soldiers.filter((s) => !s.reinforcement && s.side === 1 && s.life === "alive").length}/5`,
   );
   write(
     ".clock",
@@ -194,7 +224,7 @@ function updateBattleHud() {
       .toString()
       .padStart(2, "0")}`,
   );
-  for (const t of b.soldiers.filter((s) => s.side === 0)) {
+  for (const t of b.soldiers.filter((s) => s.side === 0 && !s.reinforcement)) {
     const button = ui.querySelector<HTMLButtonElement>(`[data-unit="${t.id}"]`);
     if (!button) continue;
     button.className = `unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}`;
@@ -224,6 +254,11 @@ function updateBattleHud() {
       ? `BRAWL! ${input.hint("punch")}: punch · ${input.hint("kick")}: kick · hold ${input.hint("block")}: block`
       : `${s && b.isManualRocket(s) ? `${input.hint("rocketFire")}: fire at cursor · click enemy: fire once · ground: move` : `${input.hint("interact")}: select / move / attack / demolish / revive`} · ${input.hint("deselect")}: deselect`,
   );
+  if (armedSuper)
+    write(
+      ".battle-help",
+      `${input.hint("interact")}: deploy ${SUPER_LABELS[armedSuper]} · ${input.hint("deselect")}: cancel`,
+    );
   const log = ui.querySelector(".radio-log"),
     markup = b.log
       .slice(0, 2)
@@ -324,7 +359,26 @@ function action(a: Action, held = true, event?: Event) {
   }
   if (a === "interact") {
     const near = scene.pick(scene.cursor);
+    if (armedSuper) {
+      const weapon = armedSuper,
+        before = b.powers[0].length;
+      issue({
+        type: "super",
+        side: 0,
+        weapon,
+        point:
+          near?.side === 1 ? { x: near.x, y: near.y } : { ...scene.cursor },
+      });
+      if (b.powers[0].length < before) {
+        armedSuper = null;
+        scene.superAim = null;
+      }
+      renderBattle();
+      wire();
+      return;
+    }
     if (near?.side === 0) {
+      if ("reinforcement" in near && near.reinforcement) return;
       if (!("classId" in near)) return;
       if (near.life === "down")
         issue({ type: "medic", target: near.id, side: 0 });
@@ -353,7 +407,9 @@ function action(a: Action, held = true, event?: Event) {
     return;
   }
   if (a === "next" || a === "previous") {
-    const living = b.soldiers.filter((t) => t.side === 0 && t.life === "alive"),
+    const living = b.soldiers.filter(
+        (t) => !t.reinforcement && t.side === 0 && t.life === "alive",
+      ),
       i = living.findIndex((t) => t.id === b.selected);
     if (living.length)
       select(
@@ -374,6 +430,8 @@ function action(a: Action, held = true, event?: Event) {
   }
 }
 function startTutorial() {
+  armedSuper = null;
+  scene.superAim = null;
   renderAt = 0;
   tutorial = new Tutorial();
   renderAt = 0;
@@ -386,6 +444,8 @@ function startTutorial() {
   render();
 }
 function start(seed: number) {
+  armedSuper = null;
+  scene.superAim = null;
   tutorial = null;
   scene.tutorialMarker = null;
   renderAt = 0;
@@ -437,6 +497,21 @@ function wire() {
         if (what === "again") start(newSeed());
         if (what === "fire-all") action("fireAll");
         if (what === "rocket-fire") action("rocketFire");
+        if (
+          what?.startsWith("super:") &&
+          !scene.paused &&
+          !scene.battle!.planning
+        ) {
+          const weapon = what.slice(6) as SuperWeapon;
+          if (scene.battle!.powers[0].includes(weapon)) {
+            issue({ type: "select", id: null });
+            armedSuper = weapon;
+            scene.superAim = weapon;
+            input.clear();
+            renderBattle();
+            wire();
+          }
+        }
         if (what === "pause") action("pause");
         if (what === "menu") action("menu");
         if (what === "resume") {
@@ -601,6 +676,14 @@ function persistSettings() {
 }
 scene.onTick = () => {
   if (screen !== "battle") return;
+  if (
+    scene.battle &&
+    supplyRevision !== scene.battle.supplyRevision &&
+    !tutorial
+  ) {
+    renderBattle();
+    wire();
+  }
   if (scene.battle?.planning) {
     updateBattleHud();
     return;

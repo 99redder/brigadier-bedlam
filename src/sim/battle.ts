@@ -1,5 +1,6 @@
 import {
   CLASSES,
+  SUPPLY_POINTS,
   COVER,
   TRAINING_COVER,
   WATER,
@@ -27,6 +28,8 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  reinforcement?: boolean;
+  expiresAt?: number;
   side: Side;
   slot: number;
   classId: ClassId;
@@ -108,7 +111,14 @@ export interface Effect extends Point {
   time: number;
   size: number;
 }
+export type SuperWeapon = "airstrike" | "sniper" | "reinforcements";
+export const SUPER_LABELS: Record<SuperWeapon, string> = {
+  airstrike: "Airstrike",
+  sniper: "Sniper shot",
+  reinforcements: "Reinforcements",
+};
 export type Command =
+  | { type: "super"; side: Side; weapon: SuperWeapon; point: Point }
   | { type: "fire-all" }
   | { type: "aim"; id: number; point: Point }
   | { type: "move"; id: number; point: Point }
@@ -135,6 +145,15 @@ export interface CombatEvent {
   kind: "fire" | "impact" | "hit";
 }
 export class Battle {
+  supplies = SUPPLY_POINTS.map((p, id) => ({
+    ...p,
+    id,
+    claimedBy: null as Side | null,
+  }));
+  powers: [SuperWeapon[], SuperWeapon[]] = [[], []];
+  strikes: { side: Side; point: Point; remaining: number }[] = [];
+  supplyRevision = 0;
+  nextReinforcementId = 100;
   aiSides: Side[] = [1];
   combatEvents: CombatEvent[] = [];
   combatEventId = 0;
@@ -185,6 +204,7 @@ export class Battle {
     this.planningTicks = training
       ? 0
       : Math.round(deploymentSeconds / TUNING.step);
+    if (training) this.supplies = [];
     if (training)
       this.cover = TRAINING_COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
     this.seed = seed >>> 0;
@@ -269,6 +289,10 @@ export class Battle {
       this.note("Deployment: queue movement orders. Weapons unlock at GO.");
       return;
     }
+    if (c.type === "super") {
+      this.useSuper(c.side, c.weapon, c.point);
+      return;
+    }
     if (c.type === "fire-all") {
       this.fireAll();
       return;
@@ -288,7 +312,8 @@ export class Battle {
       return;
     }
     const s = this.get(c.id);
-    if (!s || s.life !== "alive" || s.drowningTime > 0) return;
+    if (!s || s.reinforcement || s.life !== "alive" || s.drowningTime > 0)
+      return;
     if (c.type === "aim") {
       this.aimRocket(s, c.point);
       return;
@@ -522,6 +547,10 @@ export class Battle {
         );
       }
     }
+    if (target.reinforcement && target.life === "down") {
+      target.life = "dead";
+      target.death = "skeleton";
+    }
     if (target.life !== "alive" && target.brawl !== null) {
       target.brawlKnockdown = true;
       target.knockdownTime = TUNING.knockdownAnimation;
@@ -555,6 +584,7 @@ export class Battle {
     if (
       !this.isManualRocket(s) ||
       this.planning ||
+      s.reinforcement ||
       s.life !== "alive" ||
       s.brawl !== null ||
       s.drowningTime > 0
@@ -588,6 +618,7 @@ export class Battle {
     for (const s of this.soldiers) {
       if (
         s.side !== 0 ||
+        s.reinforcement ||
         s.life !== "alive" ||
         s.moving ||
         s.path.length > 0 ||
@@ -661,6 +692,7 @@ export class Battle {
   }
   fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
+    if (s.reinforcement) return false;
     const d = distance(s, point);
     // Validate intended range before scattering; cover may be closer than the target.
     const intendedHit = firstCoverHit(s, point, this.cover);
@@ -676,7 +708,10 @@ export class Battle {
       (s.classId === "torch" && this.inWater(s))
     )
       return false;
-    s.cooldown = w.cooldown;
+    s.cooldown =
+      manual && s.classId === "bazooka"
+        ? TUNING.manualRocketReload
+        : w.cooldown;
     s.flash = 0.2;
     s.facing = point.x >= s.x ? 1 : -1;
     this.stats.shots++;
@@ -860,11 +895,39 @@ export class Battle {
           m.path = pathfind(m, this.get(m.target)!, this.cover);
     }
   }
+  damageCover(r: Cover, amount: number) {
+    r.hp = Math.max(0, (r.hp ?? TERRAIN.hp) - amount);
+    this.terrainRevision++;
+    if (r.hp === 0) {
+      this.cover = this.cover.filter((o) => o !== r);
+      this.rubble.push({ ...r });
+      this.effects.push({
+        x: r.x + r.w / 2,
+        y: r.y + r.h / 2,
+        kind: "debris",
+        time: 0.7,
+        size: r.w / 2,
+      });
+      for (const s of this.soldiers) {
+        if (s.goal)
+          s.path = pathfind(
+            s,
+            s.goal,
+            s.safeRoute ? this.dryCover() : this.cover,
+          );
+        if (s.reinforcement) s.repath = 0;
+      }
+      for (const m of this.medics)
+        if (m.life === "alive" && m.phase === "in")
+          m.path = pathfind(m, this.get(m.target)!, this.cover);
+    }
+  }
   callMedic(id: number, side: Side) {
     const t = this.get(id);
     if (
       this.planning ||
       !t ||
+      t.reinforcement ||
       t.side !== side ||
       t.life !== "down" ||
       this.calls[side] <= 0 ||
@@ -997,6 +1060,51 @@ export class Battle {
       })[0];
   }
   ai(s: Soldier) {
+    if (this.powers[s.side].length === 0) {
+      const routes = this.soldiers
+        .filter(
+          (unit) =>
+            unit.side === s.side &&
+            !unit.reinforcement &&
+            unit.life === "alive" &&
+            unit.drowningTime <= 0 &&
+            unit.brawl === null &&
+            unit.hp >= CLASSES[unit.classId].hp * 0.7,
+        )
+        .flatMap((unit) =>
+          this.supplies
+            .filter((drop) => drop.claimedBy === null)
+            .map((drop) => ({
+              unit,
+              drop,
+              cost: distance(unit, drop) / CLASSES[unit.classId].speed,
+            })),
+        )
+        .sort(
+          (a, b) =>
+            a.cost - b.cost || a.unit.id - b.unit.id || a.drop.id - b.drop.id,
+        );
+      const task = routes[0];
+      if (
+        task?.unit.id === s.id &&
+        !this.soldiers.some(
+          (t) =>
+            t.side !== s.side && t.life === "alive" && distance(s, t) < 130,
+        )
+      ) {
+        const drop = task.drop;
+        s.target = null;
+        s.terrainTarget = null;
+        if (this.inWater(drop)) {
+          s.goal = { x: drop.x, y: drop.y };
+          s.path = pathfind(s, drop, this.cover);
+          s.safeRoute = false;
+          s.repath = 0.65;
+        } else this.setGoal(s, drop);
+        return;
+      }
+    }
+
     const t = this.chooseTarget(s);
     if (!t) return;
     const w = CLASSES[s.classId],
@@ -1069,6 +1177,202 @@ export class Battle {
       s.path = [];
     }
   }
+  collectSupplies() {
+    for (const drop of this.supplies) {
+      if (drop.claimedBy !== null) continue;
+      const unit = this.soldiers
+        .filter(
+          (s) =>
+            !s.reinforcement &&
+            s.life === "alive" &&
+            s.drowningTime <= 0 &&
+            s.brawl === null &&
+            distance(s, drop) <= 23,
+        )
+        .sort(
+          (a, b) => distance(a, drop) - distance(b, drop) || a.id - b.id,
+        )[0];
+      if (!unit) continue;
+      drop.claimedBy = unit.side;
+      const weapon = (
+        ["airstrike", "sniper", "reinforcements"] as SuperWeapon[]
+      )[Math.floor(this.random() * 3)];
+      this.powers[unit.side].push(weapon);
+      this.supplyRevision++;
+      this.note(
+        `${unit.side === 0 ? "Your squad" : "Enemy"} captured ${drop.label}: ${SUPER_LABELS[weapon]} ready!`,
+      );
+      this.effects.push({ ...drop, kind: "revive", time: 1, size: 30 });
+    }
+  }
+  useSuper(side: Side, weapon: SuperWeapon, point: Point) {
+    const inventory = this.powers[side],
+      index = inventory.indexOf(weapon);
+    if (
+      this.planning ||
+      this.winner !== null ||
+      index < 0 ||
+      !Number.isFinite(point.x) ||
+      !Number.isFinite(point.y) ||
+      point.x < 0 ||
+      point.x > FIELD.width ||
+      point.y < 0 ||
+      point.y > FIELD.height
+    )
+      return false;
+    if (weapon === "sniper") {
+      const target = this.soldiers
+        .filter(
+          (s) =>
+            s.side !== side &&
+            s.life === "alive" &&
+            s.drowningTime <= 0 &&
+            distance(s, point) < 38,
+        )
+        .sort(
+          (a, b) => distance(a, point) - distance(b, point) || a.id - b.id,
+        )[0];
+      if (!target) {
+        this.note("Sniper: click a living enemy. Shot remains ready.");
+        return false;
+      }
+      this.damage(target, 9999, "rifleman", true);
+      this.effects.push({ ...target, kind: "hit", time: 0.7, size: 26 });
+      this.emitWeapon("rifleman", "fire");
+    } else if (weapon === "airstrike") {
+      this.strikes.push({ side, point: { ...point }, remaining: 1.8 });
+    } else {
+      const template = this.soldiers.find(
+        (s) => s.side === side && !s.reinforcement,
+      )!;
+      for (let i = 0; i < 3; i++) {
+        const spawn = safePoint(
+          {
+            x: side === 0 ? 35 : FIELD.width - 35,
+            y: Math.max(
+              35,
+              Math.min(FIELD.height - 35, point.y + (i - 1) * 35),
+            ),
+          },
+          this.cover,
+        );
+        this.soldiers.push({
+          ...structuredClone(template),
+          ...spawn,
+          id: this.nextReinforcementId++,
+          slot: -1,
+          reinforcement: true,
+          expiresAt: this.time + 18,
+          classId: "rifleman",
+          hp: 18,
+          life: "alive",
+          death: null,
+          burnRemaining: 0,
+          target: null,
+          terrainTarget: null,
+          goal: null,
+          path: [],
+          brawl: null,
+          blocking: false,
+          fightMove: null,
+          fightMoveTime: 0,
+          knockdownTime: 0,
+          drowningTime: 0,
+          wasInWater: false,
+          cooldown: 999,
+          think: 0,
+          repath: 0,
+        });
+      }
+    }
+    inventory.splice(index, 1);
+    this.supplyRevision++;
+    this.note(
+      `${side === 0 ? "Your squad" : "Enemy"}: ${SUPER_LABELS[weapon]} deployed!${weapon === "airstrike" ? " Impact in 1.8s — clear the circle!" : ""}`,
+    );
+    return true;
+  }
+  tickReinforcement(s: Soldier, dt: number) {
+    if (this.time >= (s.expiresAt ?? 0)) {
+      s.life = "dead";
+      s.hp = 0;
+      s.death = "skeleton";
+      return;
+    }
+    const target = this.nearestEnemy(s);
+    if (!target) return;
+    if (distance(s, target) <= 22 && !blocked(s, target, this.cover)) {
+      this.damage(target, 9999, "rifleman", true);
+      this.effects.push({ ...s, kind: "punch", time: 0.3, size: 18 });
+      return;
+    }
+    if (s.repath <= 0 || !s.path.length) {
+      s.path = pathfind(s, target, this.cover);
+      s.repath = 0.35;
+    }
+    const p = s.path[0];
+    if (!p) return;
+    const d = distance(s, p),
+      travel = Math.min(d, 175 * dt);
+    if (d < 1) {
+      s.path.shift();
+      return;
+    }
+    const next = {
+      x: s.x + ((p.x - s.x) / d) * travel,
+      y: s.y + ((p.y - s.y) / d) * travel,
+    };
+    if (!blocked(s, next, this.cover, 14)) {
+      s.facing = next.x >= s.x ? 1 : -1;
+      s.x = next.x;
+      s.y = next.y;
+      s.moving = true;
+    }
+    if (d <= travel) s.path.shift();
+  }
+  tickSupers(dt: number) {
+    this.collectSupplies();
+    for (const strike of this.strikes) {
+      strike.remaining -= dt;
+      if (strike.remaining > 0) continue;
+      const snapshot = [...this.cover];
+      for (const t of this.combatants())
+        if (
+          t.life === "alive" &&
+          distance(t, strike.point) <= 105 &&
+          !blocked(strike.point, t, snapshot)
+        )
+          this.damage(t, 9999, "bazooka", true);
+      // Airstrike craters obey the same shielding/destruction rules as other blasts.
+      for (const r of [...this.cover])
+        if (
+          distanceToRect(strike.point, r) <= 105 &&
+          !blocked(
+            strike.point,
+            { x: r.x + r.w / 2, y: r.y + r.h / 2 },
+            snapshot.filter((o) => o !== r),
+          )
+        )
+          this.damageCover(r, 100);
+      this.effects.push({
+        ...strike.point,
+        kind: "boom",
+        classId: "bazooka",
+        time: 0.8,
+        size: 105,
+      });
+      this.emitWeapon("bazooka", "impact");
+    }
+    this.strikes = this.strikes.filter((s) => s.remaining > 0);
+    if (this.combatTicks % 30 === 0)
+      for (const side of this.aiSides) {
+        const weapon = this.powers[side][0],
+          target = this.soldiers.find(
+            (s) => s.side !== side && s.life === "alive" && !s.reinforcement,
+          );
+        if (weapon && target) this.useSuper(side, weapon, target);
+      }
+  }
   step() {
     if (this.winner !== null) return;
     const dt = TUNING.step;
@@ -1079,6 +1383,7 @@ export class Battle {
       return;
     }
     this.time = ++this.combatTicks * dt;
+    this.tickSupers(dt);
     for (const unit of this.combatants()) this.tickBurn(unit, dt);
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
     for (const s of this.soldiers) {
@@ -1106,6 +1411,10 @@ export class Battle {
             `${s.side === 0 ? "Your" : "Enemy"} ${CLASSES[s.classId].name} drowned. No medic rescue.`,
           );
         }
+        continue;
+      }
+      if (s.reinforcement) {
+        this.tickReinforcement(s, dt);
         continue;
       }
       this.updateWater(s);
@@ -1270,13 +1579,18 @@ export class Battle {
           }
         }
       }
-    for (const s of this.soldiers) this.updateWater(s);
+    for (const s of this.soldiers) if (!s.reinforcement) this.updateWater(s);
     for (const a of this.soldiers.filter(
-      (s) => s.life === "alive" && s.brawl === null && s.drowningTime <= 0,
+      (s) =>
+        !s.reinforcement &&
+        s.life === "alive" &&
+        s.brawl === null &&
+        s.drowningTime <= 0,
     ))
       for (const b of this.soldiers) {
         if (
           a.brawl === null &&
+          !b.reinforcement &&
           b.life === "alive" &&
           b.drowningTime <= 0 &&
           b.brawl === null &&
@@ -1355,7 +1669,9 @@ export class Battle {
       }
     }
     const alive = (side: Side) =>
-      this.soldiers.some((s) => s.side === side && s.life === "alive");
+      this.soldiers.some(
+        (s) => !s.reinforcement && s.side === side && s.life === "alive",
+      );
     if (!this.training && (!alive(0) || !alive(1))) {
       this.winner = alive(0) ? 0 : 1;
       this.note(

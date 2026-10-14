@@ -189,6 +189,7 @@ export const TUNING = {
   aiMedicDelay: 5,
   aiAccuracy: 0.85,
   enemyRocketScatter: 1.7,
+  manualRocketReload: 6,
   aiAggression: 0.8,
   aiBridgeRisk: 0.35,
   aiUnsafeBlastPenalty: 240,
@@ -211,13 +212,23 @@ export const TERRAIN = {
   hp: 100,
   damage: { rifleman: 0, bazooka: 40, lobber: 20, torch: 0, sapper: 100 },
 };
+// Broad firing shelters, with exposed reward alcoves at opposite map edges.
 export const COVER: Cover[] = [
-  { x: 230, y: 100, w: 100, h: 40, material: "rock" },
-  { x: 260, y: 370, w: 90, h: 44 },
-  { x: 360, y: 225, w: 112, h: 46, material: "crate" },
-  { x: 760, y: 110, w: 95, h: 42 },
-  { x: 790, y: 375, w: 80, h: 44, material: "rock" },
-  { x: 390, y: 460, w: 80, h: 34 },
+  { x: 230, y: 100, w: 135, h: 60, material: "rock" },
+  { x: 215, y: 300, w: 130, h: 55, material: "sandbags" },
+  { x: 340, y: 200, w: 115, h: 50, material: "rock" },
+  { x: 300, y: 445, w: 145, h: 40, material: "sandbags" },
+  { x: 425, y: 485, w: 35, h: 60, material: "rock" },
+  { x: 735, y: 400, w: 135, h: 60, material: "rock" },
+  { x: 755, y: 205, w: 130, h: 55, material: "sandbags" },
+  { x: 680, y: 310, w: 100, h: 50, material: "rock" },
+  { x: 700, y: 75, w: 145, h: 40, material: "sandbags" },
+  { x: 685, y: 15, w: 35, h: 60, material: "rock" },
+];
+export const SUPPLY_POINTS = [
+  { x: 580, y: 325, label: "RIVER DROP" },
+  { x: 380, y: 520, label: "SOUTH DROP" },
+  { x: 765, y: 35, label: "NORTH DROP" },
 ];
 // Bank-to-bank crossing is unavoidable when moving between the two halves.
 export const WATER: Rect[] = [

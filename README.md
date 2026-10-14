@@ -1,8 +1,20 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.18 — precise manual rockets and distinct weapon tradeoffs.**
+Current prototype: **v0.19 — expanded cover and contested super-weapon drops.**
 
-Select a Bazooka for manual control: click an enemy to fire once, or point at the map and press **T** (left-handed preset: **L**). The aiming line and reticle show the impact point and range. Manual rockets have no random scatter, but travel to a fixed point rather than homing. Lead moving targets. Each shot stops movement to brace and starts a four-second reload. Selected Bazookas never auto-fire, including through Fire all. Deselect to resume inaccurate automatic rockets; enemy rockets scatter more. Only one launcher can be manually controlled at a time. Controls are rebindable and existing saved bindings are preserved.
+The central wooden crate is gone. Each bank now has five broad rock/sandbag shelters, all using the existing destruction rules. Three glowing supply drops offer a reason to leave cover: one in the river, one in a southern alcove, and one in a northern alcove. Walk a living squad member onto a drop to claim it. Both teams compete for the same drops, each collected only once. River entry still carries normal class drowning risks.
+
+Each drop rolls one random one-use reward:
+
+| Reward | How to use it | Tradeoff |
+| --- | --- | --- |
+| Airstrike | Click its Supply rewards button, then a point on the map | 1.8-second visible warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
+| Sniper shot | Click its button, then an enemy | One guaranteed kill, including behind cover; only one shot. An empty click keeps it ready. |
+| Reinforcements | Click its button, then a lane | Three fast unarmed recruits arrive from your edge and automatically pursue enemies. They have 18 HP, expire after 18 seconds, and can only kill by contact. They cannot be controlled or revived and do not count toward squad victory. |
+
+Right-click cancels reward targeting without spending it. The yellow reticle previews targeting; red circles and an incoming aircraft warn of an airstrike. Rewards cannot be used during deployment or after the match ends. Enemy AI sends its nearest suitable soldier for supplies and uses captured rewards automatically. Boot camp remains enemy-free, with its final briefing explaining normal supply rules.
+
+Select a Bazooka for manual control: click an enemy to fire once, or point at the map and press **T** (left-handed preset: **L**). The aiming line and reticle show the impact point and range. Manual rockets have no random scatter, but travel to a fixed point rather than homing. Lead moving targets. Each shot stops movement to brace and starts a six-second reload. Automatic rockets reload in four seconds. Switching selection does not shorten an active reload. Selected Bazookas never auto-fire, including through Fire all. Deselect to resume inaccurate automatic rockets; enemy rockets scatter more. Only one launcher can be manually controlled at a time. Controls are rebindable and existing saved bindings are preserved.
 
 Deployment sounds once per displayed countdown second. The final three seconds use a higher double beep, followed by an ascending start call exactly when GO releases combat. Pausing stops new cues; resuming does not repeat the current tick. Restarting resets the sequence, boot camp stays silent, and Sound off mutes every deployment cue.
 
@@ -13,7 +25,7 @@ Movement remains slower for every class and medics. Weapon strengths and weaknes
 | Class | Land speed | Seconds between shots | Effect on an exposed soldier |
 | --- | ---: | ---: | --- |
 | Rifleman | 47 | 0.65 | 18 damage; quick, accurate fire with medium armor (230 HP) |
-| Bazooka | 40 | 4 | One rocket blast kills; heavy armor (330 HP); automatic scatter |
+| Bazooka | 40 | 4 auto / 6 manual | One rocket blast kills; heavy armor (330 HP); automatic scatter |
 | Lobber | 44 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
 | Torch | 49 | 2 | 12 contact damage, then 35 damage/second while burning |
 | Sapper | 52 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
@@ -144,7 +156,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.18 matched 36-game diagnostic averaged 31 seconds of combat (20–54 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, pickups, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.19 matched 36-game diagnostic averaged 22 seconds of combat (13–38 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 

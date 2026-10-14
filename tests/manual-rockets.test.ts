@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Battle, replayBattle } from "../src/sim/battle";
-import { CLASSES } from "../src/sim/data";
+import { CLASSES, TUNING } from "../src/sim/data";
 function fixture() {
   const b = new Battle(42);
   b.aiSides = [];
@@ -32,7 +32,7 @@ describe("manual rocket tradeoffs", () => {
     expect(b.shots).toHaveLength(1);
     // Move off the snapshot before impact; no homing and no automatic repeat.
     t.y = 300;
-    for (let i = 0; i < 150; i++) b.step();
+    for (let i = 0; i < 210; i++) b.step();
     expect(t.life).toBe("alive");
     expect(b.stats.shots).toBe(1);
     expect(a.cooldown).toBeLessThanOrEqual(0);
@@ -47,7 +47,7 @@ describe("manual rocket tradeoffs", () => {
       expect(b.shots[0].manual).toBe(true);
       expect(a.path).toEqual([]);
       expect(a.goal).toBeNull();
-      expect(a.cooldown).toBe(4);
+      expect(a.cooldown).toBe(TUNING.manualRocketReload);
       b.resolveShot(b.shots[0]);
       expect(t.life).toBe("dead");
     }
@@ -70,6 +70,19 @@ describe("manual rocket tradeoffs", () => {
     expect(
       Math.abs(Math.atan2(enemy.to.y - a.y, enemy.to.x - a.x)),
     ).toBeGreaterThan(autoError);
+  });
+  it("manual reload is slower than auto and cannot be bypassed by deselecting", () => {
+    const { b, a, t } = fixture();
+    b.command({ type: "aim", id: a.id, point: { x: t.x, y: t.y } });
+    const manualReload = a.cooldown;
+    expect(manualReload).toBe(6);
+    b.command({ type: "select", id: null });
+    expect(a.cooldown).toBe(manualReload);
+    expect(b.fire(a, t)).toBe(false);
+    a.cooldown = 0;
+    expect(b.fire(a, t)).toBe(true);
+    expect(a.cooldown).toBe(4);
+    expect(a.cooldown).toBeLessThan(manualReload);
   });
   it("rejects manual orders for unattended units and during deployment", () => {
     const { b, a, t } = fixture();

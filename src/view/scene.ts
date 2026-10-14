@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { Battle, type Soldier } from "../sim/battle";
+import { Battle, type SuperWeapon, type Soldier } from "../sim/battle";
 import {
   CLASSES,
   FIELD,
@@ -50,6 +50,8 @@ export class Battlefield extends Phaser.Scene {
       ? { x: near.x, y: near.y }
       : { ...this.cursor };
   }
+  superAim: SuperWeapon | null = null;
+  private supplyLabels: Phaser.GameObjects.Text[] = [];
   cursor: Point = { x: 100, y: 280 };
   onTick = () => {};
   onReady = () => {};
@@ -389,6 +391,61 @@ export class Battlefield extends Phaser.Scene {
       );
     const g = this.effects;
     g.clear();
+    for (let i = 0; i < b.supplies.length; i++) {
+      const drop = b.supplies[i],
+        p = project(drop),
+        active = drop.claimedBy === null;
+      this.supplyLabels[i] ??= this.add
+        .text(0, 0, "", {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: "#fff4bd",
+          backgroundColor: "#354c3e",
+          padding: { x: 4, y: 3 },
+        })
+        .setOrigin(0.5)
+        .setDepth(10002);
+      this.supplyLabels[i]
+        .setVisible(active)
+        .setPosition(p.x, p.y - 32)
+        .setText(`${drop.label} · ?`);
+      if (!active) continue;
+      g.fillStyle(0xffd45f, 0.16 + 0.07 * Math.sin(b.time * 4));
+      g.fillEllipse(p.x, p.y + 2, 54, 28);
+      g.lineStyle(2, 0xffe599);
+      g.strokeEllipse(p.x, p.y + 2, 43, 22);
+      g.fillStyle(0x304c42);
+      g.fillRoundedRect(p.x - 14, p.y - 22, 28, 24, 4);
+      g.lineStyle(2, 0xffd45f);
+      g.strokeRoundedRect(p.x - 14, p.y - 22, 28, 24, 4);
+      g.fillStyle(0xffd45f);
+      g.fillTriangle(p.x + 3, p.y - 20, p.x - 7, p.y - 9, p.x + 2, p.y - 9);
+      g.fillTriangle(p.x - 3, p.y, p.x + 7, p.y - 12, p.x - 2, p.y - 12);
+    }
+    for (let i = b.supplies.length; i < this.supplyLabels.length; i++)
+      this.supplyLabels[i].setVisible(false);
+    for (const strike of b.winner === null ? b.strikes : []) {
+      const p = project(strike.point);
+      g.fillStyle(0xe34c31, 0.13);
+      g.fillEllipse(p.x, p.y, 210, 155);
+      g.lineStyle(3, 0xf67d4f, 0.7 + 0.3 * Math.sin(strike.remaining * 20));
+      g.strokeEllipse(p.x, p.y, 210, 155);
+      g.lineBetween(p.x - 16, p.y, p.x + 16, p.y);
+      g.lineBetween(p.x, p.y - 12, p.x, p.y + 12);
+      // Incoming aircraft silhouette sweeps toward the marked circle.
+      const x = p.x - 450 * (strike.remaining / 1.8);
+      g.fillStyle(0x263d36);
+      g.fillTriangle(x - 26, p.y - 95, x + 26, p.y - 95, x, p.y - 115);
+      g.fillRect(x - 4, p.y - 120, 8, 44);
+    }
+    if (this.superAim && b.winner === null && !b.planning) {
+      const p = project(this.cursor),
+        radius = this.superAim === "airstrike" ? 105 : 22;
+      g.lineStyle(2, 0xffd15f, 0.9);
+      g.strokeEllipse(p.x, p.y, radius * 2, radius * 1.48);
+      g.lineBetween(p.x - 12, p.y, p.x + 12, p.y);
+      g.lineBetween(p.x, p.y - 10, p.x, p.y + 10);
+    }
     const selected = b.selected === null ? null : b.get(b.selected);
     if (
       b.winner === null &&
@@ -530,9 +587,11 @@ export class Battlefield extends Phaser.Scene {
           ? s.death!
           : celebrating
             ? victoryKey(s.classId, s.side, victoryPose.frame)
-            : fighting
-              ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
-              : assetKey(s.classId, s.side),
+            : s.reinforcement
+              ? fighterKey(s.classId, s.side, "guard", 0)
+              : fighting
+                ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
+                : assetKey(s.classId, s.side),
       );
       sprite
         .setPosition(
@@ -543,7 +602,8 @@ export class Battlefield extends Phaser.Scene {
         )
         .setDepth(p.y)
         .setFlipX(facing < 0)
-        .setScale(0.79 * (1 - sink * 0.45))
+        .setScale((s.reinforcement ? 0.68 : 0.79) * (1 - sink * 0.45))
+        .setTint(s.reinforcement ? 0xffdf87 : 0xffffff)
         .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
         .setAngle(
           celebrating
@@ -606,7 +666,7 @@ export class Battlefield extends Phaser.Scene {
         g.fillRoundedRect(
           p.x - 16,
           p.y - 75,
-          (32 * s.hp) / CLASSES[s.classId].hp,
+          (32 * s.hp) / (s.reinforcement ? 18 : CLASSES[s.classId].hp),
           5,
           2,
         );
@@ -622,7 +682,9 @@ export class Battlefield extends Phaser.Scene {
           label!.setText(s.blocking ? "BLOCK" : "BRAWL");
         } else
           label!.setText(
-            `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
+            s.reinforcement
+              ? "CHARGE!"
+              : `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
           );
       } else
         label!.setText(
