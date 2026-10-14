@@ -1,8 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.22 — individual take-cover stance.**
+Current prototype: **v0.22.1 — prominent selected-soldier cover button.**
 
-Select a living troop and click **Take cover** or press **C** (left-handed preset: **K**). They duck into a lower profile, stop moving, and show a turquoise shield/ring and IN COVER label. Rifle shots are much less likely to hit them at range, but they fire half as often. Use **Leave cover** or the same key before moving again. Movement and bridge orders are blocked while covered, and Move squad leaves covered troops in place. Cover can be set during deployment and remains active after deselection.
+Select a living troop and click the gold **Take cover** button beside their name and soldier number in the bottom orders panel or press **C** (left-handed preset: **K**). They duck into a lower profile, stop moving, and show a turquoise shield/ring and IN COVER label. Rifle shots are much less likely to hit them at range, but they fire half as often. Use **Leave cover** or the same key before moving again. Movement and bridge orders are blocked while covered, and Move squad leaves covered troops in place. Cover can be set during deployment and remains active after deselection.
 
 This stance is available on dry ground and is separate from hiding behind solid terrain. It reduces the rifle target area and increases incoming rifle aim error; it does not add armor or an extra random dodge roll. Closing the distance makes rifles more effective again. Explosions, flames, sniper shots and melee remain counters, and direct rocket/dynamite hits retain their lethality. All outgoing reloads—including manual rockets—are doubled. Leaving cover cannot shorten an existing reload. Brawls, casualties and revival clear the stance. Saved controls upgrade without losing custom bindings.
 

@@ -813,14 +813,29 @@ p {
   background: #e9865a;
 }
 
+.order-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin-bottom: 0.4em;
+}
+.order-heading h3 {
+  margin: 0;
+}
 .cover-order {
-  padding: 0.3em 0.65em;
-  font-size: 0.68em;
-  margin-top: 0.25em;
-  margin-right: 0.5em;
-  box-shadow: none;
-  background: #345c54;
-  color: #fff0bf;
+  flex-shrink: 0;
+  padding: 0.55em 0.75em;
+  font-size: 0.76em;
+  margin: 0;
+  min-height: 2.5em;
+  border: 2px solid #3b5f4a;
+  box-shadow: 2px 2px 0 #3b5f4a33;
+  background: #efd588;
+  color: #213f30;
+}
+.cover-order:hover {
+  background: #ffe6a0;
 }
 .cover-order:disabled {
   opacity: 0.5;
