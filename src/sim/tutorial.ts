@@ -91,7 +91,7 @@ export class Tutorial {
       case "hold":
         return [
           "Stand your ground",
-          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement but keeps automatic fire. With no enemy in range, units aim at the closest enemy and miss; the circle shows effective range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
+          `With the Rifleman selected (${h("slot1")}), use ${h("hold")} to hold position. Hold cancels pursuit and movement. Troops take 0.7 seconds to aim after stopping, then fire automatically. Moving troops hold fire. With no enemy in range, stationary units aim at the closest enemy and miss; the circle shows effective range. Fire all (${h("fireAll")}) orders stationary soldiers to fire at available targets; moving soldiers continue their routes. ${h("deselect")} deselects; it does not cancel an order.`,
         ];
       case "slots":
         return [
@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike, sniper shot, or charging recruits. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Move squad sends available troops to spaced positions together; individual orders can override them. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike, sniper shot, or charging recruits. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }

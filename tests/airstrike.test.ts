@@ -80,12 +80,12 @@ describe("deliberate movement pace", () => {
         const start = { x: s.x, y: s.y };
         for (let i = 0; i < 30; i++) b.step();
         const moved = Math.hypot(s.x - start.x, s.y - start.y);
-        expect(moved).toBeGreaterThan(20);
-        expect(moved).toBeLessThanOrEqual(31.01);
+        expect(moved).toBeGreaterThan(15);
+        expect(moved).toBeLessThanOrEqual(26.01);
       });
   it("also slows auxiliary movement while keeping recruits faster than regular troops", () => {
-    expect(TUNING.medicSpeed).toBe(62);
-    expect(TUNING.reinforcementSpeed).toBe(105);
-    expect(Math.max(...Object.values(CLASSES).map((c) => c.speed))).toBe(31);
+    expect(TUNING.medicSpeed).toBe(53);
+    expect(TUNING.reinforcementSpeed).toBe(90);
+    expect(Math.max(...Object.values(CLASSES).map((c) => c.speed))).toBe(26);
   });
 });

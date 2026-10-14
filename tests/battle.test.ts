@@ -209,7 +209,7 @@ describe("movement, brawls and replay", () => {
     const { b, a, t } = pair();
     t.x = 1000;
     b.command({ type: "move", id: a.id, point: { x: 400, y: 250 } });
-    advance(b, 8);
+    advance(b, 9);
     expect(distance(a, { x: 400, y: 250 })).toBeLessThan(2);
   });
   it("close enemies brawl; selected soldier uses punch, kick and block", () => {
@@ -449,9 +449,11 @@ describe("destructible scenery", () => {
     for (const material of ["rock", "sandbags", "crate"] as const) {
       const { b, a, t } = fixture("sapper");
       b.cover[0].material = material;
+      expect(b.fire(a, t)).toBe(true);
+      const airborne = b.shots.pop()!;
       b.command({ type: "move", id: a.id, point: { x: 320, y: 250 } });
       expect(a.path.length).toBeGreaterThan(1);
-      shoot(b, a, t);
+      b.resolveShot(airborne);
       expect(blocked(a, { x: 320, y: 250 }, b.cover, 14)).toBe(false);
       expect(a.path).toEqual([{ x: 320, y: 250 }]);
     }

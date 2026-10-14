@@ -106,7 +106,7 @@ describe("manual rocket tradeoffs", () => {
     expect(CLASSES.bazooka.hp).toBeGreaterThan(CLASSES.rifleman.hp);
     expect(CLASSES.rifleman.hp).toBeGreaterThan(CLASSES.lobber.hp);
     expect(CLASSES.lobber.hp).toBeGreaterThan(CLASSES.sapper.hp);
-    expect(CLASSES.sapper.range).toBeLessThan(CLASSES.rifleman.range / 3);
+    expect(CLASSES.sapper.range).toBeLessThan(CLASSES.rifleman.range / 2);
     expect(CLASSES.rifleman.cooldown).toBeLessThan(CLASSES.lobber.cooldown / 4);
   });
 });

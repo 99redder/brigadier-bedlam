@@ -28,6 +28,8 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  steadyTime?: number;
+  formationSpeed?: number;
   reinforcement?: boolean;
   expiresAt?: number;
   side: Side;
@@ -118,6 +120,7 @@ export const SUPER_LABELS: Record<SuperWeapon, string> = {
   reinforcements: "Reinforcements",
 };
 export type Command =
+  | { type: "squad-move"; point: Point }
   | { type: "super"; side: Side; weapon: SuperWeapon; point: Point }
   | { type: "fire-all" }
   | { type: "aim"; id: number; point: Point }
@@ -298,9 +301,13 @@ export class Battle {
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
     if (
       this.planning &&
-      !["select", "move", "bridge", "hold"].includes(c.type)
+      !["select", "move", "squad-move", "bridge", "hold"].includes(c.type)
     ) {
       this.note("Deployment: queue movement orders. Weapons unlock at GO.");
+      return;
+    }
+    if (c.type === "squad-move") {
+      this.moveSquad(c.point);
       return;
     }
     if (c.type === "super") {
@@ -328,6 +335,10 @@ export class Battle {
     const s = this.get(c.id);
     if (!s || s.reinforcement || s.life !== "alive" || s.drowningTime > 0)
       return;
+    if (
+      ["move", "bridge", "attack", "demolish", "hold", "aim"].includes(c.type)
+    )
+      s.formationSpeed = undefined;
     if (c.type === "aim") {
       this.aimRocket(s, c.point);
       return;
@@ -397,6 +408,46 @@ export class Battle {
     if (c.type === "block") s.blocking = c.held && s.brawl !== null;
     if (c.type === "punch" || c.type === "kick") this.brawlHit(s, c.type);
   }
+  moveSquad(point: Point) {
+    const units = this.soldiers
+      .filter(
+        (s) =>
+          s.side === 0 &&
+          !s.reinforcement &&
+          s.life === "alive" &&
+          s.drowningTime <= 0 &&
+          s.brawl === null,
+      )
+      .sort((a, b) => a.slot - b.slot);
+    const routes = units.map((s, i) => {
+      s.target = null;
+      s.terrainTarget = null;
+      s.hold = false;
+      this.setGoal(s, {
+        x: point.x + (i % 2) * 22,
+        y: point.y + (i - (units.length - 1) / 2) * 48,
+      });
+      let length = 0,
+        prev: Point = s;
+      for (const p of s.path) {
+        length += distance(prev, p);
+        prev = p;
+      }
+      return { s, length };
+    });
+    const duration = Math.max(
+      0,
+      ...routes.map((r) => r.length / CLASSES[r.s.classId].speed),
+    );
+    for (const { s, length } of routes)
+      s.formationSpeed =
+        duration > 0
+          ? Math.min(CLASSES[s.classId].speed, length / duration)
+          : undefined;
+    this.note(
+      `Squad movement: ${units.length} troops to spaced positions. Moving troops hold fire.`,
+    );
+  }
   // Treat the river as a movement obstacle, except for the bridge deck.
   dryCover(): Rect[] {
     let water = this.water.map((r) => ({ ...r }));
@@ -431,6 +482,7 @@ export class Battle {
       this.aiSides.includes(s.side) ? this.dryCover() : obstacles,
     );
     s.path = pathfind(s, s.goal, obstacles);
+    if (s.path.length) s.steadyTime = 0;
     s.repath = 0.65;
   }
   inWater(p: Point) {
@@ -718,6 +770,10 @@ export class Battle {
       s.fightMoveTime > 0 ||
       s.cooldown > 0 ||
       s.jam > 0 ||
+      (!manual &&
+        (s.moving ||
+          s.path.length > 0 ||
+          (s.steadyTime ?? TUNING.aimSettleTime) < TUNING.aimSettleTime)) ||
       distance(s, intendedHit?.point ?? point) > w.range + 1e-8 ||
       (s.classId === "torch" && this.inWater(s))
     )
@@ -847,13 +903,7 @@ export class Battle {
       });
     } else if (!terrainHit) {
       const t = this.getCombatant(shot.target);
-      if (
-        t &&
-        distance(t, impact) < 42 &&
-        (!this.aiSides.includes(owner.side) ||
-          this.random() < TUNING.aiAccuracy)
-      )
-        this.damage(t, w.damage, shot.classId);
+      if (t && distance(t, impact) < 42) this.damage(t, w.damage, shot.classId);
     } else {
       this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 10 });
     }
@@ -1495,6 +1545,15 @@ export class Battle {
       if (
         !this.aiSides.includes(s.side) &&
         target &&
+        this.canShoot(s, target)
+      ) {
+        s.path = [];
+        s.goal = null;
+        s.formationSpeed = undefined;
+      }
+      if (
+        !this.aiSides.includes(s.side) &&
+        target &&
         target.life === "alive" &&
         !s.hold &&
         !this.canShoot(s, target) &&
@@ -1527,11 +1586,12 @@ export class Battle {
           if (candidates[0]) this.setGoal(s, candidates[0]);
         }
       }
+      const advancing = s.path.length > 0;
       if (s.path.length) {
         const p = s.path[0],
           d = distance(s, p),
           speed =
-            CLASSES[s.classId].speed *
+            (s.formationSpeed ?? CLASSES[s.classId].speed) *
             (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {
@@ -1555,6 +1615,9 @@ export class Battle {
       }
       this.updateWater(s);
       if (s.drowningTime > 0) continue;
+      s.steadyTime =
+        advancing || s.moving ? 0 : (s.steadyTime ?? TUNING.aimSettleTime) + dt;
+      if (!s.path.length) s.formationSpeed = undefined;
       const aim =
         target && target.life === "alive" && this.canAutoShoot(s, target)
           ? target

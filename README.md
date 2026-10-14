@@ -1,6 +1,10 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.20 — deliberate movement and unmistakable airstrikes.**
+Current prototype: **v0.21 — coordinated movement and shorter rifle reach.**
+
+Use **Move squad**, then click a destination, to send available troops to spaced positions. Routes remain visible, and their speeds are coordinated for arrival together on clear ground. Cover, water, drowning and combat can disrupt that timing; water orders retain the direct risky route. Use individual movement/bridge/Hold orders to override one soldier. Group movement can be queued during deployment; right-click cancels targeting.
+
+Moving regular troops now hold automatic fire. After stopping they take 0.7 seconds to aim, making covering fire and the decision to advance matter. Explicit attack orders stop a soldier when it enters firing range; manual rockets still brace for a deliberate shot. Both teams follow the same movement/firing rules. Rifle range drops from 300 to 210 (30% less), with reload time increasing from 0.65 to 1.1 seconds. Damage stays 18 per hit, making rifles mid-range support rather than an all-purpose long-range answer. Movement is a further 14–17% slower across regular troops, medics and reinforcements. Enemy rifles use the same hit geometry as player rifles; the extra hidden hit/miss coin flip is removed, while weapon scatter, cover, jams and water risks remain.
 
 All regular soldiers on both teams now move about 40% slower than v0.19. Medics and reinforcements are slower by the same proportion. Class speed differences, river penalties, weapon reloads and the ten-second deployment phase remain. This gives opening routes, repositioning and leaving cover more weight.
 
@@ -24,15 +28,15 @@ Deployment sounds once per displayed countdown second. The final three seconds u
 
 Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
 
-Movement is slower for every class and medics (62 units/second); recruits charge at 105 units/second. Weapon strengths and weaknesses:
+Movement is slower for every class and medics (53 units/second); recruits charge at 90 units/second. Weapon strengths and weaknesses:
 
 | Class | Land speed | Seconds between shots | Effect on an exposed soldier |
 | --- | ---: | ---: | --- |
-| Rifleman | 28 | 0.65 | 18 damage; quick, accurate fire with medium armor (230 HP) |
-| Bazooka | 24 | 4 auto / 6 manual | One rocket blast kills; heavy armor (330 HP); automatic scatter |
-| Lobber | 26 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
-| Torch | 29 | 2 | 12 contact damage, then 35 damage/second while burning |
-| Sapper | 31 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
+| Rifleman | 24 | 1.1 | 18 damage; quick, accurate fire with medium armor (230 HP) |
+| Bazooka | 20 | 4 auto / 6 manual | One rocket blast kills; heavy armor (330 HP); automatic scatter |
+| Lobber | 22 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
+| Torch | 25 | 2 | 12 contact damage, then 35 damage/second while burning |
+| Sapper | 26 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
 
 A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing most full-health soldiers as ash; heavy rocket armor can survive one burn. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
 
@@ -78,7 +82,7 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
 - **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
-- Right-click to deselect. Soldiers automatically fire at enemies, except the selected manual Bazooka; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
+- Right-click to deselect. Stationary soldiers automatically fire at enemies after aiming, except the selected manual Bazooka; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
 - In a selected soldier's brawl: left-click punches, right-click kicks, and hold Left Shift to block. Other brawls resolve automatically.
@@ -160,7 +164,7 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.20 matched 36-game diagnostic averaged 32 seconds of combat (21–52 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.21 matched 36-game diagnostic averaged 31 seconds of combat (22–63 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 

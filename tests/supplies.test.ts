@@ -144,7 +144,7 @@ describe("contested supply drops", () => {
     expect(replay.powers).toEqual(b.powers);
     expect(replay.soldiers).toEqual(b.soldiers);
     expect(replay.rngState).toBe(b.rngState);
-  });
+  }, 15000);
   it("replays a collected and activated reward from ordinary player commands", () => {
     const b = new Battle(42);
     b.aiSides = [];

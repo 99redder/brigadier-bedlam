@@ -53,6 +53,7 @@ export class Battlefield extends Phaser.Scene {
       ? { x: near.x, y: near.y }
       : { ...this.cursor };
   }
+  squadMovePreview = false;
   superAim: SuperWeapon | null = null;
   private supplyLabels: Phaser.GameObjects.Text[] = [];
   cursor: Point = { x: 100, y: 280 };
@@ -471,6 +472,16 @@ export class Battlefield extends Phaser.Scene {
         strike.remaining - (b.winner === null ? 0 : this.victory.elapsed),
         strike.side,
       );
+    if (this.squadMovePreview && b.winner === null) {
+      for (let i = 0; i < 5; i++) {
+        const p = project({
+          x: this.cursor.x + (i % 2) * 22,
+          y: this.cursor.y + (i - 2) * 48,
+        });
+        g.lineStyle(2, 0xffdf84, 0.9);
+        g.strokeEllipse(p.x, p.y, 30, 16);
+      }
+    }
     if (this.superAim && b.winner === null && !b.planning) {
       const p = project(this.cursor),
         radius = this.superAim === "airstrike" ? 105 : 22;
@@ -527,7 +538,7 @@ export class Battlefield extends Phaser.Scene {
         g.lineBetween(goal.x, goal.y - 4, goal.x, goal.y + 4);
       }
     }
-    if (b.planning)
+    if (b.planning || b.soldiers.some((s) => s.formationSpeed !== undefined))
       for (const unit of b.soldiers) {
         if (unit.side !== 0 || !unit.goal || unit.id === b.selected) continue;
         const p = project(unit),
