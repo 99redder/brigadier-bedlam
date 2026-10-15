@@ -841,3 +841,36 @@ p {
   opacity: 0.5;
   cursor: default;
 }
+
+/* A readable, scrollable field guide within the game's fixed aspect ratio. */
+.field-manual { inset: 2.5% 4%; z-index: 8; padding: 2% 2.5%; }
+.field-manual .screen-head { flex-shrink: 0; margin-bottom: .8em; }
+.manual-nav { display: flex; flex-wrap: wrap; gap: .5em; flex-shrink: 0; padding-bottom: .8em; }
+.manual-nav .btn { padding: .55em .85em; font-size: .8em; box-shadow: none; }
+.manual-nav [aria-pressed="true"] { background: #294a3a; color: #fff1c8; }
+.manual-pages { overflow-y: auto; min-height: 0; flex: 1; overscroll-behavior: contain; border-block: 1px solid #a2ac88; padding: 1em .65em 1em 0; line-height: 1.65; }
+.manual-pages:focus-visible { outline: 2px solid #b75d42; outline-offset: 2px; }
+.manual-pages h3 { font-size: 1.45em; margin: 0 0 .35em; }
+.manual-pages p { font-size: .88em; margin: 0 0 .8em; }
+.manual-intro { max-width: 64em; margin-bottom: 1.2em; }
+.manual-intro h3 { font-size: 2em; }
+.manual-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.3em 2em; }
+.manual-grid article { border-top: 3px solid #b8be99; padding-top: .7em; }
+.manual-note { color: #516447; }
+.bio-list { display: grid; gap: 1em; }
+.bio-card { display: grid; grid-template-columns: 9em 1fr; gap: 1.25em; background: #e0e1c5; border: 1px solid #a4af89; border-left: 4px solid #b45f43; padding: 1em; }
+.bio-card img { width: 100%; align-self: start; background: #c9cfab; border-radius: 3px; }
+.bio-card h3 { font-size: 1.65em; }
+.bio-advice { border-top: 1px solid #b2bd97; padding-top: .65em; color: #3c5541; }
+.manual-controls { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1.5em; }
+.manual-controls dl { margin: 0; font-size: .83em; }
+.manual-controls dl div { padding: .55em 0; border-bottom: 1px solid #c5cbae; }
+.manual-controls dt { font-weight: 600; }
+.manual-controls dd { margin: .2em 0 0; color: #8c432f; }
+.manual-footer { display: flex; justify-content: space-between; font: .65em monospace; letter-spacing: .08em; padding-top: .9em; flex-shrink: 0; }
+@media (max-width: 700px) {
+  .field-manual { inset: 1.5% 2%; }
+  .manual-grid { gap: .8em 1em; }
+  .bio-card { grid-template-columns: 6em 1fr; gap: .8em; }
+  .manual-controls { grid-template-columns: 1fr 1fr; }
+}

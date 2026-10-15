@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import "./style.css";
+import { manualContent, MANUAL_CHAPTERS, type ManualChapter } from "./view/manual";
 import { Tutorial } from "./sim/tutorial";
 import {
   Battle,
@@ -32,6 +33,9 @@ function issue(c: Command) {
 }
 let screen: "title" | "squad" | "battle" | "result" = "title",
   squad = 0,
+  manualOpen = false,
+  manualReturn = true,
+  manualChapter: ManualChapter = 0,
   settingsOpen = false,
   settingsReturn = false,
   menuOpen = false,
@@ -101,11 +105,12 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.23</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.24</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
   if (screen === "result") renderResult();
+  if (manualOpen) renderManual();
   if (settingsOpen) renderSettings();
   wire();
 }
@@ -216,7 +221,7 @@ function renderBattle() {
   if (menuOpen)
     ui.insertAdjacentHTML(
       "beforeend",
-      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>Battle paused. Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Controls", "controls")}${tutorial ? "" : btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
+      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>Battle paused. Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${tutorial ? "" : btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
     );
 }
 function updateBattleHud() {
@@ -348,6 +353,10 @@ function action(a: Action, held = true, event?: Event) {
       x: ((event.clientX - r.left) / r.width) * 1280,
       y: ((event.clientY - r.top) / r.height) * 720,
     });
+  }
+  if (manualOpen) {
+    if (a === "menu" && held) closeManual();
+    return;
   }
   if (settingsOpen) return;
   if (a === "menu" && held) {
@@ -604,6 +613,14 @@ function wire() {
           render();
         }
         if (what === "medic") action("medic");
+        if (what === "manual") {
+          manualReturn = scene.paused;
+          manualOpen = true;
+          scene.paused = true;
+          input.clear();
+          render();
+          ui.querySelector<HTMLButtonElement>("#close-manual")?.focus();
+        }
         if (what === "controls") {
           tutorial?.ui("settings-open");
           settingsReturn = scene.paused;
@@ -634,8 +651,47 @@ function wire() {
           scene.battle!.command({ type: "medic", target: s.id, side: 0 });
       }),
   );
+  if (manualOpen) wireManual();
   if (settingsOpen) wireSettings();
 }
+
+function closeManual() {
+  manualOpen = false;
+  scene.paused = manualReturn;
+  input.clear();
+  render();
+  ui.querySelector<HTMLButtonElement>('[data-do="manual"]')?.focus();
+}
+function renderManual() {
+  ui.insertAdjacentHTML("beforeend", `<section class="settings field-manual" role="dialog" aria-modal="true" aria-labelledby="manual-heading"><div class="screen-head"><div><div class="eyebrow">Department of unnecessary conflict / FM-01</div><h2 id="manual-heading">Field manual.</h2></div><button class="btn secondary" id="close-manual">Close manual</button></div><nav class="manual-nav" aria-label="Manual chapters">${MANUAL_CHAPTERS.map((name, i) => `<button class="btn secondary" data-chapter="${i}" aria-pressed="${manualChapter === i}">${name}</button>`).join("")}</nav><div class="manual-pages" tabindex="0" role="region" aria-label="${MANUAL_CHAPTERS[manualChapter]}">${manualContent(manualChapter, id => portrait(id, 0, true), a => input.hint(a), esc)}</div><div class="manual-footer">READ BEFORE OPERATING / ENTHUSIASM IS NOT ARMOR <span>${manualChapter + 1} / ${MANUAL_CHAPTERS.length}</span></div></section>`);
+}
+function wireManual() {
+  Array.from(ui.children).forEach(child => {
+    if (child instanceof HTMLElement) child.inert = !child.classList.contains("field-manual");
+  });
+  ui.querySelector<HTMLButtonElement>("#close-manual")!.onclick = closeManual;
+  ui.querySelectorAll<HTMLButtonElement>("[data-chapter]").forEach(button => {
+    button.onclick = () => {
+      manualChapter = Number(button.dataset.chapter) as ManualChapter;
+      ui.querySelector(".field-manual")?.remove();
+      renderManual();
+      wireManual();
+      ui.querySelector<HTMLButtonElement>(`[data-chapter="${manualChapter}"]`)?.focus();
+    };
+  });
+  ui.querySelector<HTMLElement>(".field-manual")!.onkeyup = event => event.stopPropagation();
+  // Keep keyboard focus inside the manual while the underlying game is paused.
+  ui.querySelector<HTMLElement>(".field-manual")!.onkeydown = event => {
+    event.stopPropagation();
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeManual(); return; }
+    if (event.key !== "Tab") return;
+    const items = Array.from(ui.querySelectorAll<HTMLElement>('.field-manual button, .manual-pages'));
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  };
+}
+
 let capturing: { action: Action; slot: number } | null = null,
   settingsMessage = "";
 function renderSettings() {

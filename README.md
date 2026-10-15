@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.23 — sharper soldiers and smoother movement.**
+Current prototype: **v0.24 — in-game Field Manual and soldier biographies.**
+
+Open **Field manual** from the title screen or battle pause menu. Four scrollable chapters cover getting started, field tactics, all five slapstick personnel biographies with portraits and class advice, and your current control bindings. The battle stays paused while reading; Close manual or Escape returns to the previous screen. Chapter navigation, keyboard scrolling and focus stay within the manual.
 
 Soldier, melee, celebration, medic and casualty textures now render at twice their previous resolution while retaining their gameplay size. Soft shading, rounded outlines, uniform stitching, equipment highlights and class-specific details make the five silhouettes clearer: Rifleman tailoring and rifle hardware, Bazooka armor plates and launcher bore, Lobber grenade segments and beret pin, Torch pressure gauge and pilot flame, and Sapper overalls, bandage and dynamite fuse. Both teams keep their identifying colors.
 
