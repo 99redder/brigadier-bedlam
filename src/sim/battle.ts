@@ -1,3 +1,4 @@
+import { headingOf, inView } from "./vision";
 import {
   CLASSES,
   SUPPLY_POINTS,
@@ -61,6 +62,8 @@ export interface Soldier extends Point {
   autoGuardTime: number;
   blocking: boolean;
   facing: number;
+  heading?: number;
+  watchAngle?: number;
   think: number;
   repath: number;
   moving: boolean;
@@ -121,6 +124,7 @@ export const SUPER_LABELS: Record<SuperWeapon, string> = {
   reinforcements: "Reinforcements",
 };
 export type Command =
+  | { type: "face"; id: number; point: Point }
   | { type: "cover"; id: number; active: boolean }
   | { type: "squad-move"; point: Point }
   | { type: "super"; side: Side; weapon: SuperWeapon; point: Point }
@@ -303,7 +307,7 @@ export class Battle {
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
     if (
       this.planning &&
-      !["select", "move", "squad-move", "bridge", "hold", "cover"].includes(
+      !["select", "move", "squad-move", "bridge", "hold", "cover", "face"].includes(
         c.type,
       )
     ) {
@@ -369,6 +373,18 @@ export class Battle {
       this.note("Leave cover before moving this soldier.");
       return;
     }
+    if (c.type === "face") {
+      if (s.brawl !== null || distance(s.goal ?? s, c.point) < 1) return;
+      s.watchAngle = Math.atan2(c.point.y - (s.goal?.y ?? s.y), c.point.x - (s.goal?.x ?? s.x));
+      s.target = null;
+      s.terrainTarget = null;
+      if (!s.path.length) {
+        this.setHeading(s, s.watchAngle);
+        s.hold = true;
+      }
+      this.note(`${CLASSES[s.classId].name}: ${s.path.length ? "will face that direction on arrival." : "watching that firing lane."}`);
+      return;
+    }
     if (c.type === "aim") {
       this.aimRocket(s, c.point);
       return;
@@ -400,6 +416,8 @@ export class Battle {
           this.aimRocket(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
           return;
         }
+        this.facePoint(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
+        s.watchAngle = undefined;
         s.terrainTarget = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
         s.target = null;
         s.goal = null;
@@ -407,6 +425,7 @@ export class Battle {
         s.hold = !!s.takingCover;
       }
     }
+    if ((c.type === "move" || c.type === "bridge") && s.brawl === null && !s.takingCover) s.watchAngle = undefined;
     if (c.type === "move" && s.brawl === null) {
       s.terrainTarget = null;
       s.target = null;
@@ -421,6 +440,8 @@ export class Battle {
           return;
         }
         s.terrainTarget = null;
+        this.facePoint(s, t);
+        s.watchAngle = undefined;
         s.target = t.id;
         s.hold = !!s.takingCover;
         s.goal = null;
@@ -454,6 +475,7 @@ export class Battle {
       s.target = null;
       s.terrainTarget = null;
       s.hold = false;
+      s.watchAngle = undefined;
       this.setGoal(s, {
         x: point.x + (i % 2) * 22,
         y: point.y + (i - (units.length - 1) / 2) * 48,
@@ -555,6 +577,15 @@ export class Battle {
     }
     s.wasInWater = wet;
   }
+  setHeading(s: Soldier, angle: number) {
+    const delta = Math.atan2(Math.sin(angle - headingOf(s)), Math.cos(angle - headingOf(s)));
+    if (Math.abs(delta) > 0.01) s.steadyTime = 0;
+    s.heading = angle;
+    s.facing = Math.cos(angle) < -1e-8 ? -1 : 1;
+  }
+  facePoint(s: Soldier, point: Point) {
+    if (distance(s, point) > 1e-8) this.setHeading(s, Math.atan2(point.y - s.y, point.x - s.x));
+  }
   canShoot(s: Soldier, t: Combatant) {
     const w = CLASSES[s.classId];
     return (
@@ -588,7 +619,7 @@ export class Battle {
   }
   canAutoShoot(s: Soldier, t: Combatant) {
     return (
-      this.canShoot(s, t) &&
+      this.canShoot(s, t) && inView(s, t) &&
       (!this.aiSides.includes(s.side) || this.safeBlast(s, t))
     );
   }
@@ -732,17 +763,17 @@ export class Battle {
       const ordered =
         s.target === null ? undefined : this.getCombatant(s.target);
       const target =
-        ordered && ordered.side !== s.side && this.canShoot(s, ordered)
+        ordered && ordered.side !== s.side && inView(s, ordered) && this.canShoot(s, ordered)
           ? ordered
           : this.combatants()
-              .filter((t) => t.side !== s.side && this.canShoot(s, t))
+              .filter((t) => t.side !== s.side && inView(s, t) && this.canShoot(s, t))
               .sort(
                 (a, b) => distance(s, a) - distance(s, b) || a.id - b.id,
               )[0];
       if (
         target
           ? this.fire(s, target)
-          : this.fireDistant(s, this.nearestEnemy(s))
+          : this.fireDistant(s, this.nearestEnemy(s, true))
       )
         fired++;
     }
@@ -753,11 +784,12 @@ export class Battle {
     );
     return fired;
   }
-  nearestEnemy(s: Soldier) {
+  nearestEnemy(s: Soldier, visibleOnly = false) {
     return this.combatants()
       .filter(
         (t) =>
           t.side !== s.side &&
+          (!visibleOnly || inView(s, t)) &&
           t.life === "alive" &&
           (!("classId" in t) || t.drowningTime <= 0),
       )
@@ -767,6 +799,7 @@ export class Battle {
     if (
       this.planning ||
       !target ||
+      !inView(s, target) ||
       target.life !== "alive" ||
       target.side === s.side
     )
@@ -792,7 +825,7 @@ export class Battle {
   }
   fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
-    if (s.reinforcement) return false;
+    if (s.reinforcement || (!manual && !inView(s, point))) return false;
     const d = distance(s, point);
     // Validate intended range before scattering; cover may be closer than the target.
     const intendedHit = firstCoverHit(s, point, this.cover);
@@ -817,7 +850,7 @@ export class Battle {
         ? TUNING.manualRocketReload
         : w.cooldown) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
     s.flash = 0.2;
-    s.facing = point.x >= s.x ? 1 : -1;
+    if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
     this.stats.shots++;
     if (w.jam && this.random() < w.jam) {
       s.jam = TUNING.jamDuration;
@@ -1086,6 +1119,9 @@ export class Battle {
     const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     a.fightAnchor = { ...anchor };
     b.fightAnchor = { ...anchor };
+    a.heading = a.facing < 0 ? Math.PI : 0;
+    b.heading = b.facing < 0 ? Math.PI : 0;
+    a.watchAngle = b.watchAngle = undefined;
     a.fightFacing = a.facing;
     b.fightFacing = b.facing;
     a.fightMoveTime = 0;
@@ -1287,6 +1323,7 @@ export class Battle {
     } else {
       s.goal = null;
       s.path = [];
+      this.facePoint(s, t);
     }
   }
   collectSupplies() {
@@ -1539,6 +1576,7 @@ export class Battle {
         this.tickReinforcement(s, dt);
         continue;
       }
+      if (!s.path.length && s.watchAngle !== undefined) this.setHeading(s, s.watchAngle);
       this.updateWater(s);
       if (s.drowningTime > 0) continue;
       if (s.brawl !== null) {
@@ -1644,6 +1682,7 @@ export class Battle {
             (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {
+          this.facePoint(s, p);
           s.x = p.x;
           s.y = p.y;
           s.path.shift();
@@ -1654,7 +1693,7 @@ export class Battle {
             y: s.y + ((p.y - s.y) / d) * speed,
           };
           if (!blocked(s, next, this.cover, 14)) {
-            s.facing = next.x >= s.x ? 1 : -1;
+            this.facePoint(s, next);
             s.x = next.x;
             s.y = next.y;
             s.moving = true;
@@ -1662,6 +1701,7 @@ export class Battle {
             this.setGoal(s, s.goal, s.safeRoute);
         }
       }
+      if (!s.path.length && s.watchAngle !== undefined) this.setHeading(s, s.watchAngle);
       this.updateWater(s);
       if (s.drowningTime > 0) continue;
       s.steadyTime =
@@ -1675,7 +1715,7 @@ export class Battle {
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
       if (!s.terrainTarget && !this.isManualRocket(s)) {
         if (aim) this.fire(s, aim);
-        else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s));
+        else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s, true));
       }
     }
     // Soft separation keeps allied silhouettes readable without moving held units far.

@@ -1,3 +1,4 @@
+import { headingOf, VIEW_ARC } from "../sim/vision";
 import Phaser from "phaser";
 import { Battle, type SuperWeapon, type Soldier } from "../sim/battle";
 import {
@@ -74,6 +75,7 @@ export class Battlefield extends Phaser.Scene {
   squadMovePreview = false;
   superAim: SuperWeapon | null = null;
   private supplyLabels: Phaser.GameObjects.Text[] = [];
+  facePreview = false;
   cursor: Point = { x: 100, y: 280 };
   onTick = () => {};
   onReady = () => {};
@@ -525,13 +527,23 @@ export class Battlefield extends Phaser.Scene {
       selected.fightMoveTime <= 0
     ) {
       const p = project(selected);
-      g.lineStyle(2, 0xffefd0, 0.3);
-      g.strokeEllipse(
-        p.x,
-        p.y,
-        CLASSES[selected.classId].range * 2,
-        CLASSES[selected.classId].range * 1.48,
-      );
+      const origin = selected.path.length && selected.watchAngle !== undefined || this.facePreview && selected.goal
+        ? selected.goal ?? selected : selected;
+      const angle = this.facePreview
+        ? Math.atan2(this.cursor.y - origin.y, this.cursor.x - origin.x)
+        : origin !== selected ? selected.watchAngle! : headingOf(selected);
+      const range = CLASSES[selected.classId].range;
+      const center = project(origin);
+      const fan = [center, ...Array.from({ length: 33 }, (_, i) => {
+        const a = angle - VIEW_ARC / 2 + VIEW_ARC * i / 32;
+        return project({ x: origin.x + Math.cos(a) * range, y: origin.y + Math.sin(a) * range });
+      }), center];
+      g.fillStyle(this.facePreview ? 0xffd16f : 0xffefd0, 0.09);
+      g.fillPoints(fan, true);
+      g.lineStyle(2, this.facePreview ? 0xffd16f : 0xffefd0, 0.65);
+      g.strokePoints(fan, true);
+      const tip = project({x: origin.x + Math.cos(angle) * 44, y: origin.y + Math.sin(angle) * 44});
+      g.lineBetween(center.x, center.y, tip.x, tip.y);
       if (b.isManualRocket(selected) && !b.planning) {
         const aim = this.aimPoint(),
           d = distance(selected, aim),
@@ -630,6 +642,16 @@ export class Battlefield extends Phaser.Scene {
           ? Math.sin(visualTime * (s.moving ? 12 : pose.pace) + s.id) *
             (s.moving ? 0.7 : pose.bob)
           : 0;
+      if (alive && s.side === 0 && !fighting && !s.reinforcement) {
+        const a = headingOf(s), tip = project({x: s.x + Math.cos(a) * 24, y: s.y + Math.sin(a) * 24});
+        g.lineStyle(2, 0xffdf87, 0.85);
+        g.lineBetween(p.x, p.y + 5, tip.x, tip.y + 5);
+        const back = project({x: s.x + Math.cos(a) * 18, y: s.y + Math.sin(a) * 18});
+        const wing = project({x: s.x - Math.sin(a) * 4, y: s.y + Math.cos(a) * 4});
+        const base = project(s);
+        g.lineBetween(tip.x, tip.y + 5, back.x + wing.x - base.x, back.y + wing.y - base.y + 5);
+        g.lineBetween(tip.x, tip.y + 5, back.x - wing.x + base.x, back.y - wing.y + base.y + 5);
+      }
       const frame = fightFrame(s, b.time);
       const fall =
         down && s.brawlKnockdown

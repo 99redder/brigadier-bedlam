@@ -874,3 +874,8 @@ p {
   .bio-card { grid-template-columns: 6em 1fr; gap: .8em; }
   .manual-controls { grid-template-columns: 1fr 1fr; }
 }
+.face-order { flex-shrink: 0; padding: .55em .6em; font-size: .7em; margin: 0; min-height: 2.5em; background: #e4d89f; color: #213f30; border: 2px solid #3b5f4a; box-shadow: none; }
+.face-order:hover { background: #ffe6a0; }
+.face-order:disabled { opacity: .5; cursor: default; }
+.order-heading { gap: .35em; }
+.order-heading h3 { margin-right: auto; }

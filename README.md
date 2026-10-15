@@ -1,6 +1,11 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.24 — in-game Field Manual and soldier biographies.**
+Current prototype: **v0.25 — directional firing lanes.**
+
+Automatic weapons only fire within a **120° arc** centered on the soldier’s facing direction. They no longer swivel to acquire enemies beside or behind them. The selected troop’s range sector and the small gold direction arrows make their firing lanes visible. Fire all and guaranteed out-of-range misses obey the same arc, including when targeting medics. No enemy inside the arc means no automatic shot and no reload spent.
+
+Select a soldier, click **Face direction** (default **V**, left-handed **N**), then click a point on the map. A stationary soldier turns in place and takes the normal 0.7 seconds to settle; reloads are preserved. Moving faces the direction of travel. After queuing a move, assign a facing order to watch that direction on arrival without cancelling the route; this also works during deployment. New movement orders replace that queued facing. Right-click cancels facing selection. Troops can turn while taking cover. Explicit attack/demolition orders turn toward the commanded target once; manual rockets still turn for deliberate shots. Enemy AI sets its own firing positions and must obey the same arc and settling rules. Flanking a stationary firing lane now matters.
+
 
 Open **Field manual** from the title screen or battle pause menu. Four scrollable chapters cover getting started, field tactics, all five slapstick personnel biographies with portraits and class advice, and your current control bindings. The battle stays paused while reading; Close manual or Escape returns to the previous screen. Chapter navigation, keyboard scrolling and focus stay within the manual.
 
@@ -54,7 +59,7 @@ Rockets and dynamite still respect cover and friendly fire. Cover damage stays u
 
 When a rocket blast actually damages a soldier or medic, it plays a distinct crack/boom with a bright two-note confirmation instead of the normal rocket explosion. Cover hits, empty explosions, out-of-range misses, downed units, and protected training targets keep the ordinary impact sound. Each rocket emits one hit cue even if its blast damages several units. The cue respects Sound off and has a separate playback throttle so a nearby terrain impact cannot suppress it.
 
-Except for a selected, manually controlled Bazooka, if no enemy is in effective range units keep firing toward the closest living enemy. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
+Except for a selected, manually controlled Bazooka, if no enemy is in effective range units keep firing toward the closest living enemy inside their facing arc. These shots stop at weapon range, respect cover visually, and always miss without damaging soldiers or medics. Explosives intercepted by cover still damage that cover normally. Normal cooldowns, jams, brawls, drowning restrictions, and Torch's water restriction still apply. In-range attacks keep their normal damage rules. Fire all includes these distant shots for stationary player soldiers.
 
 Title-screen illustrations are rendered directly at high resolution with larger, distinct weapons and class/weapon nameplates. The rifle has a wood stock and long barrel; the rocket launcher has a wide muzzle; the grenade has segmentation and a pull ring; the flamethrower has a fuel hose and pilot flame; dynamite is a tied bundle with a sparking fuse. Squad-selection and roster portraits also render at higher resolution.
 
@@ -91,8 +96,8 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
-- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
-- Right-click to deselect. Stationary soldiers automatically fire at enemies after aiming, except the selected manual Bazooka; shots beyond the range circle always miss. They otherwise hold their positions unless carrying out an explicit order.
+- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy inside their facing arc beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
+- Right-click to deselect. Stationary soldiers automatically fire at enemies inside their facing arc after aiming, except the selected manual Bazooka; shots beyond the range sector always miss. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.
 - In a selected soldier's brawl: left-click punches, right-click kicks, and hold Left Shift to block. Other brawls resolve automatically.

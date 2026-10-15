@@ -20,6 +20,7 @@ function rescue(side: 0 | 1 = 0) {
   patient.life = "down";
   patient.hp = 0;
   const shooter = b.soldiers[(1 - side) * 5];
+  shooter.facing = -1; // This fixture establishes a firing lane toward the medic.
   shooter.x = 300;
   shooter.y = 200;
   shooter.classId = "rifleman";

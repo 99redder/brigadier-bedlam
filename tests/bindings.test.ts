@@ -171,3 +171,15 @@ describe("take-cover controls", () => {
     expect(conflicts(b, "cover", b.cover[0]!)).toEqual([]);
   });
 });
+
+it("adds a facing binding without losing custom controls or taking an occupied key", () => {
+  const storage = store();
+  const old = defaults() as unknown as Record<string, (string | null)[]>;
+  delete old.face;
+  old.hold = ["KeyV", null];
+  storage.setItem(STORAGE_KEY, JSON.stringify(old));
+  const upgraded = loadBindings(storage);
+  expect(upgraded.hold).toEqual(["KeyV", null]);
+  expect(upgraded.face[0]).not.toBe("KeyV");
+  expect(upgraded.interact).toEqual(old.interact);
+});
