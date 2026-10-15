@@ -83,6 +83,7 @@ describe("vulnerable medics", () => {
     expect(b.fireAll()).toBe(1);
     expect(b.shots[0].target).toBe(medic.id);
     shooter.cooldown = 0;
+    shooter.autoFireWait = 0; // Re-arm both timers for the automatic-targeting check.
     b.shots = [];
     b.step();
     expect(b.shots[0].target).toBe(medic.id);

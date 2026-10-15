@@ -83,11 +83,11 @@ describe("out-of-range automatic fire", () => {
       expect(target.hp).toBe(CLASSES[target.classId].hp);
     }
   });
-  it("keeps firing at its normal cadence and damages targets once they enter range", () => {
+  it("keeps firing at its slower passive cadence and damages targets once they enter range", () => {
     const { b, a, target } = distant();
     for (
       let i = 0;
-      i < Math.ceil((2 * CLASSES.rifleman.cooldown) / TUNING.step);
+      i < Math.ceil((2.2 * CLASSES.rifleman.cooldown * TUNING.passiveFireMultiplier) / TUNING.step);
       i++
     )
       b.step();
@@ -96,6 +96,7 @@ describe("out-of-range automatic fire", () => {
     target.x = 200;
     target.y = 200;
     a.cooldown = 0;
+    a.autoFireWait = 0; // Re-arm the fixture after its preceding distant shot.
     b.step();
     const shot = b.shots.find((s) => s.owner === a.id && !s.miss)!;
     expect(shot).toBeDefined();

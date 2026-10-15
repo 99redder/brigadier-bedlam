@@ -1,6 +1,9 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.25 — directional firing lanes.**
+Current prototype: **v0.26 — commanded volleys beat passive fire.**
+
+Troops still shoot automatically inside their facing arcs, but at half the commanded pace. Each shot now starts the normal weapon reload and a longer passive-fire timer. **Fire all** bypasses only the passive wait: repeat the button or its binding to fire ready stationary troops at up to twice the unattended rate. The roster shows VOLLEY READY when a troop has reloaded but is still waiting to fire automatically. One press commands one volley; it does not enable a permanent speed boost. Repeated clicks cannot shorten reloads, skip aiming, fire outside the arc, or make moving troops shoot. Taking cover still doubles reloads and passive intervals. Selected Bazookas retain deliberate manual control. Both teams use the slower passive cadence. Damage and movement speeds are unchanged.
+
 
 Automatic weapons only fire within a **120° arc** centered on the soldier’s facing direction. They no longer swivel to acquire enemies beside or behind them. The selected troop’s range sector and the small gold direction arrows make their firing lanes visible. Fire all and guaranteed out-of-range misses obey the same arc, including when targeting medics. No enemy inside the arc means no automatic shot and no reload spent.
 
@@ -96,7 +99,7 @@ Start with **Boot camp** on the title screen for guided practice, or choose a pr
 
 - Left-click a friendly soldier to select them. Left-click the ground to move, an enemy to attack, scenery to demolish, or a downed friendly to call a medic.
 - Left-click the bridge with a soldier selected to take a safe route to the opposite bank. Clicking ground on the far bank takes the direct route, with water speed penalties and drowning risk.
-- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy inside their facing arc beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order respects reloads, jams, brawls, and cover; the radio log reports how many fired.
+- **Fire all** (`G` by default; `H` in the left-handed preset) orders stationary player soldiers to shoot at an available enemy in range, their current demolition target, or fire a guaranteed miss toward the closest enemy inside their facing arc beyond range. Moving soldiers keep their routes; the selected manual Bazooka waits for its own fire command. The order bypasses the passive pause, but respects reloads, jams, brawls, and cover; the radio log reports how many fired.
 - Right-click to deselect. Stationary soldiers automatically fire at enemies inside their facing arc after aiming, except the selected manual Bazooka; shots beyond the range sector always miss. They otherwise hold their positions unless carrying out an explicit order.
 - `1–5` select slots; `Q / E` cycle living soldiers; `R` calls a medic for the downed friendly nearest the cursor; `F` holds position.
 - `Space` pauses; `Esc` opens the pause menu. The game also pauses when its window loses focus.

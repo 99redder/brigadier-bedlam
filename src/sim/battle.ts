@@ -47,6 +47,8 @@ export interface Soldier extends Point {
   path: Point[];
   hold: boolean;
   cooldown: number;
+  // Automatic fire waits longer than the physical reload; Fire all bypasses this wait.
+  autoFireWait?: number;
   jam: number;
   flash: number;
   brawl: number | null;
@@ -354,6 +356,7 @@ export class Battle {
       }
       if (c.active && !s.takingCover) {
         s.cooldown = Math.max(0, s.cooldown) * TUNING.coverReloadMultiplier;
+        s.autoFireWait = (s.autoFireWait ?? 0) * TUNING.coverReloadMultiplier;
         s.steadyTime = 0;
       }
       s.takingCover = c.active;
@@ -779,7 +782,7 @@ export class Battle {
     }
     this.note(
       fired
-        ? `Fire all: ${fired} stationary soldier${fired === 1 ? "" : "s"} fired.`
+        ? `Fire all: ${fired} stationary soldier${fired === 1 ? "" : "s"} fired at commanded pace.`
         : "Fire all: no stationary soldiers ready to fire.",
     );
     return fired;
@@ -849,6 +852,7 @@ export class Battle {
       (manual && s.classId === "bazooka"
         ? TUNING.manualRocketReload
         : w.cooldown) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+    s.autoFireWait = s.cooldown * TUNING.passiveFireMultiplier;
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
     this.stats.shots++;
@@ -1547,6 +1551,7 @@ export class Battle {
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
     for (const s of this.soldiers) {
       s.cooldown -= dt;
+      s.autoFireWait = Math.max(0, (s.autoFireWait ?? 0) - dt);
       s.jam -= dt;
       s.flash -= dt;
       s.brawlCd -= dt;
@@ -1622,7 +1627,7 @@ export class Battle {
           if (distance(s, contact) <= CLASSES[s.classId].range) {
             s.goal = null;
             s.path = [];
-            this.fireAt(s, s.terrainTarget);
+            if ((s.autoFireWait ?? 0) <= 0) this.fireAt(s, s.terrainTarget);
           }
         }
       }
@@ -1713,7 +1718,7 @@ export class Battle {
           : this.combatants()
               .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
-      if (!s.terrainTarget && !this.isManualRocket(s)) {
+      if (!s.terrainTarget && !this.isManualRocket(s) && (s.autoFireWait ?? 0) <= 0) {
         if (aim) this.fire(s, aim);
         else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s, true));
       }
