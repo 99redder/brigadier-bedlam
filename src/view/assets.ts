@@ -8,7 +8,19 @@ import {
   type FightPose,
 } from "./fighting";
 import { drawVictory, victoryKey } from "./victory";
-// All placeholder art lives here. Replace generated textures with atlas frames later.
+export const ASSET_SCALE = 2;
+export const WALK_FRAMES = 12;
+export const walkKey = (id: ClassId, side: number, frame: number) =>
+  `walk-${id}-${side}-${frame}`;
+export const coverKey = (id: ClassId, side: number) => `cover-${id}-${side}`;
+function crispCanvas(width: number, height: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width * ASSET_SCALE;
+  canvas.height = height * ASSET_SCALE;
+  const context = canvas.getContext("2d")!;
+  context.scale(ASSET_SCALE, ASSET_SCALE);
+  return { canvas, context };
+}
 export const assetKey = (classId: ClassId, side: number) =>
   `soldier-${classId}-${side}`;
 export function loadAssets(scene: Phaser.Scene) {
@@ -17,16 +29,33 @@ export function loadAssets(scene: Phaser.Scene) {
       const key = assetKey(classId, side);
       if (scene.textures.exists(key)) continue;
       const canvas = document.createElement("canvas");
-      canvas.width = 80;
-      canvas.height = 96;
+      canvas.width = 80 * ASSET_SCALE;
+      canvas.height = 96 * ASSET_SCALE;
       const c = canvas.getContext("2d")!;
+      c.scale(ASSET_SCALE, ASSET_SCALE);
       drawCharacter(c, classId, side);
       scene.textures.addCanvas(key, canvas);
+      for (let frame = 0; frame < WALK_FRAMES; frame++) {
+        const a = crispCanvas(80, 96);
+        drawCharacter(
+          a.context,
+          classId,
+          side,
+          false,
+          false,
+          Math.sin((frame / WALK_FRAMES) * Math.PI * 2),
+        );
+        scene.textures.addCanvas(walkKey(classId, side, frame), a.canvas);
+      }
+      const cover = crispCanvas(80, 96);
+      drawCharacter(cover.context, classId, side, false, false, 0, true);
+      scene.textures.addCanvas(coverKey(classId, side), cover.canvas);
       for (let frame = 0; frame < 8; frame++) {
         const celebration = document.createElement("canvas");
-        celebration.width = 128;
-        celebration.height = 96;
+        celebration.width = 128 * ASSET_SCALE;
+        celebration.height = 96 * ASSET_SCALE;
         const ctx = celebration.getContext("2d")!;
+        ctx.scale(ASSET_SCALE, ASSET_SCALE);
         ctx.translate(24, 0);
         drawVictory(ctx, classId, side, frame);
         scene.textures.addCanvas(victoryKey(classId, side, frame), celebration);
@@ -34,9 +63,10 @@ export function loadAssets(scene: Phaser.Scene) {
       for (const pose of Object.keys(FIGHT_FRAMES) as FightPose[])
         for (let frame = 0; frame < FIGHT_FRAMES[pose]; frame++) {
           const fightCanvas = document.createElement("canvas");
-          fightCanvas.width = 128;
-          fightCanvas.height = 96;
+          fightCanvas.width = 128 * ASSET_SCALE;
+          fightCanvas.height = 96 * ASSET_SCALE;
           const ctx = fightCanvas.getContext("2d")!;
+          ctx.scale(ASSET_SCALE, ASSET_SCALE);
           ctx.translate(24, 0);
           drawFighter(ctx, classId, side, pose, frame);
           scene.textures.addCanvas(
@@ -48,9 +78,10 @@ export function loadAssets(scene: Phaser.Scene) {
   for (const kind of ["skeleton", "ash", "medic", "drowned"]) {
     if (scene.textures.exists(kind)) continue;
     const canvas = document.createElement("canvas");
-    canvas.width = 80;
-    canvas.height = 96;
+    canvas.width = 80 * ASSET_SCALE;
+    canvas.height = 96 * ASSET_SCALE;
     const c = canvas.getContext("2d")!;
+    c.scale(ASSET_SCALE, ASSET_SCALE);
     c.strokeStyle = "#ece6c9";
     c.lineWidth = 4;
     if (kind === "skeleton") {

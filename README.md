@@ -1,6 +1,10 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.22.1 — prominent selected-soldier cover button.**
+Current prototype: **v0.23 — sharper soldiers and smoother movement.**
+
+Soldier, melee, celebration, medic and casualty textures now render at twice their previous resolution while retaining their gameplay size. Soft shading, rounded outlines, uniform stitching, equipment highlights and class-specific details make the five silhouettes clearer: Rifleman tailoring and rifle hardware, Bazooka armor plates and launcher bore, Lobber grenade segments and beret pin, Torch pressure gauge and pilot flame, and Sapper overalls, bandage and dynamite fuse. Both teams keep their identifying colors.
+
+Moving soldiers use a twelve-frame stepping cycle with independent legs and quieter body bobbing. Taking cover uses a dedicated crouched pose. Troop and medic positions interpolate between the fixed simulation steps for smoother movement on faster displays. This is a presentation pass: movement speeds, weapon stats, hit detection, AI and replay timing are unchanged.
 
 Select a living troop and click the gold **Take cover** button beside their name and soldier number in the bottom orders panel or press **C** (left-handed preset: **K**). They duck into a lower profile, stop moving, and show a turquoise shield/ring and IN COVER label. Rifle shots are much less likely to hit them at range, but they fire half as often. Use **Leave cover** or the same key before moving again. Movement and bridge orders are blocked while covered, and Move squad leaves covered troops in place. Cover can be set during deployment and remains active after deselection.
 

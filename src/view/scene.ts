@@ -12,6 +12,10 @@ import {
 } from "../sim/data";
 import { type Point, distance, waterOutlines } from "../sim/geometry";
 import {
+  ASSET_SCALE,
+  WALK_FRAMES,
+  walkKey,
+  coverKey,
   loadAssets,
   assetKey,
   Sound,
@@ -27,6 +31,7 @@ import {
   victoryKey,
   victoryMotion,
 } from "./victory";
+import { interpolatePoint } from "./motion";
 import { drawAirstrike } from "./airstrike";
 import { DeploymentCues } from "./deployment-cues";
 export const project = (p: Point) => ({
@@ -41,6 +46,19 @@ export class Battlefield extends Phaser.Scene {
   battle: Battle | null = null;
   paused = true;
   accumulator = 0;
+  private previousPositions = new Map<number, Point>();
+  private visualPoint(unit: Point & { id: number }) {
+    return !this.battle ||
+      this.paused ||
+      this.battle.planning ||
+      this.battle.winner !== null
+      ? unit
+      : interpolatePoint(
+          unit,
+          this.previousPositions.get(unit.id),
+          this.accumulator / TUNING.step,
+        );
+  }
   victory = new VictoryClock();
   private deploymentCues = new DeploymentCues();
   private airstrikeBanner!: Phaser.GameObjects.Text;
@@ -345,6 +363,7 @@ export class Battlefield extends Phaser.Scene {
     this.battle = battle;
     this.paused = false;
     this.accumulator = 0;
+    this.previousPositions.clear();
     this.lastCombatEvent = -1;
     this.lastAirstrikeEvent = -1;
     this.lastMeleeEvent = -1;
@@ -358,6 +377,11 @@ export class Battlefield extends Phaser.Scene {
     if (!this.paused && this.battle.winner === null) {
       this.accumulator += Math.min(delta / 1000, 0.2);
       while (this.accumulator >= 1 / 30) {
+        this.previousPositions = new Map(
+          this.battle
+            .combatants()
+            .map((unit) => [unit.id, { x: unit.x, y: unit.y }]),
+        );
         this.battle.step();
         this.accumulator -= 1 / 30;
       }
@@ -398,6 +422,8 @@ export class Battlefield extends Phaser.Scene {
   render() {
     const b = this.battle;
     if (!b) return;
+    const visualTime =
+      b.time + (!this.paused && b.winner === null ? this.accumulator : 0);
     if (this.terrainRevision !== b.terrainRevision) this.drawTerrain();
     for (const [id, sprite] of this.units) {
       const present = b.get(id) !== undefined;
@@ -593,7 +619,7 @@ export class Battlefield extends Phaser.Scene {
       const p =
           fighting && s.fightAnchor
             ? { x: anchor.x - facing * 30, y: anchor.y }
-            : project(s),
+            : project(this.visualPoint(s)),
         alive = s.life === "alive",
         wet = b.inWater(s) && alive,
         sinking = s.drowningTime > 0,
@@ -601,8 +627,8 @@ export class Battlefield extends Phaser.Scene {
         down = s.life === "down",
         pose = CLASS_POSES[s.classId],
         anim = alive
-          ? Math.sin(b.time * (s.moving ? 14 : pose.pace) + s.id) *
-            (s.moving ? 2 : pose.bob)
+          ? Math.sin(visualTime * (s.moving ? 12 : pose.pace) + s.id) *
+            (s.moving ? 0.7 : pose.bob)
           : 0;
       const frame = fightFrame(s, b.time);
       const fall =
@@ -635,7 +661,15 @@ export class Battlefield extends Phaser.Scene {
               ? fighterKey(s.classId, s.side, "guard", 0)
               : fighting
                 ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
-                : assetKey(s.classId, s.side),
+                : s.takingCover
+                  ? coverKey(s.classId, s.side)
+                  : s.moving
+                    ? walkKey(
+                        s.classId,
+                        s.side,
+                        Math.floor(visualTime * 12 + s.id * 2) % WALK_FRAMES,
+                      )
+                    : assetKey(s.classId, s.side),
       );
       sprite
         .setPosition(
@@ -647,10 +681,7 @@ export class Battlefield extends Phaser.Scene {
         .setDepth(p.y)
         .setFlipX(facing < 0)
         .setScale(
-          (s.reinforcement ? 0.68 : 0.79) * (1 - sink * 0.45),
-          (s.reinforcement ? 0.68 : 0.79) *
-            (1 - sink * 0.45) *
-            (s.takingCover && alive && !celebrating ? 0.66 : 1),
+          ((s.reinforcement ? 0.68 : 0.79) / ASSET_SCALE) * (1 - sink * 0.45),
         )
         .setTint(s.reinforcement ? 0xffdf87 : 0xffffff)
         .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
@@ -791,17 +822,17 @@ export class Battlefield extends Phaser.Scene {
     }
     for (let i = 0; i < b.medics.length; i++) {
       const m = b.medics[i],
-        p = project(m);
+        p = project(this.visualPoint(m));
       this.medics[i] ??= this.add
         .image(0, 0, "medic")
         .setOrigin(0.5, 0.93)
-        .setScale(0.66);
+        .setScale(0.66 / ASSET_SCALE);
       this.medics[i]
         .setTexture(m.life === "dead" ? m.death! : "medic")
         .setVisible(true)
         .setPosition(
           p.x,
-          p.y + (m.life === "alive" ? Math.sin(b.time * 18) * 2 : 0),
+          p.y + (m.life === "alive" ? Math.sin(visualTime * 14) * 1 : 0),
         )
         .setDepth(p.y)
         .setFlipX(m.side === 1);

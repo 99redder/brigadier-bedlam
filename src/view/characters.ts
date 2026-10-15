@@ -16,7 +16,19 @@ export function drawCharacter(
   side: number,
   unarmed = false,
   lifting = false,
+  gait = 0,
+  crouched = false,
 ) {
+  c.save();
+  c.lineJoin = "round";
+  if (crouched) {
+    c.translate(0, 16);
+    c.scale(1, 0.82);
+  }
+  const shade = (hex: string, n: number) => {
+    const v = parseInt(hex.slice(1), 16);
+    return `rgb(${[16, 8, 0].map((k) => Math.max(0, Math.min(255, ((v >> k) & 255) + n))).join(",")})`;
+  };
   const ink = "#27362f",
     team = side === 0 ? "#477963" : "#c45e48",
     light = side === 0 ? "#8cba97" : "#f0aa82",
@@ -29,13 +41,27 @@ export function drawCharacter(
     color: string,
     r = 3,
   ) => {
-    c.fillStyle = color;
+    const paint = c.createLinearGradient(x, y, x + w, y + h);
+    paint.addColorStop(0, shade(color, 22));
+    paint.addColorStop(0.48, color);
+    paint.addColorStop(1, shade(color, -18));
+    c.fillStyle = paint;
     c.strokeStyle = ink;
     c.lineWidth = 2.5;
     c.beginPath();
     c.roundRect(x, y, w, h, r);
     c.fill();
     c.stroke();
+    if (w >= 10 && h >= 8) {
+      c.save();
+      c.strokeStyle = "rgba(255,246,210,.3)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(x + 3, y + 3);
+      c.lineTo(x + w - 4, y + 3);
+      c.stroke();
+      c.restore();
+    }
   };
   const ellipse = (
     x: number,
@@ -44,7 +70,18 @@ export function drawCharacter(
     ry: number,
     color: string,
   ) => {
-    c.fillStyle = color;
+    const paint = c.createRadialGradient(
+      x - rx * 0.3,
+      y - ry * 0.35,
+      0,
+      x,
+      y,
+      Math.max(rx, ry),
+    );
+    paint.addColorStop(0, shade(color, 20));
+    paint.addColorStop(0.7, color);
+    paint.addColorStop(1, shade(color, -12));
+    c.fillStyle = paint;
     c.strokeStyle = ink;
     c.lineWidth = 2.5;
     c.beginPath();
@@ -73,10 +110,30 @@ export function drawCharacter(
     );
   };
   const boots = (left: number, right: number, color: string, wide = false) => {
-    box(left, 65, wide ? 15 : 11, 19, color);
-    if (!lifting) box(right, 65, wide ? 15 : 11, 19, color);
-    box(left - 3, 80, wide ? 21 : 17, 8, "#35443a");
-    if (!lifting) box(right - 1, 80, wide ? 21 : 17, 8, "#35443a");
+    const leg = (x: number, phase: number) => {
+      const lift = Math.max(0, phase) * 4,
+        stride = phase * 2;
+      box(x + stride, 65, wide ? 15 : 11, 19 - lift, color);
+      line(
+        [
+          [x + stride + 2, 72 - lift * 0.3],
+          [x + stride + (wide ? 12 : 8), 73 - lift * 0.3],
+        ],
+        shade(color, -25),
+        1,
+      );
+      box(x - 3 + stride, 80 - lift, wide ? 21 : 17, 8, "#35443a");
+      line(
+        [
+          [x + stride, 85 - lift],
+          [x + stride + (wide ? 14 : 10), 85 - lift],
+        ],
+        "#70806a",
+        1,
+      );
+    };
+    leg(left, gait);
+    if (!lifting) leg(right, -gait);
   };
   if (id === "rifleman") {
     // Straight-backed veteran: tidy khaki tunic, patrol cap, moustache and chevrons.
@@ -455,7 +512,303 @@ export function drawCharacter(
       box(45, 55, 13, 10, "#d7a072", 4);
     }
   }
+  if (id === "rifleman") {
+    line(
+      [
+        [27, 40],
+        [33, 47],
+        [39, 41],
+        [46, 47],
+        [52, 40],
+      ],
+      "#e7d9a0",
+      1.5,
+    );
+    for (const y of [47, 53, 59]) ellipse(39, y, 1.2, 1.2, "#e4bd60");
+    line(
+      [
+        [26, 12],
+        [52, 12],
+      ],
+      "#a3b090",
+      1,
+    );
+    line(
+      [
+        [25, 17],
+        [52, 17],
+      ],
+      "#4c6252",
+      1,
+    );
+    box(36, 62, 6, 5, "#e4bd60", 1);
+    if (!unarmed) {
+      box(37, 51, 13, 5, "#98734c", 1);
+      line(
+        [
+          [53, 50],
+          [73, 50],
+        ],
+        "#93a394",
+        1,
+      );
+      box(65, 45, 5, 3, "#394e46", 1);
+      line(
+        [
+          [34, 60],
+          [45, 67],
+          [63, 59],
+        ],
+        "#6d6345",
+        1.5,
+      );
+    }
+  } else if (id === "bazooka") {
+    box(22, 39, 10, 8, "#a28bb7", 2);
+    box(48, 39, 10, 8, "#a28bb7", 2);
+    for (const x of [25, 54])
+      for (const y of [42, 61]) ellipse(x, y, 1.2, 1.2, "#d5d0bf");
+    line(
+      [
+        [33, 56],
+        [46, 56],
+        [46, 61],
+        [33, 61],
+        [33, 56],
+      ],
+      "#665b7b",
+      1.2,
+    );
+    line(
+      [
+        [27, 7],
+        [50, 7],
+        [54, 11],
+      ],
+      "#a1aaa4",
+      1.4,
+    );
+    line(
+      [
+        [51, 28],
+        [53, 31],
+      ],
+      "#e0b18b",
+      1,
+    );
+    if (!unarmed) {
+      line(
+        [
+          [38, 39],
+          [69, 39],
+        ],
+        "#829675",
+        1.5,
+      );
+      ellipse(74, 45, 4, 6, "#1c302b");
+      line(
+        [
+          [60, 36],
+          [63, 30],
+          [68, 30],
+        ],
+        "#344d40",
+        2,
+      );
+      box(60, 33, 6, 4, "#d4c388", 1);
+    }
+  } else if (id === "lobber") {
+    ellipse(30, 13, 3, 3, "#d9bf68");
+    line(
+      [
+        [28, 43],
+        [36, 47],
+        [39, 44],
+      ],
+      "#fff0ad",
+      1.2,
+    );
+    line(
+      [
+        [23, 70],
+        [33, 68],
+      ],
+      "#b0be7b",
+      1,
+    );
+    line(
+      [
+        [45, 67],
+        [57, 70],
+      ],
+      "#47633d",
+      1,
+    );
+    for (const x of [29, 48]) ellipse(x, 60, 1.2, 1.2, "#d8c06d");
+    if (!unarmed) {
+      for (const y of [29, 35, 41])
+        line(
+          [
+            [59, y],
+            [71, y],
+          ],
+          "#42652e",
+          1,
+        );
+      line(
+        [
+          [65, 25],
+          [65, 43],
+        ],
+        "#97bd5b",
+        1.3,
+      );
+      ellipse(65, 22, 3.4, 2.4, "#aeb8a0");
+      line(
+        [
+          [67, 25],
+          [71, 34],
+        ],
+        "#e0ce83",
+        1.5,
+      );
+    }
+  } else if (id === "torch") {
+    ellipse(20, 31, 4, 4, "#e7dab3");
+    line(
+      [
+        [20, 31],
+        [22, 29],
+      ],
+      "#b9513e",
+      1.2,
+    );
+    line(
+      [
+        [8, 42],
+        [8, 65],
+      ],
+      "#ecaa69",
+      1,
+    );
+    line(
+      [
+        [22, 39],
+        [27, 43],
+      ],
+      "#704d38",
+      1.5,
+    );
+    for (let i = 0; i < 3; i++)
+      line(
+        [
+          [26 + i * 8, 47],
+          [30 + i * 8, 50],
+        ],
+        "#5c5340",
+        1.6,
+      );
+    line(
+      [
+        [30, 29],
+        [36, 29],
+      ],
+      "#fff2ba",
+      1.2,
+    );
+    line(
+      [
+        [45, 29],
+        [50, 29],
+      ],
+      "#fff2ba",
+      1.2,
+    );
+    if (!unarmed) {
+      for (const y of [51, 56, 61])
+        line(
+          [
+            [70, y],
+            [75, y],
+          ],
+          "#a5a38a",
+          1,
+        );
+      ellipse(76, 57, 2, 3, "#f1a34c");
+      ellipse(77, 56, 1, 1.5, "#fff0a2");
+    }
+  } else {
+    line(
+      [
+        [26, 19],
+        [47, 18],
+      ],
+      "#f1a187",
+      1,
+    );
+    line(
+      [
+        [16, 54],
+        [23, 54],
+      ],
+      "#ede8d6",
+      1,
+    );
+    line(
+      [
+        [35, 55],
+        [43, 55],
+      ],
+      "#9ac4d2",
+      1,
+    );
+    line(
+      [
+        [28, 62],
+        [49, 62],
+      ],
+      "#365f78",
+      1,
+    );
+    line(
+      [
+        [28, 28],
+        [31, 30],
+      ],
+      "#9d634a",
+      1.4,
+    );
+    box(46, 30, 7, 3, "#efcc9b", 1);
+    if (!unarmed) {
+      line(
+        [
+          [56, 44],
+          [56, 62],
+        ],
+        "#ff9b78",
+        1,
+      );
+      line(
+        [
+          [65, 42],
+          [65, 60],
+        ],
+        "#ff9b78",
+        1,
+      );
+      line(
+        [
+          [52, 53],
+          [72, 53],
+        ],
+        "#c5b27b",
+        1.4,
+      );
+      ellipse(74, 28, 2.2, 2.2, "#ffc467");
+    }
+  }
   // This visible shoulder tab is common across all five distinct uniforms.
   c.fillStyle = light;
   c.fillRect(18, 46, 4, 2);
+  c.restore();
 }
