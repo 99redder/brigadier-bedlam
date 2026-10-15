@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.27 — airstrike and sniper supplies only.**
+Current prototype: **v0.28 — inaccurate airstrikes.**
+
+Each airstrike rolls one seeded accuracy result before its warning: 25% land within 35 units of the requested point, 45% drift 80–180 units, and 30% drift 220–360 units. Impact centers stay within the map, so edges can reduce the final offset. The targeting preview shows the possible drift area, not a guaranteed blast location. After calling, the gold/red warning marks the actual 105-unit blast zone, with a faint white cross/line showing the original request and its drift. The banner reports CLOSE TO TARGET, OFF TARGET or WAY OFF TARGET. Bombs, damage, cover destruction and friendly fire all use that same resolved location. A wide miss can hit nobody or endanger your own squad. Both teams use the same scatter; replays reproduce it.
 
 Reinforcements have been removed from both teams. Supply drops now award only a one-use airstrike or sniper shot. The three contested drop locations and the remaining rewards keep their existing rules. Unsupported old reinforcement commands cannot spawn troops or spend a reward.
 
@@ -36,7 +38,7 @@ Each drop rolls one random one-use reward:
 
 | Reward | How to use it | Tradeoff |
 | --- | --- | --- |
-| Airstrike | Click its Supply rewards button, then a point on the map | 4.5-second visible warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
+| Airstrike | Click its Supply rewards button, then a point on the map | Random drift up to 360 units; actual zone gets a 4.5-second warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
 | Sniper shot | Click its button, then an enemy | One guaranteed kill, including behind cover; only one shot. An empty click keeps it ready. |
 
 Right-click cancels reward targeting without spending it. The yellow reticle previews targeting; red circles and an incoming aircraft warn of an airstrike. Rewards cannot be used during deployment or after the match ends. Enemy AI sends its nearest suitable soldier for supplies and uses captured rewards automatically. Boot camp remains enemy-free, with its final briefing explaining normal supply rules.

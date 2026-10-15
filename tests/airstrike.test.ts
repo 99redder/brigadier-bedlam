@@ -13,6 +13,7 @@ describe("readable airstrikes", () => {
   it("emits distinct warning, bomb and impact cues once, with no premature damage", () => {
     const b = new Battle(42);
     b.aiSides = [];
+    b.random = () => 0; // On-target roll: this test isolates warning and impact timing.
     b.cover = [];
     b.water = [];
     for (const s of b.soldiers) {

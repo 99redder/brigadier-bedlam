@@ -1,3 +1,4 @@
+import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
 import { headingOf, VIEW_ARC } from "../sim/vision";
 import Phaser from "phaser";
 import { Battle, type SuperWeapon, type Soldier } from "../sim/battle";
@@ -489,17 +490,25 @@ export class Battlefield extends Phaser.Scene {
       this.airstrikeBanner
         .setText(
           activeStrike.remaining > 0
-            ? `${activeStrike.side === 0 ? "FRIENDLY" : "ENEMY"} AIRSTRIKE — CLEAR THE ${activeStrike.side === 0 ? "GOLD" : "RED"} ZONE! ${activeStrike.remaining.toFixed(1)}s`
+            ? `${activeStrike.side === 0 ? "FRIENDLY" : "ENEMY"} AIRSTRIKE · ${AIRSTRIKE_ACCURACY[activeStrike.accuracy]}\nCLEAR THE ${activeStrike.side === 0 ? "GOLD" : "RED"} ZONE! ${activeStrike.remaining.toFixed(1)}s`
             : "AIRSTRIKE IMPACT — BOMBS AWAY!",
         )
         .setBackgroundColor(activeStrike.side === 0 ? "#695324" : "#8c3429");
-    for (const strike of visibleStrikes)
+    for (const strike of visibleStrikes) {
+      if (strike.remaining > 0) {
+        const aim = project(strike.requested), actual = project(strike.point);
+        g.lineStyle(1, 0xffffff, 0.4);
+        g.lineBetween(aim.x - 7, aim.y, aim.x + 7, aim.y);
+        g.lineBetween(aim.x, aim.y - 5, aim.x, aim.y + 5);
+        g.lineBetween(aim.x, aim.y, actual.x, actual.y);
+      }
       drawAirstrike(
         g,
         project(strike.point),
         strike.remaining - (b.winner === null ? 0 : this.victory.elapsed),
         strike.side,
       );
+    }
     if (this.squadMovePreview && b.winner === null) {
       for (let i = 0; i < 5; i++) {
         const p = project({
@@ -512,7 +521,7 @@ export class Battlefield extends Phaser.Scene {
     }
     if (this.superAim && b.winner === null && !b.planning) {
       const p = project(this.cursor),
-        radius = this.superAim === "airstrike" ? 105 : 22;
+        radius = this.superAim === "airstrike" ? TUNING.airstrikeMaxScatter : 22;
       g.lineStyle(2, 0xffd15f, 0.9);
       g.strokeEllipse(p.x, p.y, radius * 2, radius * 1.48);
       g.lineBetween(p.x - 12, p.y, p.x + 12, p.y);

@@ -177,6 +177,7 @@ export const TUNING = {
   airstrikeWarning: 4.5,
   airstrikeAftermath: 2.4,
   airstrikeRadius: 105,
+  airstrikeMaxScatter: 360,
   reviveHealth: 0.6,
   brawlRange: 28,
   brawlDamage: 14,

@@ -93,6 +93,7 @@ describe("contested supply drops", () => {
     const protectedUnit = b.get(6)!;
     Object.assign(protectedUnit, { life: "alive", x: 900, y: 275, hp: 230 });
     b.cover = [{ x: 870, y: 235, w: 80, h: 20, hp: 100 }];
+    b.random = () => 0; // On-target roll isolates cover shielding and friendly fire.
     b.powers[0] = ["airstrike"];
     expect(b.useSuper(0, "airstrike", { x: 900, y: 200 })).toBe(true);
     advance(b, 1);

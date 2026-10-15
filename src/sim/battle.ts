@@ -1,3 +1,4 @@
+import { scatterAirstrike, AIRSTRIKE_ACCURACY, type AirstrikeAccuracy } from "./airstrike";
 import { headingOf, inView } from "./vision";
 import {
   CLASSES,
@@ -164,6 +165,8 @@ export class Battle {
     id: number;
     side: Side;
     point: Point;
+    requested: Point;
+    accuracy: AirstrikeAccuracy;
     remaining: number;
     impacted: boolean;
     dropped: boolean;
@@ -1385,15 +1388,17 @@ export class Battle {
       this.effects.push({ ...target, kind: "hit", time: 0.7, size: 26 });
       this.emitWeapon("rifleman", "fire");
     } else if (weapon === "airstrike") {
+      const scatter = scatterAirstrike(point, () => this.random());
       this.strikes.push({
         id: this.airstrikeId++,
         side,
-        point: { ...point },
+        ...scatter,
         remaining: TUNING.airstrikeWarning,
         impacted: false,
         dropped: false,
       });
       this.emitAirstrike("warning");
+      this.note(`Bombardier: ${AIRSTRIKE_ACCURACY[scatter.accuracy]}. Clear the marked blast zone.`);
     }
     inventory.splice(index, 1);
     this.supplyRevision++;
