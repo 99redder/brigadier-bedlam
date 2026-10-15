@@ -642,7 +642,7 @@ export class Battlefield extends Phaser.Scene {
           ? Math.sin(visualTime * (s.moving ? 12 : pose.pace) + s.id) *
             (s.moving ? 0.7 : pose.bob)
           : 0;
-      if (alive && s.side === 0 && !fighting && !s.reinforcement) {
+      if (alive && s.side === 0 && !fighting) {
         const a = headingOf(s), tip = project({x: s.x + Math.cos(a) * 24, y: s.y + Math.sin(a) * 24});
         g.lineStyle(2, 0xffdf87, 0.85);
         g.lineBetween(p.x, p.y + 5, tip.x, tip.y + 5);
@@ -679,19 +679,17 @@ export class Battlefield extends Phaser.Scene {
           ? s.death!
           : celebrating
             ? victoryKey(s.classId, s.side, victoryPose.frame)
-            : s.reinforcement
-              ? fighterKey(s.classId, s.side, "guard", 0)
-              : fighting
-                ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
-                : s.takingCover
-                  ? coverKey(s.classId, s.side)
-                  : s.moving
-                    ? walkKey(
-                        s.classId,
-                        s.side,
-                        Math.floor(visualTime * 12 + s.id * 2) % WALK_FRAMES,
-                      )
-                    : assetKey(s.classId, s.side),
+            : fighting
+              ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
+              : s.takingCover
+                ? coverKey(s.classId, s.side)
+                : s.moving
+                  ? walkKey(
+                      s.classId,
+                      s.side,
+                      Math.floor(visualTime * 12 + s.id * 2) % WALK_FRAMES,
+                    )
+                  : assetKey(s.classId, s.side),
       );
       sprite
         .setPosition(
@@ -703,9 +701,9 @@ export class Battlefield extends Phaser.Scene {
         .setDepth(p.y)
         .setFlipX(facing < 0)
         .setScale(
-          ((s.reinforcement ? 0.68 : 0.79) / ASSET_SCALE) * (1 - sink * 0.45),
+          (0.79 / ASSET_SCALE) * (1 - sink * 0.45),
         )
-        .setTint(s.reinforcement ? 0xffdf87 : 0xffffff)
+        .setTint(0xffffff)
         .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
         .setAngle(
           celebrating
@@ -781,7 +779,7 @@ export class Battlefield extends Phaser.Scene {
         g.fillRoundedRect(
           p.x - 16,
           p.y - 75,
-          (32 * s.hp) / (s.reinforcement ? 18 : CLASSES[s.classId].hp),
+          (32 * s.hp) / CLASSES[s.classId].hp,
           5,
           2,
         );
@@ -798,9 +796,7 @@ export class Battlefield extends Phaser.Scene {
           label!.setText(s.blocking ? "BLOCK" : "BRAWL");
         } else
           label!.setText(
-            s.reinforcement
-              ? "CHARGE!"
-              : `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
+            `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
           );
       } else
         label!.setText(

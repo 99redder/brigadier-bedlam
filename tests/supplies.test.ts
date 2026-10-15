@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Battle, replayBattle } from "../src/sim/battle";
-import { COVER, CLASSES, TUNING } from "../src/sim/data";
+import { Battle, replayBattle, SUPPLY_WEAPONS, type SuperWeapon } from "../src/sim/battle";
+import { COVER, TUNING } from "../src/sim/data";
 import { legal, pathfind } from "../src/sim/geometry";
 function fixture() {
   const b = new Battle(42);
@@ -44,9 +44,10 @@ describe("contested supply drops", () => {
   });
   it("awards each random reward once to either side on physical contact", () => {
     for (const [roll, weapon] of [
-      [0.1, "airstrike"],
+      [0, "airstrike"],
+      [0.4999, "airstrike"],
       [0.5, "sniper"],
-      [0.9, "reinforcements"],
+      [0.9999, "sniper"],
     ] as const) {
       const { b, a, t } = fixture();
       b.random = () => roll;
@@ -105,37 +106,16 @@ describe("contested supply drops", () => {
     expect(b.cover).toEqual([]);
     expect(b.rubble).toHaveLength(1);
   });
-  it("reinforcements charge quickly, cannot shoot, and kill only on contact", () => {
-    const { b, t } = fixture();
-    b.powers[0] = ["reinforcements"];
-    b.useSuper(0, "reinforcements", { x: 300, y: 200 });
-    const recruits = b.soldiers.filter((s) => s.reinforcement);
-    expect(recruits).toHaveLength(3);
-    expect(recruits.every((s) => s.hp === 18)).toBe(true);
-    expect(b.fire(recruits[0], t)).toBe(false);
-    advance(b, 1);
-    expect(t.life).toBe("alive");
-    expect(b.stats.shots).toBe(0);
-    expect(recruits[0].x).toBeGreaterThan(100);
-    expect(recruits[0].x).toBeLessThan(150);
-    advance(b, 10);
-    expect(t.life).toBe("dead");
-    expect(b.stats.shots).toBe(0);
-  });
-  it("recruits die to one rifle hit, cannot be revived and expire", () => {
+  it("rejects the removed reward without spawning troops or spending a valid reward", () => {
     const { b } = fixture();
-    b.powers[0] = ["reinforcements"];
-    b.useSuper(0, "reinforcements", { x: 300, y: 200 });
-    const recruits = b.soldiers.filter((s) => s.reinforcement);
-    b.random = () => 0.5;
-    b.damage(recruits[0], CLASSES.rifleman.damage, "rifleman");
-    expect(recruits[0].life).toBe("dead");
-    expect(b.callMedic(recruits[0].id, 0)).toBe(false);
-    recruits[1].expiresAt = 0;
-    b.tickReinforcement(recruits[1], TUNING.step);
-    expect(recruits[1].life).toBe("dead");
+    b.powers[0] = ["airstrike", "reinforcements" as SuperWeapon];
+    expect(SUPPLY_WEAPONS).toEqual(["airstrike", "sniper"]);
+    expect(b.useSuper(0, "reinforcements" as SuperWeapon, { x: 300, y: 200 })).toBe(false);
+    expect(b.soldiers).toHaveLength(10);
+    expect(b.powers[0]).toEqual(["airstrike", "reinforcements"]);
+    expect(b.strikes).toEqual([]);
   });
-  it("keeps reward collection, enemy use and reinforcements deterministic on replay", () => {
+  it("keeps reward collection and enemy use deterministic on replay", () => {
     const b = new Battle(81);
     b.aiSides = [0, 1];
     for (let i = 0; i < 600 && b.winner === null; i++) b.step();

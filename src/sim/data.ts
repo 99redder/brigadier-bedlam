@@ -169,7 +169,6 @@ export const TUNING = {
   medicCalls: 2,
   medicHealth: 60,
   medicSpeed: 53,
-  reinforcementSpeed: 90,
   aimSettleTime: 0.7,
   passiveFireMultiplier: 2,
   coverReloadMultiplier: 2,

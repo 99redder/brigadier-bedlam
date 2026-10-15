@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.26 — commanded volleys beat passive fire.**
+Current prototype: **v0.27 — airstrike and sniper supplies only.**
+
+Reinforcements have been removed from both teams. Supply drops now award only a one-use airstrike or sniper shot. The three contested drop locations and the remaining rewards keep their existing rules. Unsupported old reinforcement commands cannot spawn troops or spend a reward.
 
 Troops still shoot automatically inside their facing arcs, but at half the commanded pace. Each shot now starts the normal weapon reload and a longer passive-fire timer. **Fire all** bypasses only the passive wait: repeat the button or its binding to fire ready stationary troops at up to twice the unattended rate. The roster shows VOLLEY READY when a troop has reloaded but is still waiting to fire automatically. One press commands one volley; it does not enable a permanent speed boost. Repeated clicks cannot shorten reloads, skip aiming, fire outside the arc, or make moving troops shoot. Taking cover still doubles reloads and passive intervals. Selected Bazookas retain deliberate manual control. Both teams use the slower passive cadence. Damage and movement speeds are unchanged.
 
@@ -22,9 +24,9 @@ This stance is available on dry ground and is separate from hiding behind solid 
 
 Use **Move squad**, then click a destination, to send available troops to spaced positions. Routes remain visible, and their speeds are coordinated for arrival together on clear ground. Cover, water, drowning and combat can disrupt that timing; water orders retain the direct risky route. Use individual movement/bridge/Hold orders to override one soldier. Group movement can be queued during deployment; right-click cancels targeting.
 
-Moving regular troops now hold automatic fire. After stopping they take 0.7 seconds to aim, making covering fire and the decision to advance matter. Explicit attack orders stop a soldier when it enters firing range; manual rockets still brace for a deliberate shot. Both teams follow the same movement/firing rules. Rifle range drops from 300 to 210 (30% less), with reload time increasing from 0.65 to 1.1 seconds. Damage stays 18 per hit, making rifles mid-range support rather than an all-purpose long-range answer. Movement is a further 14–17% slower across regular troops, medics and reinforcements. Enemy rifles use the same hit geometry as player rifles; the extra hidden hit/miss coin flip is removed, while weapon scatter, cover, jams and water risks remain.
+Moving regular troops now hold automatic fire. After stopping they take 0.7 seconds to aim, making covering fire and the decision to advance matter. Explicit attack orders stop a soldier when it enters firing range; manual rockets still brace for a deliberate shot. Both teams follow the same movement/firing rules. Rifle range drops from 300 to 210 (30% less), with reload time increasing from 0.65 to 1.1 seconds. Damage stays 18 per hit, making rifles mid-range support rather than an all-purpose long-range answer. Movement is a further 14–17% slower across regular troops, medics. Enemy rifles use the same hit geometry as player rifles; the extra hidden hit/miss coin flip is removed, while weapon scatter, cover, jams and water risks remain.
 
-All regular soldiers on both teams now move about 40% slower than v0.19. Medics and reinforcements are slower by the same proportion. Class speed differences, river penalties, weapon reloads and the ten-second deployment phase remain. This gives opening routes, repositioning and leaving cover more weight.
+All regular soldiers on both teams now move about 40% slower than v0.19. Medics are slower by the same proportion. Class speed differences, river penalties, weapon reloads and the ten-second deployment phase remain. This gives opening routes, repositioning and leaving cover more weight.
 
 Airstrikes now announce FRIENDLY or ENEMY AIRSTRIKE in a large banner and mark the blast zone in gold or red. A 4.5-second warning gives troops time to leave the danger zone. A large four-engine bomber crosses the battlefield and visibly drops five bombs into the marked area. Bombs hit together at the actual damage moment, followed by fireballs, an expanding shockwave and 2.4 seconds of smoke. Warning sirens, engine rumble, a falling-bomb whistle and a distinct series of blasts distinguish airstrikes from rocket hits. Pause freezes the animation and Sound off respects every new cue. The aftermath also finishes during victory celebrations.
 
@@ -36,7 +38,6 @@ Each drop rolls one random one-use reward:
 | --- | --- | --- |
 | Airstrike | Click its Supply rewards button, then a point on the map | 4.5-second visible warning; 105-unit lethal blast; friendly fire and cover shielding apply. Destroys exposed cover. |
 | Sniper shot | Click its button, then an enemy | One guaranteed kill, including behind cover; only one shot. An empty click keeps it ready. |
-| Reinforcements | Click its button, then a lane | Three fast unarmed recruits arrive from your edge and automatically pursue enemies. They have 18 HP, expire after 18 seconds, and can only kill by contact. They cannot be controlled or revived and do not count toward squad victory. |
 
 Right-click cancels reward targeting without spending it. The yellow reticle previews targeting; red circles and an incoming aircraft warn of an airstrike. Rewards cannot be used during deployment or after the match ends. Enemy AI sends its nearest suitable soldier for supplies and uses captured rewards automatically. Boot camp remains enemy-free, with its final briefing explaining normal supply rules.
 
@@ -46,7 +47,7 @@ Deployment sounds once per displayed countdown second. The final three seconds u
 
 Every normal match opens with a ten-second deployment countdown. Inspect the full map, select soldiers, and click destinations (or the bridge) to queue opening moves. Routes stay visible for every assigned soldier; orders can be revised or cancelled with Hold. Both teams and their weapons remain frozen until GO, and the combat clock starts then. Pause and Controls also pause deployment. Boot camp stays interactive without a countdown.
 
-Movement is slower for every class and medics (53 units/second); recruits charge at 90 units/second. Weapon strengths and weaknesses:
+Movement is slower for every class and medics (53 units/second). Weapon strengths and weaknesses:
 
 | Class | Land speed | Seconds between shots | Effect on an exposed soldier |
 | --- | ---: | ---: | --- |

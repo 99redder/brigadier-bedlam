@@ -102,7 +102,7 @@ describe("individual take-cover stance", () => {
     x.startBrawl(u, v);
     expect(u.takingCover).toBe(false);
   });
-  it("allows deployment orders but rejects water, brawls, downed troops and recruits", () => {
+  it("allows deployment orders but rejects water, brawls and downed troops", () => {
     const b = new Battle(42, 0, false, 10);
     b.command({ type: "cover", id: 0, active: true });
     expect(b.get(0)!.takingCover).toBe(true);
@@ -118,7 +118,7 @@ describe("individual take-cover stance", () => {
     f.command({ type: "cover", id: 0, active: true });
     expect(s.takingCover).not.toBe(true);
     s.life = "alive";
-    s.reinforcement = true;
+    s.brawl = 5;
     f.command({ type: "cover", id: 0, active: true });
     expect(s.takingCover).not.toBe(true);
   });

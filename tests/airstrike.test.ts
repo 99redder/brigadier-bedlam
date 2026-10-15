@@ -83,9 +83,8 @@ describe("deliberate movement pace", () => {
         expect(moved).toBeGreaterThan(15);
         expect(moved).toBeLessThanOrEqual(26.01);
       });
-  it("also slows auxiliary movement while keeping recruits faster than regular troops", () => {
+  it("keeps medics faster than regular troops", () => {
     expect(TUNING.medicSpeed).toBe(53);
-    expect(TUNING.reinforcementSpeed).toBe(90);
     expect(Math.max(...Object.values(CLASSES).map((c) => c.speed))).toBe(26);
   });
 });

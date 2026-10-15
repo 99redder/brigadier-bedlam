@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Move squad sends available troops to spaced positions together; individual orders can override them. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike, sniper shot, or charging recruits. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Move squad sends available troops to spaced positions together; individual orders can override them. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike or sniper shot. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }

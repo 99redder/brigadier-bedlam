@@ -106,7 +106,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.26</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.27</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -141,7 +141,7 @@ function renderBattle() {
   const s = b.get(b.selected ?? -1),
     alive = (side: number) =>
       b.soldiers.filter(
-        (s) => !s.reinforcement && s.side === side && s.life === "alive",
+        (s) => s.side === side && s.life === "alive",
       ).length;
   const time = `${Math.floor(b.time / 60)
     .toString()
@@ -154,23 +154,21 @@ function renderBattle() {
     .join(
       "",
     )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${s && b.isManualRocket(s) ? `${esc(input.hint("rocketFire"))}: fire at cursor · click enemy: fire once · ground: move` : `${esc(input.hint("interact"))}: select / move / attack / demolish / revive`} · ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
-    .filter((t) => t.side === 0 && !t.reinforcement)
+    .filter((t) => t.side === 0)
     .map(
       (t) =>
         `<button class="unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}" data-unit="${t.id}" aria-label="${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health"><img alt="" src="${portrait(t.classId)}"><div><div class="slot">${esc(input.hint(`slot${t.slot + 1}` as Action))}</div><div class="unit-name">${CLASSES[t.classId].name}</div><div class="hp"><div style="width:${(t.hp / CLASSES[t.classId].hp) * 100}%"></div></div><div class="unit-status">${unitStatus(t)}</div></div></button>`,
     )
     .join(
       "",
-    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" && !s.reinforcement ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" && !s.reinforcement ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; others fire slowly inside their arc. Fire All increases the pace.`}</p>${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; others fire slowly inside their arc. Fire All increases the pace.`}</p>${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
   if (!tutorial) {
     const description =
       armedSuper === "airstrike"
         ? `Click ground: call strike · ${TUNING.airstrikeWarning}s warning · friendly fire`
         : armedSuper === "sniper"
           ? "Click an enemy: one guaranteed kill"
-          : armedSuper === "reinforcements"
-            ? "Click a lane: 3 fragile recruits charge for 18s"
-            : "Move onto a ? drop to claim a random one-use weapon";
+          : "Move onto a ? drop to claim an airstrike or sniper shot";
     ui.insertAdjacentHTML(
       "beforeend",
       `<aside class="super-panel" aria-label="Supply rewards"><strong>${armedSuper ? `TARGET: ${SUPER_LABELS[armedSuper]}` : "SUPPLY REWARDS"}</strong><span>${description}${armedSuper ? " · Right-click cancels" : ""}</span><div>${b.powers[0].map((w) => btn(SUPER_LABELS[w], `super:${w}`, armedSuper === w ? "armed" : "")).join("")}</div></aside>`,
@@ -242,13 +240,13 @@ function updateBattleHud() {
   };
   write(
     ".team-count",
-    `YOUR SQUAD   ${b.soldiers.filter((s) => !s.reinforcement && s.side === 0 && s.life === "alive").length}/5`,
+    `YOUR SQUAD   ${b.soldiers.filter((s) => s.side === 0 && s.life === "alive").length}/5`,
   );
   write(
     ".team-count.enemy",
     tutorial
       ? "NO ENEMIES"
-      : `OPPOSITION   ${b.soldiers.filter((s) => !s.reinforcement && s.side === 1 && s.life === "alive").length}/5`,
+      : `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/5`,
   );
   write(
     ".clock",
@@ -258,7 +256,7 @@ function updateBattleHud() {
       .toString()
       .padStart(2, "0")}`,
   );
-  for (const t of b.soldiers.filter((s) => s.side === 0 && !s.reinforcement)) {
+  for (const t of b.soldiers.filter((s) => s.side === 0)) {
     const button = ui.querySelector<HTMLButtonElement>(`[data-unit="${t.id}"]`);
     if (!button) continue;
     button.className = `unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}`;
@@ -482,7 +480,6 @@ function action(a: Action, held = true, event?: Event) {
       return;
     }
     if (near?.side === 0) {
-      if ("reinforcement" in near && near.reinforcement) return;
       if (!("classId" in near)) return;
       if (near.life === "down")
         issue({ type: "medic", target: near.id, side: 0 });
@@ -512,7 +509,7 @@ function action(a: Action, held = true, event?: Event) {
   }
   if (a === "next" || a === "previous") {
     const living = b.soldiers.filter(
-        (t) => !t.reinforcement && t.side === 0 && t.life === "alive",
+        (t) => t.side === 0 && t.life === "alive",
       ),
       i = living.findIndex((t) => t.id === b.selected);
     if (living.length)
