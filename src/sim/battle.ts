@@ -1,3 +1,4 @@
+import { RAIN, SNOW_SPEED, weatherAdvice, type Weather } from "./weather";
 import { MAPS, difficulty, validMapId } from "./maps";
 import { scatterAirstrike, AIRSTRIKE_ACCURACY, type AirstrikeAccuracy } from "./airstrike";
 import { headingOf, inView } from "./vision";
@@ -299,10 +300,19 @@ export class Battle {
       this.soldiers=this.soldiers.filter(s=>s.side===0||s.slot<d.enemyCount);
       this.soldiers.filter(s=>s.side===1).forEach(s=>{s.hp=Math.round(CLASSES[s.classId].hp*d.enemyHealth);});
       this.note(`Stage ${operation.level}/10: ${MAPS[operation.mapId].name}.`);
+      if(this.weather!=="clear")this.note(this.weather==="rain" ? "Rain: Torch weakened. Favor rifles and explosives." : "Deep snow: heavy troops slowed. Light troops lead.");
     } else this.note("Operation: questionable decisions.");
   }
   maxHp(s:Soldier) {return Math.round(CLASSES[s.classId].hp*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
   get challenge() { return this.operation ? difficulty(this.operation.level) : null; }
+  get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
+  get weatherAdvice() {return weatherAdvice(this.weather);}
+  weaponRange(s:Soldier) {return CLASSES[s.classId].range * (s.classId==="torch" && this.weather==="rain" ? RAIN.flameRange : 1);}
+  preferredRange(s:Soldier) {return s.classId==="torch" && this.weather==="rain" ? Math.min(CLASSES[s.classId].preferred,this.weaponRange(s)*.8) : CLASSES[s.classId].preferred;}
+  movementMultiplier(s:Soldier) {
+    return this.weather==="snow" && !this.inWater(s) && !this.bridges.some(r=>inside(s,r)) ? SNOW_SPEED[s.classId] : 1;
+  }
+
   random() {
     let t = (this.rngState += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -499,12 +509,12 @@ export class Battle {
     });
     const duration = Math.max(
       0,
-      ...routes.map((r) => r.length / CLASSES[r.s.classId].speed),
+      ...routes.map((r) => r.length / (CLASSES[r.s.classId].speed*this.movementMultiplier(r.s))),
     );
     for (const { s, length } of routes)
       s.formationSpeed =
         duration > 0
-          ? Math.min(CLASSES[s.classId].speed, length / duration)
+          ? Math.min(CLASSES[s.classId].speed, length / duration / this.movementMultiplier(s))
           : undefined;
     this.note(
       `Squad movement: ${units.length} troops to spaced positions. Moving troops hold fire.`,
@@ -606,7 +616,7 @@ export class Battle {
       s.brawl === null &&
       s.fightMoveTime <= 0 &&
       s.jam <= 0 &&
-      distance(s, t) <= w.range &&
+      distance(s, t) <= this.weaponRange(s) &&
       !(s.classId === "torch" && this.inWater(s)) &&
       (w.arc || s.classId === "bazooka" || !blocked(s, t, this.cover))
     );
@@ -640,7 +650,7 @@ export class Battle {
     if (target.burnRemaining <= 0) return;
     const duration = Math.min(dt, target.burnRemaining);
     target.burnRemaining = Math.max(0, target.burnRemaining - dt);
-    const amount = TUNING.burnDamagePerSecond * duration;
+    const amount = TUNING.burnDamagePerSecond * duration * (this.weather==="rain" ? RAIN.burnDamage : 1);
     this.damage(target, amount, "torch", amount >= target.hp);
   }
   damage(
@@ -734,7 +744,7 @@ export class Battle {
     if (s.moving || s.path.length) { this.note("Torch: stop moving before spraying."); return false; }
     if (s.overheated) { this.note("Torch overheated: let the tank cool."); return false; }
     const d = distance(s, point),
-      range = CLASSES.torch.range;
+      range = this.weaponRange(s);
     if (d < 1e-8) return false;
     const endpoint = { x: s.x + (point.x - s.x) / d * range, y: s.y + (point.y - s.y) / d * range };
     const fired = this.fireAt(s, endpoint, -1, false, true);
@@ -807,7 +817,7 @@ export class Battle {
     )
       return false;
     const d = distance(s, target),
-      range = CLASSES[s.classId].range;
+      range = this.weaponRange(s);
     if (d <= range) return false;
     // Aim toward the enemy, but stop the visual projectile at weapon range.
     // These guaranteed misses cannot damage units; intercepted explosives still damage cover.
@@ -843,7 +853,7 @@ export class Battle {
       s.moving || s.path.length > 0 ||
       (!manual && (s.steadyTime ?? this.aimDelay(s)) < this.aimDelay(s)) ||
       (s.classId === "torch" && s.overheated) ||
-      distance(s, intendedHit?.point ?? point) > w.range + 1e-8 ||
+      distance(s, intendedHit?.point ?? point) > this.weaponRange(s) + 1e-8 ||
       (s.classId === "torch" && this.inWater(s))
     )
       return false;
@@ -887,7 +897,7 @@ export class Battle {
             ? 0.015
             : 0;
       const reach = Math.min(
-        w.range,
+        this.weaponRange(s),
         d * (1 + (this.random() * 2 - 1) * radial),
       );
       endpoint = {
@@ -940,7 +950,7 @@ export class Battle {
         if (shot.classId === "torch") {
           if (
             t.side === owner.side ||
-            distance(shot.from, t) > w.range ||
+            distance(shot.from, t) > this.weaponRange(owner) ||
             blocked(shot.from, t, cover)
           )
             continue;
@@ -959,7 +969,7 @@ export class Battle {
         const hpBefore = t.hp;
         this.damage(
           t,
-          w.damage,
+          w.damage * (shot.classId==="torch" && this.weather==="rain" ? RAIN.flameDamage : 1),
           shot.classId,
           w.lethalRadius > 0 && distance(t, impact) <= w.lethalRadius,
         );
@@ -970,7 +980,7 @@ export class Battle {
           !this.training &&
           !this.inWater(t)
         )
-          t.burnRemaining = TUNING.burnDuration;
+          t.burnRemaining = this.weather==="rain" ? RAIN.burnDuration : TUNING.burnDuration;
       }
       this.effects.push({
         ...impact,
@@ -1229,7 +1239,7 @@ export class Battle {
             .map((drop) => ({
               unit,
               drop,
-              cost: distance(unit, drop) / CLASSES[unit.classId].speed,
+              cost: distance(unit, drop) / (CLASSES[unit.classId].speed*this.movementMultiplier(unit)),
             })),
         )
         .sort(
@@ -1281,17 +1291,17 @@ export class Battle {
       return;
     }
     if (
-      d > w.preferred + 35 ||
+      d > this.preferredRange(s) + 35 ||
       (!w.arc && blocked(s, t, this.cover)) ||
       !this.safeBlast(s, t) ||
-      d < w.preferred * 0.55
+      d < this.preferredRange(s) * 0.55
     ) {
       const candidates: Point[] = [];
       for (let i = 0; i < 16; i++) {
         const angle = (i * Math.PI) / 8;
         const p = {
-          x: t.x + Math.cos(angle) * w.preferred,
-          y: t.y + Math.sin(angle) * w.preferred,
+          x: t.x + Math.cos(angle) * this.preferredRange(s),
+          y: t.y + Math.sin(angle) * this.preferredRange(s),
         };
         if (
           legal(p, this.cover) &&
@@ -1535,7 +1545,7 @@ export class Battle {
             firstCoverHit(s, s.terrainTarget, this.cover)?.point ??
             s.terrainTarget;
           if (
-            distance(s, contact) > CLASSES[s.classId].range &&
+            distance(s, contact) > this.weaponRange(s) &&
             s.repath <= 0
           ) {
             const angle = Math.atan2(s.y - contact.y, s.x - contact.x);
@@ -1544,7 +1554,7 @@ export class Battle {
               y: contact.y + Math.sin(angle) * CLASSES[s.classId].preferred,
             });
           }
-          if (distance(s, contact) <= CLASSES[s.classId].range) {
+          if (distance(s, contact) <= this.weaponRange(s)) {
             s.goal = null;
             s.path = [];
             if ((s.autoFireWait ?? 0) <= 0) this.fireAt(s, s.terrainTarget);
@@ -1574,8 +1584,8 @@ export class Battle {
         const w = CLASSES[s.classId],
           angle = Math.atan2(s.y - target.y, s.x - target.x);
         this.setGoal(s, {
-          x: target.x + Math.cos(angle) * w.preferred,
-          y: target.y + Math.sin(angle) * w.preferred,
+          x: target.x + Math.cos(angle) * this.preferredRange(s),
+          y: target.y + Math.sin(angle) * this.preferredRange(s),
         });
         if (
           s.path.length === 0 ||
@@ -1585,8 +1595,8 @@ export class Battle {
           for (let i = 0; i < 16; i++) {
             const a = (i * Math.PI) / 8,
               p = {
-                x: target.x + Math.cos(a) * w.preferred,
-                y: target.y + Math.sin(a) * w.preferred,
+                x: target.x + Math.cos(a) * this.preferredRange(s),
+                y: target.y + Math.sin(a) * this.preferredRange(s),
               };
             if (
               legal(p, this.cover) &&
@@ -1603,7 +1613,7 @@ export class Battle {
         const p = s.path[0],
           d = distance(s, p),
           speed =
-            (s.formationSpeed ?? CLASSES[s.classId].speed) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
+            (s.formationSpeed ?? CLASSES[s.classId].speed) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
             (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {

@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.32 — snow, desert and varied battlefield environments.**
+Current prototype: **v0.33 — tactical rain and snow with clear player warnings.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -225,4 +225,12 @@ Each map now has four large, themed cover props with its own silhouette and auth
 
 ### v0.32 environment variety
 
-Frostbite Fiasco is the snow map: pale drifts, vehicle tracks, frosted radio huts and a rim of ice around an open blue meltwater channel. Sunstroke Salute is the desert: warm sand, dune ridges, wind ripples, dusty tank wrecks and an oasis channel. The other maps use wildflower meadow, autumn leaves, churned mud, chalk coast, red dust, parched hayfield, marsh reeds or cracked cobblestone. Each has a separate ground/bank/water palette, ground detail and routed wheel tracks. Flat ground decoration adds no hidden obstacles. Solid wrecks remain destructible cover. Rivers retain class-based drowning risks and bridges remain safe; neither snow nor sand silently changes combat or stage difficulty. Map IDs, campaign routes and saved scores remain compatible.
+Frostbite Fiasco is the snow map: pale drifts, vehicle tracks, frosted radio huts and a rim of ice around an open blue meltwater channel. Sunstroke Salute is the desert: warm sand, dune ridges, wind ripples, dusty tank wrecks and an oasis channel. The other maps use wildflower meadow, autumn leaves, churned mud, chalk coast, red dust, parched hayfield, marsh reeds or cracked cobblestone. Each has a separate ground/bank/water palette, ground detail and routed wheel tracks. Flat ground decoration adds no hidden obstacles. Solid wrecks remain destructible cover. Rivers retain class-based drowning risks and bridges remain safe. Rain and snow now apply the explicit v0.33 rules below; sand remains cosmetic. Map IDs, campaign routes and saved scores remain compatible.
+
+### v0.33 tactical weather
+
+Soggy Bottom now has visible rain. On both teams, Torch range falls from 112 to 84, initial flame damage falls from 12 to 6, burn damage falls from 35/s to 17.5/s, and burns last three seconds instead of eight (58.5 total damage per isolated burst instead of 292). Repeated hits refresh rather than stack burns; heat and reloads still apply. The effective cone preview and AI approach distances use the reduced range.
+
+Frostbite Fiasco has deep snow. Ground movement slows by class: Bazooka 45%, Torch 35%, Lobber 20%, Rifleman 10%, Sapper 5%. This applies equally to both teams before stage difficulty modifiers. Cleared bridges retain normal speed; river movement uses the existing water penalties and drowning risks. Squad formation pacing and AI supply travel costs account for snow. Forced melee motions and field medics retain their existing behavior.
+
+A persistent header warning, deployment advice, selected-unit notes, moving-unit roster status, radio message, next-map briefing and manual chapter explain conditions before and during play. Rain animation uses simulation time, freezes on pause and never consumes simulation randomness. Map weather is fixed for a round and is derived deterministically from its map ID for replays.

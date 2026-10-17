@@ -1,3 +1,4 @@
+import { drawRain } from "./weather";
 import { drawEnvironment } from "./environment";
 import { ENVIRONMENTS } from "../sim/environments";
 import { drawArtifact } from "./artifacts";
@@ -456,6 +457,7 @@ export class Battlefield extends Phaser.Scene {
       );
     const g = this.effects;
     g.clear();
+    if(b.weather==="rain")drawRain(g,b.tick*TUNING.step+(!this.paused && b.winner===null ? this.accumulator : 0));
     for (let i = 0; i < b.supplies.length; i++) {
       const drop = b.supplies[i],
         p = project(drop),
@@ -555,7 +557,7 @@ export class Battlefield extends Phaser.Scene {
       const angle = this.facePreview
         ? Math.atan2(this.cursor.y - origin.y, this.cursor.x - origin.x)
         : origin !== selected ? selected.watchAngle! : headingOf(selected);
-      const range = CLASSES[selected.classId].range;
+      const range = b.weaponRange(selected);
       const center = project(origin);
       const fan = [center, ...Array.from({ length: 33 }, (_, i) => {
         const a = angle - viewArcOf(selected) / 2 + viewArcOf(selected) * i / 32;
@@ -569,7 +571,7 @@ export class Battlefield extends Phaser.Scene {
       g.lineBetween(center.x, center.y, tip.x, tip.y);
       if (b.isManualTorch(selected) && !b.planning) {
         const aim = this.aimPoint(),
-          range = CLASSES.torch.range;
+          range = b.weaponRange(selected);
         const angle = Math.atan2(aim.y - selected.y, aim.x - selected.x);
         const cone = [p, ...Array.from({length:17}, (_,i) => {
           const a = angle - TUNING.manualFlameArc / 2 + TUNING.manualFlameArc * i / 16;
