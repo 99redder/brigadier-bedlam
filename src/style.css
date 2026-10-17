@@ -914,7 +914,6 @@ p {
 .result-screen .screen-inner { position:relative; inset:auto; }
 .scores-screen { inset:4% 6%; height:auto; }
 
-.deployment-title { margin: 0 0 .12em; font: 800 2em "Barlow Condensed", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
 
 .result-screen .campaign-continue {
   display: block;
