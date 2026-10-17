@@ -1,0 +1,10 @@
+{
+ "$schema":"node_modules/wrangler/config-schema.json",
+ "name":"brigadier-bedlam-scores",
+ "main":"leaderboard/worker.ts",
+ "compatibility_date":"2026-10-17",
+ "account_id":"5ba75829ac4aa8cf4ae7a2700d9fa436",
+ "workers_dev":true,
+ "observability":{"enabled":true,"traces":{"enabled":true}},
+ "d1_databases":[{"binding":"DB","database_name":"brigadier-bedlam-scores","database_id":"d3407008-c3b8-4a39-845d-696e4e076119"}]
+}

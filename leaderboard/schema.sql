@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS scores (
+ run_id TEXT PRIMARY KEY, claim TEXT NOT NULL, name TEXT NOT NULL,
+ score INTEGER NOT NULL, rounds INTEGER NOT NULL, wins INTEGER NOT NULL,
+ history TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS scores_rank ON scores(score DESC, rounds DESC, created_at);
+CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, hits INTEGER NOT NULL, expires INTEGER NOT NULL);

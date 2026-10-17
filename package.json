@@ -1,6 +1,6 @@
 {
   "name": "brigadier-bedlam",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,11 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "leaderboard:dev": "wrangler dev --local --port 8791",
+    "leaderboard:types": "wrangler types leaderboard/env.d.ts",
+    "leaderboard:check": "tsc -p tsconfig.worker.json",
+    "leaderboard:deploy": "wrangler deploy"
   },
   "dependencies": {
     "phaser": "^3.90.0"
@@ -17,6 +21,7 @@
     "@types/node": "^22.20.5",
     "typescript": "~5.9.3",
     "vite": "^7.1.9",
-    "vitest": "^5.0.4"
+    "vitest": "^5.0.4",
+    "wrangler": "^4.78.0"
   }
 }

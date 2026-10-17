@@ -1,3 +1,4 @@
+import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
 import { headingOf, VIEW_ARC } from "../sim/vision";
 import Phaser from "phaser";
@@ -143,7 +144,8 @@ export class Battlefield extends Phaser.Scene {
     g.clear();
     g.fillStyle(0x969d73);
     g.fillRect(0, 0, 1280, 720);
-    g.fillStyle(0xbfc08e);
+    const map=this.battle?.operation ? MAPS[this.battle.operation.mapId] : null;
+    g.fillStyle(map?.ground ?? 0xbfc08e);
     g.fillPoints(
       [
         project({ x: 0, y: 0 }),
@@ -191,7 +193,7 @@ export class Battlefield extends Phaser.Scene {
       const corners = outline.map(project);
       g.lineStyle(12, 0x869378);
       g.strokePoints(corners, true, true);
-      g.fillStyle(0x6a9e9a);
+      g.fillStyle(map?.waterColor ?? 0x6a9e9a);
       g.fillPoints(corners, true);
       g.lineStyle(2, 0xc2d7bc, 0.7);
       g.strokePoints(corners, true, true);
@@ -343,12 +345,9 @@ export class Battlefield extends Phaser.Scene {
           letterSpacing: 2,
         })
         .setAlpha(0.65);
-    if (!this.children.getByName("map-name"))
-      makeText(
-        76,
-        574,
-        "THE DISPUTED PICNIC GROUNDS    /    SECTOR 01",
-      ).setName("map-name");
+    const name=this.children.getByName("map-name") as Phaser.GameObjects.Text | null;
+    const caption=map ? `${map.name.toUpperCase()} / STAGE ${this.battle!.operation!.level} OF 10` : "THE DISPUTED PICNIC GROUNDS / SECTOR 01";
+    if(name)name.setText(caption);else makeText(76,574,caption).setName("map-name");
   }
   showAttract() {
     if (!this.sys.isActive()) return;
@@ -364,6 +363,7 @@ export class Battlefield extends Phaser.Scene {
     this.victory.reset();
     this.deploymentCues.reset(battle.planning);
     this.battle = battle;
+    this.terrainRevision = -1;
     this.paused = false;
     this.accumulator = 0;
     this.previousPositions.clear();
@@ -788,7 +788,7 @@ export class Battlefield extends Phaser.Scene {
         g.fillRoundedRect(
           p.x - 16,
           p.y - 75,
-          (32 * s.hp) / CLASSES[s.classId].hp,
+          (32 * s.hp) / b.maxHp(s),
           5,
           2,
         );

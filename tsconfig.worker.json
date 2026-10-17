@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","lib":["ES2022"],"strict":true,"noEmit":true,"skipLibCheck":true},"include":["leaderboard/**/*.ts","src/sim/campaign.ts","src/sim/maps.ts","src/sim/data.ts","src/sim/geometry.ts"]}

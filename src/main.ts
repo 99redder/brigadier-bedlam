@@ -1,3 +1,6 @@
+import { MAPS, difficulty } from "./sim/maps";
+import { type Campaign, type RoundResult, newCampaign, roundScore, totalScore, nickname } from "./sim/campaign";
+import { saved, persist, storageAvailable, rememberScore, syncScores, loadScores, type ScoreRow } from "./campaign-store";
 import Phaser from "phaser";
 import "./style.css";
 import { manualContent, MANUAL_CHAPTERS, type ManualChapter } from "./view/manual";
@@ -22,6 +25,10 @@ import { Battlefield, unproject } from "./view/scene";
 import { inside } from "./sim/geometry";
 import { drawCharacter } from "./view/characters";
 import { drawShowcase, WEAPON_LABELS } from "./view/showcase";
+let campaign:Campaign|null=saved.run;
+let scoreRows:ScoreRow[]|null=null, scoreError=false;
+let scoreReturn:"title"|"result"="title";
+let syncMessage="";
 const ui = document.querySelector<HTMLDivElement>("#ui")!;
 const scene = new Battlefield();
 let tutorial: Tutorial | null = null;
@@ -32,7 +39,7 @@ let supplyRevision = -1;
 function issue(c: Command) {
   if (!tutorial || tutorial.accepts(c)) scene.battle?.command(c);
 }
-let screen: "title" | "squad" | "battle" | "result" = "title",
+let screen: "title" | "squad" | "battle" | "result" | "scores" = "title",
   squad = 0,
   manualOpen = false,
   manualReturn = true,
@@ -106,11 +113,12 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.28</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("Deploy squad &nbsp; ↗", "deploy", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}</div><p class="tiny muted">Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.29</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
-    ui.innerHTML = `<section class="overlay"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Select five volunteers. Their enthusiasm is legally assumed.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div><div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Begin operation &nbsp; ↗", "start", "primary")}<span class="tiny muted">Win by knocking down the entire enemy squad.</span></div></div></section>`;
+    ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. Stage 1 is easy; the challenge grows through stage 10. A fresh squad arrives on each map.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
   if (screen === "result") renderResult();
+  if (screen === "scores") renderScores();
   if (manualOpen) renderManual();
   if (settingsOpen) renderSettings();
   wire();
@@ -148,7 +156,7 @@ function renderBattle() {
     .padStart(2, "0")}:${Math.floor(b.time % 60)
     .toString()
     .padStart(2, "0")}`;
-  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : "OPERATION: DISPUTED PICNIC"}</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/5`}</span></div><div class="hud-actions">${btn(squadMoveArmed ? "Cancel move" : "Move squad", "squad-move", "squad-move")}${btn(`Fire all · ${esc(input.hint("fireAll"))}`, "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
+  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">BRIGADIER BEDLAM<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : b.operation ? `STAGE ${b.operation.level}/10 · ${esc(MAPS[b.operation.mapId].name)} · ${campaign ? totalScore(campaign.history).toLocaleString() : 0} PTS` : "OPERATION: DISPUTED PICNIC"}</small></div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/${b.soldiers.filter(s=>s.side===1).length}`}</span></div><div class="hud-actions">${btn(squadMoveArmed ? "Cancel move" : "Move squad", "squad-move", "squad-move")}${btn(`Fire all · ${esc(input.hint("fireAll"))}`, "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
     .slice(0, 2)
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
@@ -246,7 +254,7 @@ function updateBattleHud() {
     ".team-count.enemy",
     tutorial
       ? "NO ENEMIES"
-      : `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/5`,
+      : `OPPOSITION   ${b.soldiers.filter((s) => s.side === 1 && s.life === "alive").length}/${b.soldiers.filter(s=>s.side===1).length}`,
   );
   write(
     ".clock",
@@ -351,11 +359,48 @@ function unitStatus(t: Soldier) {
                     : "READY";
 }
 
-function renderResult() {
-  const b = scene.battle!,
-    won = b.winner === 0;
-  ui.innerHTML = `<div class="modal-shade"><section class="modal"><div class="eyebrow">After-action report / seed ${b.seed}</div><h2>${won ? "Victory.<br>Surprisingly." : "Defeat.<br>Officially a drill."}</h2><p>${won ? "The picnic grounds are yours. Please clean up the craters." : "Your squad has been excused from further heroism."}</p><div class="result-stat"><span>${Math.floor(b.time)}s<br><small>ON DUTY</small></span><span>${b.stats.shots}<br><small>SHOTS FIRED</small></span><span>${b.stats.revives}<br><small>REVIVALS</small></span></div><p class="tiny">${esc(input.hint("menu"))}: return to title</p><div class="buttons">${btn("Back to title", "title", "primary")}${btn("Fight again", "again")}${btn("Export replay", "export")}</div></section></div>`;
+function nameForm(afterRound:boolean) {
+  return `<div class="callsign-form"><label for="nickname">${saved.name ? "Your public nickname" : afterRound ? "Give that score a name" : "Nickname (optional)"}</label><div><input id="nickname" maxlength="20" autocomplete="nickname" placeholder="e.g. Major Mishap" value="${esc(saved.name)}">${afterRound ? btn("Save name & score","save-name") : ""}</div><small>${saved.name ? "Names are public nicknames, not reserved accounts." : "Skip this and play. Add a name after any map to put your whole run on the all-time board."}</small></div>`;
 }
+function setNickname(value:string) {
+  const name=nickname(value);
+  if(!name){syncMessage="Use 2–20 letters/numbers, spaces, apostrophes, dots, underscores or hyphens. You can also continue without a name.";return false;}
+  saved.name=name;
+  for(const record of saved.records)if(!record.name){record.name=name;record.pending=true;}
+  persist();return true;
+}
+function saveCurrentScore() {
+  if(campaign)rememberScore(campaign);
+  syncMessage=saved.name?"Saving to the all-time board…":storageAvailable?"Guest score saved on this device. Add a nickname whenever you're ready.":"This browser cannot save locally. Keep this tab open, or add a nickname to save online.";
+  if(saved.name)void syncScores().then(ok=>{
+    syncMessage=ok?"Saved to the all-time board.":storageAvailable?"Saved on this device. We'll retry the all-time board when you're online.":"Score kept in this session. Keep this tab open and retry saving when online.";
+    const el=ui.querySelector("#score-sync");if(el)el.textContent=syncMessage;
+  });
+}
+function finishStage() {
+  const b=scene.battle!;
+  if(!campaign||!b.operation||!campaign.inProgress||b.operation.level!==campaign.history.length+1)return;
+  const result:RoundResult={mapId:b.operation.mapId,level:b.operation.level,won:b.winner===0,seconds:Math.floor(b.time),
+    enemiesDefeated:b.soldiers.filter(s=>s.side===1&&s.life!=="alive").length,
+    survivors:b.soldiers.filter(s=>s.side===0&&s.life==="alive").length};
+  campaign.history.push(result);campaign.inProgress=false;saved.run=campaign;persist();saveCurrentScore();
+}
+function renderResult() {
+  finishStage();
+  const b=scene.battle!,won=b.winner===0;
+  const history=campaign?.history??[],r=history.at(-1),complete=history.length===10;
+  ui.innerHTML=`<section class="overlay result-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">${complete?"Ten-map tour complete":`After-action report · Stage ${r?.level??1}/10`} / ${esc(b.operation?MAPS[b.operation.mapId].name:"Disputed Picnic")}</div><h2>${complete?"Tour of duty. Complete.":won?"Victory. Surprisingly.":"A tactical learning experience."}</h2></div>${btn("End tour / title","title")}</div><div class="campaign-summary"><div class="score-total"><span>CAMPAIGN SCORE</span><strong>${totalScore(history).toLocaleString()}</strong><small>+${r?roundScore(r).toLocaleString():0} this map · ${history.filter(x=>x.won).length}/${history.length} wins</small></div><div class="score-breakdown"><p>${won?"Enemy squad defeated. Victory, survivors and a swift finish earn bonuses.":"Enemies defeated still earn points. A fresh squad is ready for the next map."}</p><p>${r?.enemiesDefeated??0} enemies defeated · ${r?.survivors??0} survivors · ${r?.seconds??0}s on duty</p><p>Points = stage × [150 per enemy + victory bonus (1,000 + 100 per survivor + up to 600 for speed)].</p></div></div>${nameForm(true)}<p id="score-sync" role="status">${esc(syncMessage)}</p><div class="buttons">${!complete?btn(`Continue without delay → Map ${history.length+1}/10`,"next-map","primary"):btn("New ten-map tour","deploy","primary")}${btn("All-time scores","scores")}${btn("Export replay","export")}</div>${!complete&&campaign?`<p class="next-map"><strong>UP NEXT: ${esc(MAPS[campaign.route[history.length]].name)}</strong> · Difficulty ${history.length+1}/10<br>${esc(MAPS[campaign.route[history.length]].briefing)}<br>You can continue with no nickname. Your accumulated points stay with this tour.</p>`:`<p class="next-map">All ten maps visited once. Start a new tour for a new map order.</p>`}</div></section>`;
+}
+function renderScores() {
+ const local=saved.records.map(r=>({name:r.name||"Guest (this device)",score:totalScore(r.run.history),rounds:r.run.history.length,wins:r.run.history.filter(s=>s.won).length})).sort((a,b)=>b.score-a.score);
+ const rows=scoreError?local:scoreRows;
+ ui.innerHTML=`<section class="overlay"><div class="screen-inner scores-screen"><div class="screen-head"><div><div class="eyebrow">Department of improbable achievement</div><h2>All-time scorers.</h2></div>${btn("← Back","scores-close")}</div><p>${scoreError?"The shared board is unavailable. Showing scores saved on this device.":"Shared leaderboard · Best campaign score per nickname · No login required"}</p><p class="tiny muted">Nicknames aren't reserved accounts. Add yours after any map; guest runs stay on your device until you choose a name.</p><div class="score-table-scroll" tabindex="0">${rows===null?`<p role="status">Loading the all-time board…</p>`:rows.length?`<table class="score-table"><thead><tr><th>Rank</th><th>Nickname</th><th>Score</th><th>Maps</th><th>Wins</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${r.score.toLocaleString()}</td><td>${r.rounds}/10</td><td>${r.wins}</td></tr>`).join("")}</tbody></table>`:"<p>No scores yet. Your next tour could set the standard.</p>"}</div><div class="buttons">${btn("Refresh board","scores-refresh")}${btn("Start a new tour","deploy","primary")}</div></div></section>`;
+}
+function refreshScores() {
+ scoreRows=null;scoreError=false;render();
+ void syncScores().then(()=>loadScores()).then(rows=>{scoreRows=rows;if(screen==="scores")render();}).catch(()=>{scoreError=true;if(screen==="scores")render();});
+}
+
 function action(a: Action, held = true, event?: Event) {
   if (
     event instanceof PointerEvent &&
@@ -373,6 +418,7 @@ function action(a: Action, held = true, event?: Event) {
   }
   if (settingsOpen) return;
   if (a === "menu" && held) {
+    if(screen==="scores"){screen=scoreReturn;render();return;}
     if (screen === "result") {
       title();
       return;
@@ -549,6 +595,18 @@ function startTutorial() {
   render();
 }
 function start(seed: number) {
+  const inputName=ui.querySelector<HTMLInputElement>("#nickname");
+  if(inputName) {saved.name="";if(nickname(inputName.value))setNickname(inputName.value);persist();}
+  campaign=newCampaign(seed,squad);saved.run=campaign;persist();
+  launchStage();
+}
+function launchStage() {
+  campaign=saved.run;
+  if(!campaign||campaign.history.length>=10)return;
+  squad=campaign.squad??0;
+  campaign.inProgress=true;persist();
+  const level=campaign.history.length+1;
+  const seed=(campaign.seed+Math.imul(level,2654435761))>>>0;
   armedSuper = null;
   faceArmed = false;
   scene.facePreview = false;
@@ -561,7 +619,7 @@ function start(seed: number) {
   screen = "battle";
   menuOpen = false;
   settingsOpen = false;
-  scene.start(new Battle(seed, squad, false, TUNING.deploymentSeconds));
+  scene.start(new Battle(seed, squad, false, TUNING.deploymentSeconds,{mapId:campaign.route[level-1],level}));
   scene.sfx.unlock();
   render();
 }
@@ -582,6 +640,15 @@ function wire() {
       (button.onclick = () => {
         scene.sfx.unlock();
         const what = button.dataset.do;
+        if (what === "scores") {scoreReturn=screen==="result"?"result":"title";screen="scores";refreshScores();}
+        if (what === "scores-refresh") refreshScores();
+        if (what === "scores-close") {screen=scoreReturn;render();}
+        if (what === "continue-tour" || what === "next-map") {launchStage();}
+        if (what === "save-name") {
+          const el=ui.querySelector<HTMLInputElement>("#nickname");
+          if(el&&setNickname(el.value)){saveCurrentScore();render();}
+          else {const status=ui.querySelector("#score-sync");if(status)status.textContent=syncMessage;}
+        }
         if (what === "tutorial") startTutorial();
         if (what === "lesson-next") {
           tutorial?.advance();
@@ -678,9 +745,11 @@ function wire() {
     (button) =>
       (button.onclick = () => {
         const seed = (ui.querySelector("#seed") as HTMLInputElement)?.value;
+        const typedName=ui.querySelector<HTMLInputElement>("#nickname")?.value;
         squad = Number(button.dataset.squad);
         render();
         if (seed) (ui.querySelector("#seed") as HTMLInputElement).value = seed;
+        if(typedName!==undefined){const name=ui.querySelector<HTMLInputElement>("#nickname");if(name)name.value=typedName;}
       }),
   );
   ui.querySelectorAll<HTMLButtonElement>("[data-unit]").forEach(

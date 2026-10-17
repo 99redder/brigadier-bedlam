@@ -1,6 +1,30 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.28 — inaccurate airstrikes.**
+Current prototype: **v0.29 — ten-map campaigns and shared all-time scores.**
+
+New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
+
+| Map | Character |
+| --- | --- |
+| Picnic Panic | Narrow creek and broad opening shelters |
+| Bootlace Bend | Winding river, southern bridge |
+| Tea Break Trenches | Staggered sandbags and diagonal lanes |
+| Muddy Moustache | Wide banks, northern crossing |
+| Crooked Crossing | Strong zigzags and a lower detour |
+| Quartermaster's Folly | Offset shelters facing exposed supply alcoves |
+| The Long Lunch | Broad river and a long northern detour |
+| Soggy Bottom | Southern crossing with tight bank shelters |
+| Brass Hat Bottleneck | Paired rock teeth narrowing lanes |
+| Last Orders Ridge | Long diagonal lanes and a remote bridge |
+
+Campaign points = stage × (150 per defeated enemy + victory bonuses: 1,000, 100 per survivor, and 2 per second remaining under five minutes). Defeats still earn defeated-enemy points. The result screen shows map points, cumulative points, wins and the next map's briefing. The tour route, selected squad, completed-stage results and optional nickname persist on this device; reloading restarts only the unfinished stage. Local storage failure does not block play.
+
+The nickname input is optional before play and after every map. Continue works without it. Adding a nickname later attaches it to the entire accumulated run; unnamed runs are kept on this device and become eligible to publish when named. Named records sync to the shared all-time leaderboard (best tour per nickname). Failed saves remain queued for retry on startup, online events and result/leaderboard visits. Nicknames are public, unverified and not reserved accounts. This is a casual leaderboard: the server validates map order, result bounds and score calculation, but does not replay matches to prevent a modified client inventing plausible results.
+
+The game remains on GitHub Pages. A Cloudflare Worker and D1 database provide shared scores at `https://brigadier-bedlam-scores.99redder.workers.dev/scores`. Only score/nickname/run metadata is sent after choosing a name. A random device-held run claim prevents other devices overwriting that run; score writes are idempotent and rate limited. Anonymous scores are never uploaded.
+
+For local leaderboard development, run `npx wrangler d1 execute brigadier-bedlam-scores --local --file=leaderboard/schema.sql`, then `npm run leaderboard:dev` in a second terminal. Vite development uses localhost:8791; production uses the deployed Worker. `node leaderboard/smoke.mjs` performs write tests only against a local database. `npm run leaderboard:check` checks generated Worker types, and `npm run leaderboard:deploy` deploys the API using your Cloudflare authentication. `wrangler.jsonc` identifies the dedicated database and Worker; schema setup is additive. GitHub Actions checks both frontend and Worker types, then deploys the static frontend as before.
+
 
 Each airstrike rolls one seeded accuracy result before its warning: 25% land within 35 units of the requested point, 45% drift 80–180 units, and 30% drift 220–360 units. Impact centers stay within the map, so edges can reduce the final offset. The targeting preview shows the possible drift area, not a guaranteed blast location. After calling, the gold/red warning marks the actual 105-unit blast zone, with a faint white cross/line showing the original request and its drift. The banner reports CLOSE TO TARGET, OFF TARGET or WAY OFF TARGET. Bombs, damage, cover destruction and friendly fire all use that same resolved location. A wide miss can hit nobody or endanger your own squad. Both teams use the same scatter; replays reproduce it.
 
@@ -94,7 +118,7 @@ npm run build
 npm run preview
 ```
 
-`dist/` is a static site. No backend, accounts, multiplayer, analytics, or AI service is required to play. GitHub Actions tests and builds every push to `main`, then publishes to GitHub Pages. Pull requests run the same checks without publishing.
+`dist/` is a static site. No account, multiplayer, analytics, or AI service is required to play. The optional shared all-time board uses the score API described above; offline gameplay and device-local scores still work. GitHub Actions tests and builds every push to `main`, then publishes to GitHub Pages. Pull requests run the same checks without publishing.
 
 ## How to play
 
@@ -183,9 +207,9 @@ The 25% baseline is adjusted for class equipment. The seeded simulation rolls on
 
 ## Scope and remaining work
 
-Implemented: title, interactive boot camp, three squads, one battlefield, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
+Implemented: title, interactive boot camp, three squads, ten campaign maps, cumulative scores and a shared nickname leaderboard, five classes, cover, water, enemy AI, medics, permanent deaths, close combat, rebindable controls, synthesized SFX, pause menu, win/lose screens, replay export, tests, and static hosting.
 
-This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.21 matched 36-game diagnostic averaged 31 seconds of combat (22–63 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Campaign, extra maps, commando controls, scoring, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
+This is a first playable prototype, not final game art or a finished balance pass. Rounds favor a short planning window followed by brisk, lethal combat. The v0.21 matched 36-game diagnostic averaged 31 seconds of combat (22–63 seconds), plus the ten-second deployment phase; positioning, instant kills, and player orders still affect duration. Additional human playtesting is needed to judge fun, difficulty, and class balance. Commando controls, final sprite animation, and music remain outside this build's scope. The simulation/view boundary leaves room to add them.
 
 Browser QA uses the desktop Chromium browser available in the development environment. Other browsers, alternate keyboard layouts on physical hardware, and subjective audio quality are not yet verified.
 

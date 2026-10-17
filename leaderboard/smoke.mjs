@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+const base=process.env.BEDLAM_TEST_API??'http://localhost:8791';
+assert(['localhost','127.0.0.1'].includes(new URL(base).hostname),'Integration writes are restricted to a local test database');
+const headers={'Content-Type':'application/json',Origin:'http://localhost:5173'};
+const id=crypto.randomUUID(),claim=crypto.randomUUID(),seed=18;
+const route=Array.from({length:10},(_,i)=>i);let state=seed;
+for(let i=9;i>0;i--){state=(Math.imul(state,1664525)+1013904223)>>>0;const j=state%(i+1);[route[i],route[j]]=[route[j],route[i]];}
+const body={id,claim,seed,name:'QA '+id.slice(0,8),score:9999999,history:[{mapId:route[0],level:1,won:true,seconds:60,enemiesDefeated:3,survivors:5}]};
+const post=b=>fetch(base+'/scores',{method:'POST',headers,body:JSON.stringify(b)});
+let res=await post(body);assert.equal(res.status,200);assert.equal(res.headers.get('Access-Control-Allow-Origin'),'http://localhost:5173');assert.equal((await res.json()).score,2430);
+await post(body);
+let rows=(await(await fetch(base+'/scores')).json()).scores;
+assert.equal(rows.filter(r=>r.name===body.name).length,1);assert.equal(rows.find(r=>r.name===body.name).score,2430);
+assert.equal((await post({...body,claim:crypto.randomUUID()})).status,403);
+assert.equal((await post({...body,history:[{...body.history[0],survivors:0}]})).status,400);
+assert.equal((await post({...body,name:'<script>bad</script>'})).status,400);
+body.history.push({mapId:route[1],level:2,won:false,seconds:120,enemiesDefeated:2,survivors:0});
+res=await post(body);assert.equal((await res.json()).score,3030);
+rows=(await(await fetch(base+'/scores')).json()).scores;assert.equal(rows.find(r=>r.name===body.name).rounds,2);
+assert.equal((await fetch(base+'/scores',{method:'POST',headers:{...headers,Origin:'https://example.com'},body:JSON.stringify(body)})).status,403);
+console.log('Leaderboard integration passed: persisted totals, server-calculated scoring, idempotency, ownership, validation and CORS.');

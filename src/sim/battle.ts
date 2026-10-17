@@ -1,3 +1,4 @@
+import { MAPS, difficulty, validMapId } from "./maps";
 import { scatterAirstrike, AIRSTRIKE_ACCURACY, type AirstrikeAccuracy } from "./airstrike";
 import { headingOf, inView } from "./vision";
 import {
@@ -147,6 +148,7 @@ export interface Replay {
   training?: boolean;
   deploymentSeconds?: number;
   aiSides?: Side[];
+  operation?: {mapId:number;level:number};
   commands: { tick: number; command: Command }[];
 }
 export interface CombatEvent {
@@ -225,6 +227,7 @@ export class Battle {
     squad = 0,
     readonly training = false,
     readonly deploymentSeconds = 0,
+    readonly operation?: {mapId:number;level:number},
   ) {
     this.planningTicks = training
       ? 0
@@ -232,12 +235,19 @@ export class Battle {
     if (training) this.supplies = [];
     if (training)
       this.cover = TRAINING_COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
+    if (!training && operation) {
+      if(!validMapId(operation.mapId)||!Number.isInteger(operation.level)||operation.level<1||operation.level>10)throw new Error("Invalid campaign operation");
+      const map=MAPS[operation.mapId];
+      this.cover=map.cover.map(r=>({...r,hp:TERRAIN.hp}));
+      this.water=map.water.map(r=>({...r}));this.bridges=map.bridges.map(r=>({...r}));
+      this.supplies=map.supplies.map((p,id)=>({...p,id,claimedBy:null}));
+    }
     this.seed = seed >>> 0;
     this.rngState = this.seed;
     this.squad = squad;
     const enemy = Math.floor(this.random() * SQUADS.length);
     for (const side of (training ? [0] : [0, 1]) as Side[])
-      (side === 0 ? SQUADS[squad] : SQUADS[enemy]).classes.forEach(
+      (side === 0 ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber"] as ClassId[] : SQUADS[enemy].classes).forEach(
         (classId, slot) => {
           this.soldiers.push({
             id: side * 5 + slot,
@@ -282,8 +292,15 @@ export class Battle {
           });
         },
       );
-    this.note("Operation: questionable decisions.");
+    if(!training && operation) {
+      const d=difficulty(operation.level);
+      this.soldiers=this.soldiers.filter(s=>s.side===0||s.slot<d.enemyCount);
+      this.soldiers.filter(s=>s.side===1).forEach(s=>{s.hp=Math.round(CLASSES[s.classId].hp*d.enemyHealth);});
+      this.note(`Stage ${operation.level}/10: ${MAPS[operation.mapId].name}.`);
+    } else this.note("Operation: questionable decisions.");
   }
+  maxHp(s:Soldier) {return Math.round(CLASSES[s.classId].hp*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
+  get challenge() { return this.operation ? difficulty(this.operation.level) : null; }
   random() {
     let t = (this.rngState += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -847,7 +864,7 @@ export class Battle {
     s.cooldown =
       (manual && s.classId === "bazooka"
         ? TUNING.manualRocketReload
-        : w.cooldown) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+        : w.cooldown) * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
     s.autoFireWait = s.cooldown * TUNING.passiveFireMultiplier;
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
@@ -870,7 +887,7 @@ export class Battle {
       : (w.spread + (coveredTarget ? TUNING.coverRifleSpread : 0)) *
         (s.classId === "bazooka" && s.side === 1
           ? TUNING.enemyRocketScatter
-          : 1);
+          : 1) * (s.side===1 ? this.challenge?.enemySpread ?? 1 : 1);
     if (spread > 0 && (!miss || s.classId === "bazooka")) {
       const angle =
         Math.atan2(point.y - s.y, point.x - s.x) +
@@ -1257,7 +1274,7 @@ export class Battle {
     const w = CLASSES[s.classId],
       d = distance(s, t);
     s.target = t.id;
-    if (s.hp < w.hp * TUNING.aiRetreatHp && this.time >= s.retreatReady) {
+    if (s.hp < this.maxHp(s) * TUNING.aiRetreatHp && this.time >= s.retreatReady) {
       s.retreatUntil = this.time + TUNING.aiRetreatDuration;
       s.retreatReady = this.time + TUNING.aiRetreatCooldown;
     }
@@ -1448,7 +1465,7 @@ export class Battle {
           target = this.soldiers.find(
             (s) => s.side !== side && s.life === "alive",
           );
-        if (weapon && target) this.useSuper(side, weapon, target);
+        if (weapon && target && (side===0 || !this.challenge || this.challenge.enemyPowers)) this.useSuper(side, weapon, target);
       }
   }
   step() {
@@ -1512,7 +1529,7 @@ export class Battle {
         }
       }
       if (this.aiSides.includes(s.side) && s.think <= 0) {
-        s.think = TUNING.aiThink;
+        s.think = TUNING.aiThink * (s.side===1 ? this.challenge?.enemyThink ?? 1 : 1);
         this.ai(s);
       }
       if (s.terrainTarget && s.brawl === null) {
@@ -1594,7 +1611,7 @@ export class Battle {
         const p = s.path[0],
           d = distance(s, p),
           speed =
-            (s.formationSpeed ?? CLASSES[s.classId].speed) *
+            (s.formationSpeed ?? CLASSES[s.classId].speed) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
             (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {
@@ -1718,7 +1735,7 @@ export class Battle {
             t.burnRemaining = 0;
             t.wasInWater = false;
             t.drowningTime = 0;
-            t.hp = CLASSES[t.classId].hp * TUNING.reviveHealth;
+            t.hp = this.maxHp(t) * TUNING.reviveHealth;
             t.cooldown = 1;
             t.target = null;
             t.brawl = null;
@@ -1748,6 +1765,7 @@ export class Battle {
     if (this.time >= this.nextMedic) {
       this.nextMedic = this.time + TUNING.aiMedicDelay;
       for (const side of this.aiSides) {
+        if(side===1 && this.challenge && !this.challenge.enemyMedics)continue;
         const t = this.soldiers.find(
           (s) =>
             s.side === side &&
@@ -1781,6 +1799,7 @@ export class Battle {
       training: this.training,
       deploymentSeconds: this.deploymentSeconds,
       aiSides: [...this.aiSides],
+      operation: this.operation,
       commands: this.commands,
     };
   }
@@ -1791,6 +1810,7 @@ export function replayBattle(replay: Replay, ticks: number) {
     replay.squad,
     replay.training ?? false,
     replay.deploymentSeconds ?? 0,
+    replay.operation,
   );
   battle.aiSides = replay.aiSides ? [...replay.aiSides] : [1];
   let i = 0;

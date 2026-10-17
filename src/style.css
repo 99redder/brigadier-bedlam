@@ -879,3 +879,37 @@ p {
 .face-order:disabled { opacity: .5; cursor: default; }
 .order-heading { gap: .35em; }
 .order-heading h3 { margin-right: auto; }
+.title-content .buttons { flex-wrap: wrap; gap: .65em; }
+.callsign-form { margin: .9em 0; max-width: 48em; }
+.callsign-form label { display: block; font-weight: 700; margin-bottom: .4em; }
+.callsign-form > div { display:flex; gap:.7em; align-items:center; }
+.callsign-form input { padding:.6em .8em; border:1px solid #718164; border-radius:3px; background:#f8f1d8; color:#263f30; max-width:23em; width:55%; }
+.callsign-form small { display:block; font-size:.75em; line-height:1.5; color:#596b52; margin-top:.5em; }
+.result-screen { overflow-y:auto; }
+.result-screen .screen-inner { padding:3% 5%; }
+.result-screen h2 { font-size:2.8em; }
+.campaign-summary { display:grid; grid-template-columns:1fr 1.7fr; gap:2em; padding:1.2em; background:#dce0bb; border-left:5px solid #b46142; margin:1em 0; }
+.score-total span,.score-total strong,.score-total small {display:block;}
+.score-total strong { font:800 4em "Barlow Condensed"; }
+.score-total span { letter-spacing:.14em; font-size:.75em; font-weight:700; }
+.score-total small,.score-breakdown p { font-size:.8em; line-height:1.6; }
+.score-breakdown p { margin:.25em 0; }
+#score-sync { font-size:.8em; min-height:1.3em; }
+.next-map { font-size:.8em; line-height:1.7; margin-top:1.3em; }
+.scores-screen { height:100%; display:flex; flex-direction:column; }
+.score-table-scroll { flex:1; min-height:0; overflow:auto; margin:1em 0; }
+.score-table { width:100%; border-collapse:collapse; text-align:left; }
+.score-table th { background:#2e493b; color:#eee8ca; position:sticky; top:0; }
+.score-table th,.score-table td { padding:.75em; border-bottom:1px solid #b3bd94; }
+.score-table tr:nth-child(even) { background:#dce1c4; }
+.hud-brand small { max-width:30em; font-size:.4em; }
+.squad-screen { overflow-y:auto; }
+.squad-screen .screen-inner { position:relative; inset:auto; padding:3% 6%; }
+.squad-screen .squad-grid { margin-top:1.4%; }
+.squad-screen .squad-card { padding:4%; }
+.squad-screen .squad-card p { min-height:3em; }
+.squad-screen .squad-portraits { height:5em; margin-top:.3em; }
+.squad-screen .seed-row { margin-top:.8em; }
+.squad-screen .buttons { margin-top:1em; }
+.result-screen .screen-inner { position:relative; inset:auto; }
+.scores-screen { inset:4% 6%; height:auto; }
