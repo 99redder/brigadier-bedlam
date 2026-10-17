@@ -257,3 +257,10 @@ Medium unlocks focus fire at stage 3, safer firing positions/flanking and defens
 Removed floating landmark nameplates. Supersampled, cached canvas art adds shaded armor, continuous tank tracks and long barrels, wrecked aircraft wings/cockpits, dimensional truck cabs and canvas, timber/roof panels, boat decking, rusty seams, rivets and contact shadows across all ten themes. Damage cracks and health strips remain for destructible objects.
 
 Each map retains four solid landmarks, with one smaller footprint now occupied by an indestructible concrete bunker or natural bedrock outcrop. Existing routes and bridge access remain unchanged. These props block movement, projectiles and blasts, survive every weapon and airstrike, and never generate rubble or a damage bar. Demolition commands explain that permanent cover must be flanked; advanced enemy AI does not attempt to breach it. Vehicles and wooden structures retain their existing destruction rules. The field manual describes the distinction.
+
+
+### v0.37 — Enemy fortune and stronger Hard campaigns
+
+Enemy fortune now rises every stage: Easy .02→.30, Medium .15→.65, Hard .40→1.00. Favorable rolls center weapon scatter (best of three samples on a fortune-weighted chance), shorten reloads by up to 35%, reduce jams by up to 90% and drowning risk by up to 75%. Enemy shot damage gains up to 50%, with up to a 30% chance of a further 1.75× critical hit. Luck is seeded and attached to the fired projectile, never a hit reroll or cover bypass. Player rolls and direct rocket/dynamite lethality are unchanged. At maximum enemy fortune, bomber runs are near/off/wild 75/20/5 rather than the player's 25/45/30; warnings still reveal the actual danger.
+
+Enemy firing positions now take priority over optional loot runs. Tracking a target that remains inside a held firing arc no longer continually resets AI aiming. Enemy accuracy, health and reload curves are stronger; late Hard fields three Bazookas and two Lobbers. The difficulty picker, enemy briefing and manual explain the advantage. Original tours retain their original stat/fortune rules.

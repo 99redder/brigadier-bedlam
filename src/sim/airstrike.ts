@@ -7,10 +7,10 @@ export const AIRSTRIKE_ACCURACY = {
   wild: "WAY OFF TARGET",
 } as const;
 // One seeded roll per call determines the whole bomber run, before its warning appears.
-export function scatterAirstrike(requested: Point, random: () => number) {
+export function scatterAirstrike(requested: Point, random: () => number,fortune=0) {
   const roll = random();
-  const accuracy: AirstrikeAccuracy = roll < 0.25 ? "near" : roll < 0.7 ? "off" : "wild";
-  const [min, max] = accuracy === "near" ? [0, 35] : accuracy === "off" ? [80, 180] : [220, TUNING.airstrikeMaxScatter];
+  const accuracy: AirstrikeAccuracy = roll < 0.25+.5*fortune ? "near" : roll < 0.7+.25*fortune ? "off" : "wild";
+  const [min, max] = accuracy === "near" ? [0, 35*(1-.45*fortune)] : accuracy === "off" ? [80*(1-.35*fortune), 180*(1-.35*fortune)] : [220, TUNING.airstrikeMaxScatter];
   const radius = min + random() * (max - min);
   const angle = random() * Math.PI * 2;
   return {

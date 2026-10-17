@@ -957,3 +957,5 @@ p {
  .squad-screen .squad-card p {min-height:2.3em;}
  .squad-screen .squad-portraits {height:4.6em;}
 }
+
+.enemy-odds {display:block;font:700 .58em "DM Sans",sans-serif;letter-spacing:.07em;text-align:center;color:#efc58f;margin-top:.2em;}

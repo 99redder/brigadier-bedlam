@@ -1,3 +1,4 @@
+import { centeredRoll } from "./luck";
 import { RUN_LIGHT, COMEBACK, CHEST_LABELS, type ChestReward, type GearDrop, type RewardChest } from "./comeback";
 import { RAIN, SNOW_SPEED, weatherAdvice, type Weather } from "./weather";
 import { MAPS, difficulty, validMapId, validMode, enemyBrief, type DifficultyMode } from "./maps";
@@ -95,6 +96,8 @@ export interface Medic extends Point {
 }
 export type Combatant = Soldier | Medic;
 export interface Shot {
+  damageScale?: number;
+  critical?: boolean;
   id: number;
   from: Point;
   to: Point;
@@ -314,7 +317,7 @@ export class Battle {
       this.soldiers=this.soldiers.filter(s=>s.side===0||s.slot<d.enemyCount);
       this.soldiers.filter(s=>s.side===1).forEach(s=>{s.hp=Math.round(CLASSES[s.classId].hp*d.enemyHealth);});
       if(d.tactics>=3) {
-        const roster:ClassId[]=["rifleman","bazooka","lobber","bazooka",this.weather==="rain"?"rifleman":"torch"];
+        const roster:ClassId[]=operation.mode==="hard"&&operation.level>=5 ? ["bazooka","bazooka","lobber","bazooka","lobber"] : ["rifleman","bazooka","lobber","bazooka",this.weather==="rain"?"rifleman":"torch"];
         this.soldiers.filter(s=>s.side===1).forEach(s=>{s.classId=roster[s.slot];s.hp=this.maxHp(s);});
       }
       this.note(`Enemy briefing: ${enemyBrief(operation.level,operation.mode)}.`);
@@ -596,7 +599,7 @@ export class Battle {
     if (wet && !s.wasInWater) {
       this.effects.push({ ...s, kind: "splash", time: 0.6, size: 22 });
       // One seeded roll on entry, never a repeated chance on each frame.
-      if (!this.training && this.random() < (s.unarmed ? RUN_LIGHT.drowningRisk : CLASSES[s.classId].drowningRisk)) {
+      if (!this.training && this.random() < (s.unarmed ? RUN_LIGHT.drowningRisk : CLASSES[s.classId].drowningRisk)*(1-.75*this.fortune(s.side))) {
         s.takingCover = false;
         s.drowningTime = TUNING.drowningDuration;
         s.path = [];
@@ -887,7 +890,7 @@ export class Battle {
     )
       return false;
     s.cooldown =
-      w.cooldown * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+      w.cooldown * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (this.fortune(s.side)>0?1-this.random()*.35*this.fortune(s.side):1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
     if (s.classId === "torch") {
       s.heat = Math.min(TUNING.flameMaxHeat, (s.heat ?? 0) + TUNING.flameBurstHeat);
       if (s.heat >= TUNING.flameMaxHeat) s.overheated = true;
@@ -896,7 +899,7 @@ export class Battle {
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
     this.stats.shots++;
-    if (w.jam && this.random() < w.jam) {
+    if (w.jam && this.random() < w.jam*(1-.9*this.fortune(s.side))) {
       s.jam = TUNING.jamDuration;
       this.effects.push({ ...s, kind: "jam", time: 1, size: 16 });
       this.note("Rifle jammed. Strongly worded memo pending.");
@@ -918,7 +921,7 @@ export class Battle {
     if (spread > 0 && (!miss || s.classId === "bazooka")) {
       const angle =
         Math.atan2(point.y - s.y, point.x - s.x) +
-        ((this.random() * 2 - 1) * spread * Math.PI) / 180;
+        (centeredRoll(()=>this.random(),this.fortune(s.side)) * spread * Math.PI) / 180;
       const radial =
         s.classId === "bazooka"
           ? 0.06 * (s.side === 1 ? TUNING.enemyRocketScatter : 1)
@@ -927,7 +930,7 @@ export class Battle {
             : 0;
       const reach = Math.min(
         this.weaponRange(s),
-        d * (1 + (this.random() * 2 - 1) * radial),
+        d * (1 + centeredRoll(()=>this.random(),this.fortune(s.side)) * radial),
       );
       endpoint = {
         x: s.x + Math.cos(angle) * reach,
@@ -937,7 +940,9 @@ export class Battle {
     const hit = firstCoverHit(s, endpoint, this.cover);
     this.emitWeapon(s.classId, "fire");
     const duration = w.arc ? 0.65 : s.classId === "bazooka" ? 0.55 : 0.1;
+    const fortune=this.fortune(s.side),critical=fortune>0&&this.random()<.3*fortune;
     this.shots.push({
+      damageScale:fortune>0?(1+.5*fortune)*(critical?1.75:1):1,critical,
       id: this.shotId++,
       from: { x: s.x, y: s.y },
       to: hit?.point ?? endpoint,
@@ -998,7 +1003,7 @@ export class Battle {
         const hpBefore = t.hp;
         this.damage(
           t,
-          w.damage * (shot.classId==="torch" && this.weather==="rain" ? RAIN.flameDamage : 1),
+          w.damage * (shot.damageScale??1) * (shot.classId==="torch" && this.weather==="rain" ? RAIN.flameDamage : 1),
           shot.classId,
           w.lethalRadius > 0 && distance(t, impact) <= w.lethalRadius,
         );
@@ -1025,11 +1030,12 @@ export class Battle {
         distance(t, impact) <
           ("takingCover" in t && t.takingCover ? TUNING.coverHitRadius : 42)
       )
-        this.damage(t, w.damage, shot.classId);
+        {const hp=t.hp;this.damage(t, w.damage*(shot.damageScale??1), shot.classId);damagedUnit=t.hp<hp;}
       else this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 8 });
     } else {
       this.effects.push({ ...impact, kind: "hit", time: 0.25, size: 10 });
     }
+    if(shot.critical&&damagedUnit)this.note("Enemy lucky hit! Use cover to break their firing lane.");
     if (!shot.miss)
       this.emitWeapon(
         shot.classId,
@@ -1223,6 +1229,13 @@ export class Battle {
     const amount = kind === "kick" ? TUNING.kickDamage : TUNING.brawlDamage;
     this.damage(t, amount * (t.blocking ? TUNING.blockReduction : 1));
   }
+  fortune(side:Side) {return side===1?this.challenge?.fortune??0:0;}
+  aimAi(s:Soldier,point:Point) {
+    // An AI may fire anywhere inside its held arc, just like a player soldier.
+    // Do not restart the settle timer for every small movement of its target.
+    if(s.side===1&&this.operation?.mode&&inView(s,point))return;
+    this.facePoint(s,point);
+  }
   get enemyTactics() {return this.challenge?.tactics??0;}
   threatAt(s:Soldier,p:Point) {
     return this.soldiers.filter(e=>e.side!==s.side&&e.life==="alive"&&!e.unarmed&&distance(e,p)<=this.weaponRange(e)&&inView(e,p)&&!blocked(e,p,this.cover)).length;
@@ -1246,19 +1259,19 @@ export class Battle {
     const range=distance(s,target),canEngage=this.canShoot(s,target)&&range<=this.weaponRange(s);
     const rifleThreat=this.soldiers.some(e=>e.side!==s.side&&e.life==="alive"&&e.classId==="rifleman"&&distance(e,s)>120&&distance(e,s)<this.weaponRange(e)&&inView(e,s)&&!blocked(e,s,this.cover));
     if(s.takingCover) {
-      if(tier>=2&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.75) {s.target=target.id;this.facePoint(s,target);return true;}
+      if(tier>=2&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.75) {s.target=target.id;this.aimAi(s,target);return true;}
       s.takingCover=false;s.hold=false;
     }
     if(tier>=2&&!s.unarmed&&!this.inWater(s)&&!s.path.length&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.65&&["rifleman","lobber"].includes(s.classId)) {
       s.takingCover=true;s.hold=true;s.path=[];s.goal=null;s.terrainTarget=null;s.formationSpeed=undefined;
       s.cooldown=Math.max(0,s.cooldown)*TUNING.coverReloadMultiplier;s.autoFireWait=(s.autoFireWait??0)*TUNING.coverReloadMultiplier;s.steadyTime=0;
-      s.target=target.id;this.facePoint(s,target);return true;
+      s.target=target.id;this.aimAi(s,target);return true;
     }
     if(tier>=4&&!s.unarmed&&["bazooka","sapper"].includes(s.classId)&&!this.inWater(s)) {
       const hit=firstCoverHit(s,target,this.cover);
       if(hit&&!hit.cover.indestructible&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
         s.target=null;s.terrainTarget={x:hit.cover.x+hit.cover.w/2,y:hit.cover.y+hit.cover.h/2};
-        s.path=[];s.goal=null;s.hold=true;this.facePoint(s,s.terrainTarget);return true;
+        s.path=[];s.goal=null;s.hold=true;this.aimAi(s,s.terrainTarget);return true;
       }
     }
     return false;
@@ -1270,6 +1283,8 @@ export class Battle {
       .sort((a, b) => {
         const score = (t: Combatant) =>
           distance(s, t) +
+          (s.side===1&&this.operation?.mode&&distance(s,t)<=this.weaponRange(s)&&!blocked(s,t,this.cover)?-180:0) +
+          (s.side===1&&this.operation?.mode&&"classId" in t&&["bazooka","lobber"].includes(t.classId)?-60:0) +
           t.hp * (s.side===1&&this.enemyTactics>=1?.8:.4) +
           (this.safeBlast(s, t) ? 0 : TUNING.aiUnsafeBlastPenalty) +
           this.soldiers.filter(
@@ -1296,6 +1311,10 @@ export class Battle {
     if(this.assistedOrder(s))return;
     s.terrainTarget=null;
     s.hold=false;
+    const readyTarget=this.chooseTarget(s);
+    if(s.side===1&&this.operation?.mode&&!this.inWater(s)&&readyTarget&&this.canShoot(s,readyTarget)&&!blocked(s,readyTarget,this.cover)&&this.safeBlast(s,readyTarget)&&distance(s,readyTarget)>=this.preferredRange(s)*.55) {
+      s.target=readyTarget.id;s.path=[];s.goal=null;this.aimAi(s,readyTarget);return;
+    }
     const chest=this.chests.find(c=>c.claimedBy===null&&c.expiresAt>this.time);
     if(chest&&!this.inWater(s)) {
       const runners=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive"&&u.brawl===null&&u.drowningTime<=0&&!u.takingCover)
@@ -1423,7 +1442,7 @@ export class Battle {
     } else {
       s.goal = null;
       s.path = [];
-      this.facePoint(s, t);
+      this.aimAi(s, t);
     }
   }
   collectSupplies() {
@@ -1584,7 +1603,7 @@ export class Battle {
       this.effects.push({ ...target, kind: "hit", time: 0.7, size: 26 });
       this.emitWeapon("rifleman", "fire");
     } else if (weapon === "airstrike") {
-      const scatter = scatterAirstrike(point, () => this.random());
+      const scatter = scatterAirstrike(point, () => this.random(),this.fortune(side));
       this.strikes.push({
         id: this.airstrikeId++,
         side,
