@@ -56,3 +56,19 @@ it("applies stage difficulty to enemy movement and reloads in the actual simulat
  }
  expect(distances[1]).toBeGreaterThan(distances[0]);expect(reloads[1]).toBeLessThan(reloads[0]);
 });
+
+describe("battlefield environments",()=>{
+ it("includes one snow map, one desert map and ten distinct environments",()=>{
+  expect(new Set(MAPS.map(m=>m.environment.biome)).size).toBe(10);
+  expect(MAPS.filter(m=>m.environment.biome==="snow")).toHaveLength(1);
+  expect(MAPS.filter(m=>m.environment.biome==="desert")).toHaveLength(1);
+  for(const map of MAPS){expect(map.ground).toBe(map.environment.ground);expect(map.waterColor).toBe(map.environment.water);expect(map.briefing).toContain(map.environment.briefing);}
+ });
+ for(const biome of ["snow","desert"])it(`${biome} rivers remain hazardous water with a safe bridge`,()=>{
+  const map=MAPS.find(m=>m.environment.biome===biome)!;
+  const b=new Battle(42,0,false,0,{mapId:map.id,level:1});b.random=()=>0;
+  const r=b.water[4],s=b.get(1)!;s.x=r.x+r.w/2;s.y=r.y+r.h/2;
+  expect(b.inWater(s)).toBe(true);b.updateWater(s);expect(s.drowningTime).toBeGreaterThan(0);
+  const bridge=b.bridges[0];expect(b.inWater({x:bridge.x+bridge.w/2,y:bridge.y+bridge.h/2})).toBe(false);
+ });
+});

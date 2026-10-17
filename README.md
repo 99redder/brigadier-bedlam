@@ -1,13 +1,13 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.31 — unique destructible landmarks on every map.**
+Current prototype: **v0.32 — snow, desert and varied battlefield environments.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
 | Map | Character |
 | --- | --- |
 | Picnic Panic | Overturned officers’ picnic tables and hampers |
-| Bootlace Bend | Burned-out tanks with broken tracks and barrels |
+| Sunstroke Salute | Burned-out tanks with broken tracks and barrels |
 | Tea Break Trenches | Wrecked tea wagons carrying oversized kettles |
 | Muddy Moustache | Bogged recovery tractors and muddy wheels |
 | Crooked Crossing | Crashed aircraft with detached wing panels |
@@ -15,7 +15,7 @@ New campaigns shuffle ten different map layouts without repeats. Difficulty foll
 | The Long Lunch | Collapsed mess halls and barricaded counters |
 | Soggy Bottom | Stranded patrol boats with battered hulls |
 | Brass Hat Bottleneck | Crumpled staff cars from an unofficial motorcade |
-| Last Orders Ridge | Ruined radio huts and toppled aerials |
+| Frostbite Fiasco | Ruined radio huts and toppled aerials |
 
 Campaign points = stage × (150 per defeated enemy + victory bonuses: 1,000, 100 per survivor, and 2 per second remaining under five minutes). Defeats still earn defeated-enemy points. The result screen shows map points, cumulative points, wins and the next map's briefing. The tour route, selected squad, completed-stage results and optional nickname persist on this device; reloading restarts only the unfinished stage. Local storage failure does not block play.
 
@@ -222,3 +222,7 @@ Manual aim belongs only to Torch. Bazookas keep heavy armor and lethal hits but 
 ### v0.31 map landmarks
 
 Each map now has four large, themed cover props with its own silhouette and authored layout: overturned picnic furniture, burned-out tanks, wrecked tea wagons, bogged tractors, crashed aircraft, supply lorries, collapsed mess halls, stranded boats, crumpled staff cars and ruined radio outposts. These are solid simulation cover, not decoration: movement and gunfire are blocked, guns/flames cannot destroy them, three rocket hits or one dynamite bundle demolish them, and their rubble is passable. Each landmark shows damage cracks and a health strip after being hit. The field manual describes each map's props and tactical role.
+
+### v0.32 environment variety
+
+Frostbite Fiasco is the snow map: pale drifts, vehicle tracks, frosted radio huts and a rim of ice around an open blue meltwater channel. Sunstroke Salute is the desert: warm sand, dune ridges, wind ripples, dusty tank wrecks and an oasis channel. The other maps use wildflower meadow, autumn leaves, churned mud, chalk coast, red dust, parched hayfield, marsh reeds or cracked cobblestone. Each has a separate ground/bank/water palette, ground detail and routed wheel tracks. Flat ground decoration adds no hidden obstacles. Solid wrecks remain destructible cover. Rivers retain class-based drowning risks and bridges remain safe; neither snow nor sand silently changes combat or stage difficulty. Map IDs, campaign routes and saved scores remain compatible.

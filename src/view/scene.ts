@@ -1,3 +1,5 @@
+import { drawEnvironment } from "./environment";
+import { ENVIRONMENTS } from "../sim/environments";
 import { drawArtifact } from "./artifacts";
 import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
@@ -143,9 +145,10 @@ export class Battlefield extends Phaser.Scene {
   drawTerrain() {
     const g = this.ground;
     g.clear();
-    g.fillStyle(0x969d73);
-    g.fillRect(0, 0, 1280, 720);
     const map=this.battle?.operation ? MAPS[this.battle.operation.mapId] : null;
+    const env=map?.environment ?? ENVIRONMENTS[0];
+    g.fillStyle(map ? env.edge : 0x969d73);
+    g.fillRect(0, 0, 1280, 720);
     g.fillStyle(map?.ground ?? 0xbfc08e);
     g.fillPoints(
       [
@@ -156,7 +159,7 @@ export class Battlefield extends Phaser.Scene {
       ],
       true,
     );
-    g.lineStyle(3, 0x798567);
+    g.lineStyle(3, map ? env.edge : 0x798567);
     g.strokePoints(
       [
         project({ x: 0, y: 0 }),
@@ -167,40 +170,19 @@ export class Battlefield extends Phaser.Scene {
       true,
       true,
     );
-    let seed = 831;
-    const random = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-    for (let i = 0; i < 450; i++) {
-      const p = project({ x: random() * 1100, y: random() * 560 });
-      g.fillStyle(i % 3 === 0 ? 0xd2cc9d : 0x8f9e72, 0.3);
-      g.fillEllipse(p.x, p.y, 3 + random() * 8, 2 + random() * 4);
-    }
-    g.fillStyle(0xd5c899, 0.55);
-    const a = project({ x: 0, y: 260 }),
-      b = project({ x: 1100, y: 265 });
-    g.fillPoints(
-      [
-        { x: a.x, y: a.y - 30 },
-        { x: b.x, y: b.y - 25 },
-        { x: b.x, y: b.y + 40 },
-        { x: a.x, y: a.y + 30 },
-      ],
-      true,
-    );
+    drawEnvironment(g,env,map?.id ?? 0,project);
     const water = this.battle?.water ?? WATER;
     for (const outline of waterOutlines(water)) {
       const corners = outline.map(project);
-      g.lineStyle(12, 0x869378);
+      g.lineStyle(12, env.bank);
       g.strokePoints(corners, true, true);
       g.fillStyle(map?.waterColor ?? 0x6a9e9a);
       g.fillPoints(corners, true);
-      g.lineStyle(2, 0xc2d7bc, 0.7);
+      g.lineStyle(2, env.glint, 0.7);
       g.strokePoints(corners, true, true);
     }
     for (const r of water) {
-      g.lineStyle(2, 0xc8e5d5, 0.5);
+      g.lineStyle(2, env.glint, 0.5);
       for (let y = r.y + 20; y < r.y + r.h; y += 30) {
         for (let x = r.x + 12; x < r.x + r.w - 20; x += 32) {
           const p = project({ x, y });
@@ -230,6 +212,10 @@ export class Battlefield extends Phaser.Scene {
           b = project({ x: r.x + r.w, y });
         g.lineBetween(a.x, a.y - 5, b.x, b.y - 5);
       }
+    }
+    if(env.biome==="snow") for(const r of this.battle?.bridges ?? BRIDGES) {
+      const a=project(r),b=project({x:r.x+r.w,y:r.y});
+      g.lineStyle(3,0xf5faf0,.9);g.lineBetween(a.x,a.y-5,b.x,b.y-5);
     }
     for (const node of this.coverNodes) node.destroy();
     this.coverNodes = [];
@@ -327,6 +313,17 @@ export class Battlefield extends Phaser.Scene {
             );
           }
       }
+      if(env.biome==="snow") {
+        const height=Math.max(54,r.h*.74+18);
+        cg.lineStyle(5,0xf5f8ee,.95);
+        if(r.artifact==="radio") {
+          cg.strokePoints([{x:r.w*.03,y:-height*.53},{x:r.w*.34,y:-height*.76},{x:r.w*.73,y:-height*.52}]);
+          cg.lineBetween(r.w*.65,-height*.86,r.w*.84,-height*.91);
+        } else cg.lineBetween(2,-43,r.w-2,-43);
+        cg.fillStyle(0xf5f8ee,.8);cg.fillEllipse(r.w*.5,3,r.w*.8,7);
+      } else if(env.biome==="desert" && r.artifact) {
+        cg.fillStyle(env.light,.3);cg.fillEllipse(r.w*.5,-7,r.w*.85,8);
+      }
       if(r.label && r.w>=160) {
         const label=this.add.text(r.w/2,18,r.label,{fontFamily:"monospace",fontSize:"8px",color:"#344638",backgroundColor:"#d9d3ae",padding:{x:3,y:2}}).setOrigin(.5,0);
         node.add(label);
@@ -363,7 +360,7 @@ export class Battlefield extends Phaser.Scene {
         })
         .setAlpha(0.65);
     const name=this.children.getByName("map-name") as Phaser.GameObjects.Text | null;
-    const caption=map ? `${map.name.toUpperCase()} / STAGE ${this.battle!.operation!.level} OF 10` : "THE DISPUTED PICNIC GROUNDS / SECTOR 01";
+    const caption=map ? `${map.name.toUpperCase()} / ${env.name.toUpperCase()} / STAGE ${this.battle!.operation!.level} OF 10` : "THE DISPUTED PICNIC GROUNDS / SECTOR 01";
     if(name)name.setText(caption);else makeText(76,574,caption).setName("map-name");
   }
   showAttract() {

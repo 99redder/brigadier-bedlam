@@ -1,22 +1,23 @@
+import { ENVIRONMENTS, type Environment } from "./environments";
 import { type ArtifactKind, type Cover, type Rect } from "./data";
 export interface MapSpec {
   id: number; name: string; briefing: string;
-  ground: number; waterColor: number;
+  ground: number; waterColor: number; environment: Environment;
   cover: Cover[]; water: Rect[]; bridges: Rect[];
   supplies: { x: number; y: number; label: string }[];
 }
 // Each map has authored river bends, bridge placement and shelter rows. Campaign order is independent of difficulty.
 const designs = [
-  ["Picnic Panic", "Broad shelters and a narrow creek. Establish a firing lane before advancing.", [0,-20,10,-10,25,0,20,-5], 78, 0, [120,300,430], 0xbec38e,0x6a9e9a],
-  ["Bootlace Bend", "A winding river puts the safe crossing at the southern end. Watch both approaches.", [-30,0,30,0,-25,10,35,0], 94, 7, [80,245,410], 0xaebc91,0x649eaa],
-  ["Tea Break Trenches", "Staggered sandbags make diagonal firing lanes. Turn troops to cover the gaps.", [20,-10,-35,0,30,5,-20,10], 90, 1, [145,280,455], 0xc3b88f,0x6c9b99],
-  ["Muddy Moustache", "Wide muddy banks and a northern bridge reward a cautious opening route.", [-10,25,0,-30,5,30,0,-25], 118, 0, [100,320,465], 0xa5af83,0x7c9c88],
-  ["Crooked Crossing", "A zigzag channel and a southern crossing split your squad's safe and risky routes.", [35,0,-30,5,30,-5,-35,0], 106, 6, [65,230,390], 0xb5b997,0x5e969c],
-  ["Quartermaster's Folly", "Shelters face awkward supply alcoves. Leave a covering soldier before making a run.", [-25,5,35,0,-30,0,30,10], 100, 2, [110,285,450], 0xc8c19b,0x6b9b9a],
-  ["The Long Lunch", "A broad river forces a long northern detour. Coordinate movement rather than trickling in.", [5,30,0,-30,-5,25,5,-20], 126, 0, [75,250,425], 0xb9bb84,0x65969d],
-  ["Soggy Bottom", "An offset southern bridge and tight bank shelters make explosive cover destruction useful.", [30,10,-20,10,35,0,-30,-5], 112, 7, [140,305,460], 0xa9b68d,0x689e91],
-  ["Brass Hat Bottleneck", "Paired rock teeth narrow the lanes. Cover your flank and avoid bunching up.", [-35,-5,25,0,-25,5,30,0], 122, 1, [90,260,435], 0xb9ae86,0x719caa],
-  ["Last Orders Ridge", "Long diagonal lanes and a remote crossing demand a plan, facing orders and timely volleys.", [15,-20,10,35,0,-30,0,25], 132, 6, [60,220,400], 0xb5b28e,0x5f939d],
+  ["Picnic Panic", "Broad shelters and a narrow creek. Establish a firing lane before advancing.", [0,-20,10,-10,25,0,20,-5], 78, 0, [120,300,430]],
+  ["Sunstroke Salute", "A winding river puts the safe crossing at the southern end. Watch both approaches.", [-30,0,30,0,-25,10,35,0], 94, 7, [80,245,410]],
+  ["Tea Break Trenches", "Staggered sandbags make diagonal firing lanes. Turn troops to cover the gaps.", [20,-10,-35,0,30,5,-20,10], 90, 1, [145,280,455]],
+  ["Muddy Moustache", "Wide muddy banks and a northern bridge reward a cautious opening route.", [-10,25,0,-30,5,30,0,-25], 118, 0, [100,320,465]],
+  ["Crooked Crossing", "A zigzag channel and a southern crossing split your squad's safe and risky routes.", [35,0,-30,5,30,-5,-35,0], 106, 6, [65,230,390]],
+  ["Quartermaster's Folly", "Shelters face awkward supply alcoves. Leave a covering soldier before making a run.", [-25,5,35,0,-30,0,30,10], 100, 2, [110,285,450]],
+  ["The Long Lunch", "A broad river forces a long northern detour. Coordinate movement rather than trickling in.", [5,30,0,-30,-5,25,5,-20], 126, 0, [75,250,425]],
+  ["Soggy Bottom", "An offset southern bridge and tight bank shelters make explosive cover destruction useful.", [30,10,-20,10,35,0,-30,-5], 112, 7, [140,305,460]],
+  ["Brass Hat Bottleneck", "Paired rock teeth narrow the lanes. Cover your flank and avoid bunching up.", [-35,-5,25,0,-25,5,30,0], 122, 1, [90,260,435]],
+  ["Frostbite Fiasco", "Long diagonal lanes and a remote crossing demand a plan, facing orders and timely volleys.", [15,-20,10,35,0,-30,0,25], 132, 6, [60,220,400]],
 ] as const;
 // Landmark footprints are authored per map. They use the same solid-cover simulation as rocks.
 const landmarks: {kind:ArtifactKind; label:string; briefing:string; footprints:number[][]}[] = [
@@ -31,11 +32,11 @@ const landmarks: {kind:ArtifactKind; label:string; briefing:string; footprints:n
   {kind:"staff-car",label:"BRASS HAT PARKING",briefing:"Crumpled staff cars form an extremely unofficial motorcade. Open a lane through the wrecks.",footprints:[[210,180,180,68],[715,355,180,68],[295,415,122,52],[715,110,132,54]]},
   {kind:"radio",label:"LAST ORDERS OUTPOST",briefing:"Toppled aerials and ruined radio huts make a final defensive line. The complaints desk is offline.",footprints:[[205,330,190,84],[705,145,190,84],[285,105,132,62],[710,395,136,62]]},
 ];
-export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBand,rows,ground,waterColor],id) => {
+export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBand,rows],id) => {
   const water = bends.map((bend,i) => ({x:550 + bend - width/2,y:i*70,w:width,h:70}));
   const center = 550+bends[bridgeBand];
   const bridges = [{x:center-width/2-26,y:bridgeBand*70+4,w:width+52,h:62}];
-  const theme=landmarks[id];
+  const theme=landmarks[id], environment=ENVIRONMENTS[id];
   const cover: Cover[] = theme.footprints.map(([x,y,w,h])=>({x,y,w,h,material:"rock",artifact:theme.kind,label:theme.label}));
   // Smaller barriers frame the wrecks, leaving passages around the broad landmarks.
   for (const side of [0,1]) {
@@ -46,7 +47,7 @@ export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBan
     if(!cover.some(r=>small.x<r.x+r.w+22&&small.x+small.w+22>r.x&&small.y<r.y+r.h+22&&small.y+small.h+22>r.y))cover.push(small);
   }
   const middle = water[4];
-  return {id,name,briefing:theme.briefing+" "+briefing,ground,waterColor,water,bridges,cover,supplies:[
+  return {id,name,briefing:environment.briefing+" "+theme.briefing+" "+briefing,environment,ground:environment.ground,waterColor:environment.water,water,bridges,cover,supplies:[
     {x:middle.x+middle.w/2,y:middle.y+35,label:"RIVER DROP"},
     {x:365,y:530,label:"SOUTH DROP"}, {x:735,y:22,label:"NORTH DROP"},
   ]};
