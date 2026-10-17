@@ -37,7 +37,7 @@ export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBan
   const center = 550+bends[bridgeBand];
   const bridges = [{x:center-width/2-26,y:bridgeBand*70+4,w:width+52,h:62}];
   const theme=landmarks[id], environment=ENVIRONMENTS[id];
-  const cover: Cover[] = theme.footprints.map(([x,y,w,h])=>({x,y,w,h,material:"rock",artifact:theme.kind,label:theme.label}));
+  const cover: Cover[] = theme.footprints.map(([x,y,w,h],index)=>({x,y,w,h,material:"rock",artifact:index===(id%2===0?3:2)?([0,3,6,7].includes(id)?"boulder":"bunker"):theme.kind,indestructible:index===(id%2===0?3:2)||undefined,label:theme.label}));
   // Smaller barriers frame the wrecks, leaving passages around the broad landmarks.
   for (const side of [0,1]) {
     const x=side===0?220:800;

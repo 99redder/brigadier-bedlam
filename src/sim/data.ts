@@ -217,9 +217,10 @@ export interface Rect {
   w: number;
   h: number;
 }
-export type ArtifactKind = "picnic" | "tank" | "tea-truck" | "tractor" | "plane" | "supply-truck" | "mess-hall" | "boat" | "staff-car" | "radio";
+export type ArtifactKind = "picnic" | "tank" | "tea-truck" | "tractor" | "plane" | "supply-truck" | "mess-hall" | "boat" | "staff-car" | "radio" | "bunker" | "boulder";
 export interface Cover extends Rect {
   artifact?: ArtifactKind;
+  indestructible?: boolean;
   label?: string;
   hp?: number;
   material?: "rock" | "sandbags" | "crate";

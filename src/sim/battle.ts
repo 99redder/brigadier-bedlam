@@ -458,6 +458,7 @@ export class Battle {
     }
     if (c.type === "demolish" && s.brawl === null) {
       const r = this.cover.find((r) => inside(c.point, r));
+      if (r?.indestructible) {this.note("Permanent cover: explosives cannot destroy it. Flank around it.");return;}
       if (r) {
         this.facePoint(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
         s.watchAngle = undefined;
@@ -1038,6 +1039,7 @@ export class Battle {
     if (!amount) return;
     let demolished = false;
     for (const r of cover) {
+      if(r.indestructible)continue;
       const nearest = {
         x: Math.max(r.x, Math.min(impact.x, r.x + r.w)),
         y: Math.max(r.y, Math.min(impact.y, r.y + r.h)),
@@ -1082,6 +1084,7 @@ export class Battle {
     }
   }
   damageCover(r: Cover, amount: number) {
+    if(r.indestructible)return;
     r.hp = Math.max(0, (r.hp ?? TERRAIN.hp) - amount);
     this.terrainRevision++;
     if (r.hp === 0) {
@@ -1253,7 +1256,7 @@ export class Battle {
     }
     if(tier>=4&&!s.unarmed&&["bazooka","sapper"].includes(s.classId)&&!this.inWater(s)) {
       const hit=firstCoverHit(s,target,this.cover);
-      if(hit&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
+      if(hit&&!hit.cover.indestructible&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
         s.target=null;s.terrainTarget={x:hit.cover.x+hit.cover.w/2,y:hit.cover.y+hit.cover.h/2};
         s.path=[];s.goal=null;s.hold=true;this.facePoint(s,s.terrainTarget);return true;
       }

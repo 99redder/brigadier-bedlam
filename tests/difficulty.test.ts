@@ -80,6 +80,11 @@ describe("enemy tactical assistance in battle",()=>{
   const {b,enemy}=arena();b.water=[{x:570,y:200,w:60,h:100}];b.chests=[{id:1,x:750,y:350,expiresAt:45,claimedBy:null}];
   enemy.wasInWater=true;b.ai(enemy);expect(enemy.goal).not.toBeNull();expect(enemy.goal).not.toEqual({x:750,y:350});expect(enemy.path.length).toBeGreaterThan(0);
  });
+ it("routes around permanent cover instead of assigning a futile demolition order",()=>{
+  const {b,enemy,target}=arena();enemy.classId="bazooka";target.x=350;
+  b.cover=[{x:450,y:200,w:65,h:100,material:"rock",hp:100,indestructible:true}];
+  b.ai(enemy);expect(enemy.terrainTarget).toBeNull();expect(enemy.path.length).toBeGreaterThan(0);
+ });
  it("grants faster volleys only after their tactical unlock and respects reloads",()=>{
   const waits:number[]=[];
   for(const level of [1,10]){const {b,enemy,target}=arena("medium",level);b.facePoint(enemy,target);enemy.steadyTime=2;b.fireAt(enemy,target,target.id);waits.push((enemy.autoFireWait??0)/enemy.cooldown);expect(b.fireAt(enemy,target,target.id)).toBe(false);}

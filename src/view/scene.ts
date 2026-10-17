@@ -3,7 +3,7 @@ import { runnerKey } from "./runner";
 import { drawRain } from "./weather";
 import { drawEnvironment } from "./environment";
 import { ENVIRONMENTS } from "../sim/environments";
-import { drawArtifact } from "./artifacts";
+import { artifactTexture, artifactHeight } from "./artifacts";
 import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
 import { headingOf, viewArcOf } from "../sim/vision";
@@ -249,13 +249,15 @@ export class Battlefield extends Phaser.Scene {
     }
     for (const r of this.battle?.cover ?? COVER) {
       const p = project({ x: r.x, y: r.y + r.h }),
-        node = this.add.container(p.x, p.y).setDepth(p.y),
-        cg = this.add.graphics();
+        node = this.add.container(p.x, p.y).setDepth(p.y);
+      let cg = this.add.graphics();
       node.add(cg);
       cg.fillStyle(0x586344, 0.3);
       cg.fillEllipse(r.w / 2 + 9, 8, r.w + 30, 18);
       if (r.artifact) {
-        drawArtifact(cg,r);
+        const height=artifactHeight(r);
+        node.add(this.add.image(-8,-height-6,artifactTexture(this,r,env.biome)).setOrigin(0).setDisplaySize(r.w+16,height+14));
+        cg=this.add.graphics();node.add(cg);
       } else if (r.material === "rock") {
         cg.fillStyle(0x747b75);
         cg.fillPoints(
@@ -320,22 +322,19 @@ export class Battlefield extends Phaser.Scene {
           }
       }
       if(env.biome==="snow") {
-        const height=Math.max(54,r.h*.74+18);
+        const height=artifactHeight(r);
         cg.lineStyle(5,0xf5f8ee,.95);
         if(r.artifact==="radio") {
-          cg.strokePoints([{x:r.w*.03,y:-height*.53},{x:r.w*.34,y:-height*.76},{x:r.w*.73,y:-height*.52}]);
+          cg.strokePoints([{x:0,y:-height*.55},{x:r.w*.21,y:-height*.82},{x:r.w*.51,y:-height*.9},{x:r.w*.74,y:-height*.57}]);
           cg.lineBetween(r.w*.65,-height*.86,r.w*.84,-height*.91);
-        } else cg.lineBetween(2,-43,r.w-2,-43);
+        } else if(r.artifact==="bunker")cg.strokePoints([{x:0,y:-height*.6},{x:r.w*.14,y:-height*.81},{x:r.w*.7,y:-height*.89},{x:r.w,y:-height*.66}]);
+        else cg.lineBetween(2,-43,r.w-2,-43);
         cg.fillStyle(0xf5f8ee,.8);cg.fillEllipse(r.w*.5,3,r.w*.8,7);
       } else if(env.biome==="desert" && r.artifact) {
         cg.fillStyle(env.light,.3);cg.fillEllipse(r.w*.5,-7,r.w*.85,8);
       }
-      if(r.label && r.w>=160) {
-        const label=this.add.text(r.w/2,18,r.label,{fontFamily:"monospace",fontSize:"8px",color:"#344638",backgroundColor:"#d9d3ae",padding:{x:3,y:2}}).setOrigin(.5,0);
-        node.add(label);
-      }
       const hp = r.hp ?? TERRAIN.hp;
-      if (hp < TERRAIN.hp) {
+      if (!r.indestructible && hp < TERRAIN.hp) {
         cg.lineStyle(3, 0x3b4238);
         cg.strokePoints([
           { x: r.w * 0.55, y: -40 },

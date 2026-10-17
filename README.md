@@ -250,3 +250,10 @@ Campaign chests first arrive after 30 combat seconds, then every 45 seconds, up 
 New tours offer Easy (×1 score), Medium (×1.5, default) and Hard (×2). Mode is fixed through all ten stages and recorded in saves, replays, results and the shared leaderboard. Existing tours/scores retain their Original rules. Stage 1 remains a weaker three-enemy introduction in each mode; later stages add enemies, armor, tighter scatter, quicker reactions and shorter reloads. Regular movement remains deliberate.
 
 Medium unlocks focus fire at stage 3, safer firing positions/flanking and defensive crouching at stage 5, airstrike-warning evasion and faster commanded volleys at stage 7, and rocket/dynamite cover demolition at stage 9. Hard unlocks these at 1/3/5/7; Easy introduces focus at 5 and flanking/cover at 9. Advanced squads field two Bazookas and substitute a Rifleman for Torch in rain. Tactical choices run on the normal AI decision timer and retain aiming delays, firing arcs, armor tradeoffs, reloads, friendly-fire checks and terrain collision. Enemy intel appears in the radio briefing and next-map report.
+
+
+### v0.36 — Detailed landmark art and permanent cover
+
+Removed floating landmark nameplates. Supersampled, cached canvas art adds shaded armor, continuous tank tracks and long barrels, wrecked aircraft wings/cockpits, dimensional truck cabs and canvas, timber/roof panels, boat decking, rusty seams, rivets and contact shadows across all ten themes. Damage cracks and health strips remain for destructible objects.
+
+Each map retains four solid landmarks, with one smaller footprint now occupied by an indestructible concrete bunker or natural bedrock outcrop. Existing routes and bridge access remain unchanged. These props block movement, projectiles and blasts, survive every weapon and airstrike, and never generate rubble or a damage bar. Demolition commands explain that permanent cover must be flanked; advanced enemy AI does not attempt to breach it. Vehicles and wooden structures retain their existing destruction rules. The field manual describes the distinction.
