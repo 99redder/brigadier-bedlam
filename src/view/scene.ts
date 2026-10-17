@@ -1,6 +1,6 @@
 import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
-import { headingOf, VIEW_ARC } from "../sim/vision";
+import { headingOf, viewArcOf } from "../sim/vision";
 import Phaser from "phaser";
 import { Battle, type SuperWeapon, type Soldier } from "../sim/battle";
 import {
@@ -544,7 +544,7 @@ export class Battlefield extends Phaser.Scene {
       const range = CLASSES[selected.classId].range;
       const center = project(origin);
       const fan = [center, ...Array.from({ length: 33 }, (_, i) => {
-        const a = angle - VIEW_ARC / 2 + VIEW_ARC * i / 32;
+        const a = angle - viewArcOf(selected) / 2 + viewArcOf(selected) * i / 32;
         return project({ x: origin.x + Math.cos(a) * range, y: origin.y + Math.sin(a) * range });
       }), center];
       g.fillStyle(this.facePreview ? 0xffd16f : 0xffefd0, 0.09);
@@ -553,28 +553,17 @@ export class Battlefield extends Phaser.Scene {
       g.strokePoints(fan, true);
       const tip = project({x: origin.x + Math.cos(angle) * 44, y: origin.y + Math.sin(angle) * 44});
       g.lineBetween(center.x, center.y, tip.x, tip.y);
-      if (b.isManualRocket(selected) && !b.planning) {
+      if (b.isManualTorch(selected) && !b.planning) {
         const aim = this.aimPoint(),
-          d = distance(selected, aim),
-          range = CLASSES.bazooka.range;
-        const end = project(
-          d > range
-            ? {
-                x: selected.x + ((aim.x - selected.x) / d) * range,
-                y: selected.y + ((aim.y - selected.y) / d) * range,
-              }
-            : aim,
-        );
-        g.lineStyle(2, d > range ? 0x93896d : 0xe87852, 0.85);
-        g.lineBetween(p.x, p.y, end.x, end.y);
-        g.strokeEllipse(
-          end.x,
-          end.y,
-          CLASSES.bazooka.radius * 2,
-          CLASSES.bazooka.radius * 1.48,
-        );
-        g.lineBetween(end.x - 8, end.y, end.x + 8, end.y);
-        g.lineBetween(end.x, end.y - 6, end.x, end.y + 6);
+          range = CLASSES.torch.range;
+        const angle = Math.atan2(aim.y - selected.y, aim.x - selected.x);
+        const cone = [p, ...Array.from({length:17}, (_,i) => {
+          const a = angle - TUNING.manualFlameArc / 2 + TUNING.manualFlameArc * i / 16;
+          return project({x:selected.x + Math.cos(a)*range,y:selected.y + Math.sin(a)*range});
+        }), p];
+        const color = selected.overheated ? 0x93896d : 0xe87852;
+        g.fillStyle(color, .15); g.fillPoints(cone, true);
+        g.lineStyle(2, color, .85); g.strokePoints(cone, true);
       }
       if (selected.goal) {
         const goal = project(selected.goal);
@@ -632,11 +621,7 @@ export class Battlefield extends Phaser.Scene {
       const anchor = project(s.fightAnchor ?? s),
         facing = fighting
           ? s.fightFacing
-          : b.isManualRocket(s) && !b.planning
-            ? this.aimPoint().x >= s.x
-              ? 1
-              : -1
-            : s.facing;
+          : s.facing;
       const p =
           fighting && s.fightAnchor
             ? { x: anchor.x - facing * 30, y: anchor.y }

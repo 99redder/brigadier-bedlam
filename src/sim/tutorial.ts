@@ -106,12 +106,12 @@ export class Tutorial {
       case "rockets":
         return [
           "Make a new route",
-          `Select the Bazooka (${h("slot2")}). Click the rock three times, waiting six seconds to reload between shots, or point at it and press ${h("rocketFire")}. Selected Bazookas require manual shots; deselected ones fire automatically with heavy scatter and a faster four-second reload. Cracks show damage; rubble is passable. The blast that destroys cover still shields soldiers behind it.`,
+          `Select the Bazooka (${h("slot2")}) and click the rock once to order demolition. He aims for 1.5 seconds and fires automatically, with scatter and an eight-second reload. Fire all commands the next shot when ready. About three hits destroy cover. Cracks show damage; rubble is passable. The blast that destroys cover still shields soldiers behind it.`,
         ];
       case "dynamite":
         return [
           "Short range, big consequence",
-          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, one rocket or dynamite hit kills; accurate grenades need two hits against most soldiers, three against heavy rocket armor. Explosions hurt allies. Torch ignites an eight-second burn; water extinguishes it. Riflemen sometimes jam.`,
+          `Select the Sapper (${h("slot5")}) and click the crate. He will approach and throw dynamite. One bundle destroys cover. In battles, one rocket or dynamite hit kills; accurate grenades need two hits against most soldiers, three against heavy rocket armor. Explosions hurt allies. Torch ignites an eight-second burn; water extinguishes it. Select Torch and press ${h("rocketFire")} to aim a narrow flame burst at the cursor. Stop before spraying; repeated bursts overheat the tank. Riflemen sometimes jam.`,
         ];
       case "bridge":
         return [
@@ -146,7 +146,7 @@ export class Tutorial {
       case "complete":
         return [
           "Cleared for questionable duty",
-          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Move squad sends available troops to spaced positions together; individual orders can override them. Then click an enemy to pursue and attack; other units fire automatically, while a selected Bazooka needs each manual shot. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike or sniper shot. Airstrikes can miss by a wide margin; their warning marks the actual blast zone. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
+          "Boot camp complete. A real battle starts with ten seconds to inspect the map and queue movement orders. Both teams stay frozen until GO. Move squad sends available troops to spaced positions together; individual orders can override them. Then click an enemy to pursue and attack; all units fire automatically through their facing arcs. Only Torch offers optional manual flame bursts; stop moving and watch its heat. Shots outside the range circle miss. Knock down all five opponents to win. Move onto a glowing supply drop to capture a random one-use airstrike or sniper shot. Airstrikes can miss by a wide margin; their warning marks the actual blast zone. Both teams can claim them. Use its Supply rewards button, then click the map; right-click cancels targeting. The river drop risks drowning; edge drops need a detour. Choose Deploy squad for a real operation, repeat the lesson, or keep practicing here without enemies.",
         ];
     }
   }

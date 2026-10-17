@@ -113,7 +113,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.29.3</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.30</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. Stage 1 is easy; the challenge grows through stage 10. A fresh squad arrives on each map.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -161,7 +161,7 @@ function renderBattle() {
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
       "",
-    )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${s && b.isManualRocket(s) ? `${esc(input.hint("rocketFire"))}: fire at cursor · click enemy: fire once · ground: move` : `${esc(input.hint("interact"))}: select / move / attack / demolish / revive`} · ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
+    )}</div><div class="battle-help">${s?.brawl !== null && s?.brawl !== undefined ? `BRAWL! ${esc(input.hint("punch"))}: punch · ${esc(input.hint("kick"))}: kick · hold ${esc(input.hint("block"))}: block` : `${s && b.isManualTorch(s) ? `${esc(input.hint("rocketFire"))}: spray at cursor · click enemy: spray once · ground: move` : `${esc(input.hint("interact"))}: select / move / attack / demolish / revive`} · ${esc(input.hint("deselect"))}: deselect`}</div><footer class="hud-bottom"><div class="roster">${b.soldiers
     .filter((t) => t.side === 0)
     .map(
       (t) =>
@@ -169,7 +169,7 @@ function renderBattle() {
     )
     .join(
       "",
-    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "bazooka" ? `<br>Click enemy: fire once · ground: move · ${esc(input.hint("rocketFire"))}: fire at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Selected Bazookas need manual fire; others fire slowly inside their arc. Fire All increases the pace.`}</p>${s && b.isManualRocket(s) ? btn(`Fire rocket · ${esc(input.hint("rocketFire"))}`, "rocket-fire", "rocket-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${s && b.isManualTorch(s) ? "112 range · Stop to spray · Repeated bursts overheat" : s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${CLASSES[s.classId].range} range${s.classId === "torch" ? `<br>Click enemy: spray once · ground: move · ${esc(input.hint("rocketFire"))}: spray at cursor` : `<br>River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}` : `Select a soldier to see strengths and weaknesses.<br>Troops fire slowly inside their facing arc. Select Torch for manual flame bursts. Fire All increases the pace.`}</p>${s && b.isManualTorch(s) ? btn(`Spray flame · ${esc(input.hint("rocketFire"))} · Heat ${Math.round((s.heat ?? 0) / TUNING.flameMaxHeat * 100)}%`, "flame-fire", "flame-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
   if (!tutorial) {
     const description =
       armedSuper === "airstrike"
@@ -203,7 +203,7 @@ function renderBattle() {
   }
   if (faceArmed) {
     const help = ui.querySelector(".battle-help");
-    if (help) help.textContent = `Click a direction to watch ${s?.path.length ? "on arrival" : "from this position"} · 120° firing arc · ${input.hint("deselect")}: cancel`;
+    if (help) help.textContent = `Click a direction to watch ${s?.path.length ? "on arrival" : "from this position"} · ${s?.classId === "bazooka" ? 70 : 120}° firing arc · ${input.hint("deselect")}: cancel`;
   }
   if (b.planning)
     ui.insertAdjacentHTML(
@@ -211,10 +211,10 @@ function renderBattle() {
       `<aside class="deployment-banner" aria-label="Deployment countdown"><strong>DEPLOYMENT · <span class="deployment-count">${b.countdown}</span></strong><span>${faceArmed ? "Click a direction to watch on arrival. Right-click cancels facing." : "Select a soldier, then click a destination. Use Face direction to set a firing lane. Moves and combat begin at GO."}</span></aside>`,
     );
   const fireAllButton = ui.querySelector<HTMLButtonElement>(".fire-all");
-  if (fireAllButton) fireAllButton.title = "Command a volley: repeat for up to twice passive fire rate. Respects reloads, facing arcs and movement; selected Bazookas stay manual.";
+  if (fireAllButton) fireAllButton.title = "Command a volley: repeat for up to twice passive fire rate. Respects reloads, facing arcs, movement and Torch heat.";
   if (b.planning)
     ui.querySelectorAll<HTMLButtonElement>(
-      ".fire-all, .medic-button, .rocket-fire",
+      ".fire-all, .medic-button, .flame-fire",
     ).forEach((button) => {
       button.disabled = true;
       button.title = "Available when deployment ends";
@@ -284,14 +284,15 @@ function updateBattleHud() {
         (s.brawl !== null || s.drowningTime > 0 || b.inWater(s)));
   const faceButton = ui.querySelector<HTMLButtonElement>(".face-order");
   if (faceButton && s) faceButton.disabled = s.life !== "alive" || s.brawl !== null || s.drowningTime > 0;
-  const rocketButton = ui.querySelector<HTMLButtonElement>(".rocket-fire");
-  if (rocketButton && s) {
-    rocketButton.disabled =
-      b.planning || s.cooldown > 0 || s.life !== "alive" || s.brawl !== null;
-    rocketButton.textContent =
-      s.cooldown > 0
+  const flameButton = ui.querySelector<HTMLButtonElement>(".flame-fire");
+  if (flameButton && s) {
+    flameButton.disabled =
+      b.planning || s.cooldown > 0 || s.life !== "alive" || s.brawl !== null || s.moving || !!s.path.length || !!s.overheated || b.inWater(s);
+    flameButton.textContent =
+      s.overheated ? "OVERHEATED · cooling" : s.moving || s.path.length ? "STOP TO SPRAY" : s.cooldown > 0
         ? `Reloading · ${s.cooldown.toFixed(1)}s`
-        : `Fire rocket · ${input.hint("rocketFire")}`;
+        : `Spray flame · ${input.hint("rocketFire")}`;
+    flameButton.textContent += ` · Heat ${Math.round((s.heat ?? 0) / TUNING.flameMaxHeat * 100)}%`;
   }
   write(".deployment-count", String(b.countdown));
   write(".fire-all", `Fire all · ${input.hint("fireAll")}`);
@@ -300,7 +301,7 @@ function updateBattleHud() {
     ".battle-help",
     s?.brawl !== null && s?.brawl !== undefined
       ? `BRAWL! ${input.hint("punch")}: punch · ${input.hint("kick")}: kick · hold ${input.hint("block")}: block`
-      : `${s && b.isManualRocket(s) ? `${input.hint("rocketFire")}: fire at cursor · click enemy: fire once · ground: move` : `${input.hint("interact")}: select / move / attack / demolish / revive`} · ${input.hint("deselect")}: deselect`,
+      : `${s && b.isManualTorch(s) ? `${input.hint("rocketFire")}: spray at cursor · click enemy: spray once · ground: move` : `${input.hint("interact")}: select / move / attack / demolish / revive`} · ${input.hint("deselect")}: deselect`,
   );
   if (armedSuper)
     write(
@@ -308,7 +309,7 @@ function updateBattleHud() {
       `${input.hint("interact")}: deploy ${SUPER_LABELS[armedSuper]} · ${input.hint("deselect")}: cancel`,
     );
   if (faceArmed)
-    write(".battle-help", `Click a direction to watch ${s?.path.length ? "on arrival" : "from this position"} · 120° firing arc · ${input.hint("deselect")}: cancel`);
+    write(".battle-help", `Click a direction to watch ${s?.path.length ? "on arrival" : "from this position"} · ${s?.classId === "bazooka" ? 70 : 120}° firing arc · ${input.hint("deselect")}: cancel`);
   if (squadMoveArmed)
     write(
       ".battle-help",
@@ -327,14 +328,15 @@ function unitStatus(t: Soldier) {
     t.life === "alive" &&
     !t.moving &&
     !t.path.length &&
-    (t.steadyTime ?? TUNING.aimSettleTime) < TUNING.aimSettleTime
+    (t.steadyTime ?? scene.battle!.aimDelay(t)) < scene.battle!.aimDelay(t)
   )
     return "AIMING";
   if (scene.battle?.planning)
     return t.takingCover ? "IN COVER" : t.goal ? "MOVE QUEUED" : "DEPLOYING";
   if (t.life === "alive" && t.burnRemaining > 0) return "ON FIRE";
   if (t.life === "alive" && t.takingCover) return "IN COVER";
-  if (t.life === "alive" && scene.battle?.isManualRocket(t))
+  if (t.life === "alive" && t.classId === "torch" && t.overheated) return "OVERHEATED";
+  if (t.life === "alive" && scene.battle?.isManualTorch(t))
     return t.cooldown > 0 ? `RELOAD ${t.cooldown.toFixed(1)}s` : "MANUAL READY";
   return t.life === "dead"
     ? t.death === "drowned"
@@ -458,7 +460,7 @@ function action(a: Action, held = true, event?: Event) {
     return;
   }
   if (a === "rocketFire") {
-    if (s && b.isManualRocket(s))
+    if (s && b.isManualTorch(s))
       issue({ type: "aim", id: s.id, point: scene.aimPoint() });
     return;
   }
@@ -682,7 +684,7 @@ function wire() {
         if (what === "face") action("face");
         if (what === "cover") action("cover");
         if (what === "fire-all") action("fireAll");
-        if (what === "rocket-fire") action("rocketFire");
+        if (what === "flame-fire") action("rocketFire");
         if (
           what?.startsWith("super:") &&
           !scene.paused &&

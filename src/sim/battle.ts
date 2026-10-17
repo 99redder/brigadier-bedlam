@@ -33,6 +33,8 @@ export interface Soldier extends Point {
   id: number;
   takingCover?: boolean;
   steadyTime?: number;
+  heat?: number;
+  overheated?: boolean;
   formationSpeed?: number;
   side: Side;
   slot: number;
@@ -347,11 +349,6 @@ export class Battle {
     }
     if (c.type === "select") {
       this.selected = c.id;
-      const selected = c.id === null ? undefined : this.get(c.id);
-      if (selected && this.isManualRocket(selected)) {
-        selected.target = null;
-        selected.terrainTarget = null;
-      }
       for (const s of this.soldiers) s.blocking = false;
       return;
     }
@@ -406,7 +403,7 @@ export class Battle {
       return;
     }
     if (c.type === "aim") {
-      this.aimRocket(s, c.point);
+      this.aimTorch(s, c.point);
       return;
     }
     if (c.type === "bridge" && s.brawl === null) {
@@ -428,14 +425,6 @@ export class Battle {
     if (c.type === "demolish" && s.brawl === null) {
       const r = this.cover.find((r) => inside(c.point, r));
       if (r) {
-        if (
-          s.classId === "bazooka" &&
-          s.side === 0 &&
-          !this.aiSides.includes(0)
-        ) {
-          this.aimRocket(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
-          return;
-        }
         this.facePoint(s, { x: r.x + r.w / 2, y: r.y + r.h / 2 });
         s.watchAngle = undefined;
         s.terrainTarget = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
@@ -455,8 +444,8 @@ export class Battle {
     if (c.type === "attack" && s.brawl === null) {
       const t = this.getCombatant(c.target);
       if (t && t.side !== s.side && t.life === "alive") {
-        if (this.isManualRocket(s)) {
-          this.aimRocket(s, t);
+        if (this.isManualTorch(s)) {
+          this.aimTorch(s, t);
           return;
         }
         s.terrainTarget = null;
@@ -719,17 +708,18 @@ export class Battle {
     }
     this.effects.push({ ...target, kind: "hit", time: 0.25, size: 10 });
   }
-  isManualRocket(s: Soldier) {
+  aimDelay(s: Soldier) { return s.classId === "bazooka" ? TUNING.rocketAimTime : TUNING.aimSettleTime; }
+  isManualTorch(s: Soldier) {
     return (
       s.side === 0 &&
-      s.classId === "bazooka" &&
+      s.classId === "torch" &&
       s.id === this.selected &&
       !this.aiSides.includes(0)
     );
   }
-  aimRocket(s: Soldier, point: Point) {
+  aimTorch(s: Soldier, point: Point) {
     if (
-      !this.isManualRocket(s) ||
+      !this.isManualTorch(s) ||
       this.planning ||
 
       s.life !== "alive" ||
@@ -738,19 +728,16 @@ export class Battle {
     )
       return false;
     if (s.cooldown > 0) {
-      this.note(`Rocket reloading: ${s.cooldown.toFixed(1)}s.`);
+      this.note(`Torch recovering: ${s.cooldown.toFixed(1)}s.`);
       return false;
     }
+    if (s.moving || s.path.length) { this.note("Torch: stop moving before spraying."); return false; }
+    if (s.overheated) { this.note("Torch overheated: let the tank cool."); return false; }
     const d = distance(s, point),
-      range = CLASSES.bazooka.range;
-    const endpoint =
-      d > range
-        ? {
-            x: s.x + ((point.x - s.x) / d) * range,
-            y: s.y + ((point.y - s.y) / d) * range,
-          }
-        : point;
-    const fired = this.fireAt(s, endpoint, -1, d > range, true);
+      range = CLASSES.torch.range;
+    if (d < 1e-8) return false;
+    const endpoint = { x: s.x + (point.x - s.x) / d * range, y: s.y + (point.y - s.y) / d * range };
+    const fired = this.fireAt(s, endpoint, -1, false, true);
     if (fired) {
       s.target = null;
       s.terrainTarget = null;
@@ -768,8 +755,7 @@ export class Battle {
 
         s.life !== "alive" ||
         s.moving ||
-        s.path.length > 0 ||
-        this.isManualRocket(s)
+        s.path.length > 0
       )
         continue;
       if (s.terrainTarget) {
@@ -841,6 +827,7 @@ export class Battle {
   }
   fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
+    if (manual && !this.isManualTorch(s)) return false;
     if (!manual && !inView(s, point)) return false;
     const d = distance(s, point);
     // Validate intended range before scattering; cover may be closer than the target.
@@ -853,18 +840,19 @@ export class Battle {
       s.fightMoveTime > 0 ||
       s.cooldown > 0 ||
       s.jam > 0 ||
-      (!manual &&
-        (s.moving ||
-          s.path.length > 0 ||
-          (s.steadyTime ?? TUNING.aimSettleTime) < TUNING.aimSettleTime)) ||
+      s.moving || s.path.length > 0 ||
+      (!manual && (s.steadyTime ?? this.aimDelay(s)) < this.aimDelay(s)) ||
+      (s.classId === "torch" && s.overheated) ||
       distance(s, intendedHit?.point ?? point) > w.range + 1e-8 ||
       (s.classId === "torch" && this.inWater(s))
     )
       return false;
     s.cooldown =
-      (manual && s.classId === "bazooka"
-        ? TUNING.manualRocketReload
-        : w.cooldown) * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+      w.cooldown * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+    if (s.classId === "torch") {
+      s.heat = Math.min(TUNING.flameMaxHeat, (s.heat ?? 0) + TUNING.flameBurstHeat);
+      if (s.heat >= TUNING.flameMaxHeat) s.overheated = true;
+    }
     s.autoFireWait = s.cooldown * TUNING.passiveFireMultiplier;
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
@@ -963,7 +951,7 @@ export class Battle {
           if (
             (ax * bx + ay * by) /
               (Math.hypot(ax, ay) * Math.hypot(bx, by) || 1) <
-            0.8
+            (shot.manual ? Math.cos(TUNING.manualFlameArc / 2) : 0.8)
           )
             continue;
         } else if (distance(t, impact) > w.radius || blocked(impact, t, cover))
@@ -1483,6 +1471,10 @@ export class Battle {
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
     for (const s of this.soldiers) {
       s.cooldown -= dt;
+      if (s.classId === "torch") {
+        s.heat = Math.max(0, (s.heat ?? 0) - TUNING.flameCooling * dt);
+        if (s.overheated && s.heat <= TUNING.flameResumeHeat) s.overheated = false;
+      }
       s.autoFireWait = Math.max(0, (s.autoFireWait ?? 0) - dt);
       s.jam -= dt;
       s.flash -= dt;
@@ -1638,7 +1630,7 @@ export class Battle {
       this.updateWater(s);
       if (s.drowningTime > 0) continue;
       s.steadyTime =
-        advancing || s.moving ? 0 : (s.steadyTime ?? TUNING.aimSettleTime) + dt;
+        advancing || s.moving ? 0 : (s.steadyTime ?? this.aimDelay(s)) + dt;
       if (!s.path.length) s.formationSpeed = undefined;
       const aim =
         target && target.life === "alive" && this.canAutoShoot(s, target)
@@ -1646,7 +1638,7 @@ export class Battle {
           : this.combatants()
               .filter((t) => t.side !== s.side && this.canAutoShoot(s, t))
               .sort((a, b) => distance(s, a) - distance(s, b))[0];
-      if (!s.terrainTarget && !this.isManualRocket(s) && (s.autoFireWait ?? 0) <= 0) {
+      if (!s.terrainTarget && (s.autoFireWait ?? 0) <= 0) {
         if (aim) this.fire(s, aim);
         else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s, true));
       }

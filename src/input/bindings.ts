@@ -13,7 +13,8 @@ export const ACTIONS = {
   face: { label: "Face direction (then click map)", context: "field" },
   cover: { label: "Take / leave cover", context: "field" },
   hold: { label: "Hold position", context: "field" },
-  rocketFire: { label: "Fire selected rocket at cursor", context: "field" },
+  // Keep the legacy action id so existing custom fire bindings survive the Torch change.
+  rocketFire: { label: "Spray selected flamethrower at cursor", context: "field" },
   fireAll: { label: "Fire all stationary soldiers", context: "global" },
   punch: { label: "Punch", context: "brawl" },
   kick: { label: "Kick", context: "brawl" },

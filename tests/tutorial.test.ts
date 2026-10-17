@@ -57,9 +57,9 @@ describe("interactive boot camp", () => {
     run(t, () => t.id === "rockets");
     expect(t.rock.hp).toBe(100);
     b.command({ type: "select", id: 1 });
-    for (let i = 0; i < 600 && t.id === "rockets"; i++) {
-      if (b.get(1)!.cooldown <= 0)
-        b.command({ type: "demolish", id: 1, point: { x: 295, y: 270 } });
+    b.command({ type: "demolish", id: 1, point: { x: 295, y: 270 } });
+    for (let i = 0; i < 2400 && t.id === "rockets"; i++) {
+      if (b.get(1)!.cooldown <= 0) b.command({type:"fire-all"});
       b.step();
       t.update();
     }

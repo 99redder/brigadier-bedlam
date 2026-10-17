@@ -765,12 +765,12 @@ p {
   cursor: default;
 }
 
-.rocket-fire {
+.flame-fire {
   padding: 0.25em 0.65em;
   margin-top: 0.25em;
   font-size: 0.72em;
 }
-.rocket-fire:disabled {
+.flame-fire:disabled {
   opacity: 0.5;
   cursor: default;
 }

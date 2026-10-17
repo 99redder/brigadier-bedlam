@@ -83,7 +83,7 @@ describe("passive fire versus commanded volleys", () => {
     expect(b.stats.shots).toBe(1);
     expect(b.fireAll()).toBe(1);
   });
-  it("cannot use the faster command cadence to bypass facing, movement or manual rocket control", () => {
+  it("cannot use the faster command cadence to bypass facing, movement or rocket aiming time", () => {
     const { b, a } = fixture();
     a.heading = Math.PI;
     expect(b.fireAll()).toBe(0);
@@ -93,9 +93,11 @@ describe("passive fire versus commanded volleys", () => {
     a.path = []; a.goal = null; a.moving = false;
     a.classId = "bazooka";
     b.command({ type: "select", id: a.id });
+    a.steadyTime = 0;
     expect(b.fireAll()).toBe(0);
-    expect(b.aimRocket(a, { x: 200, y: 200 })).toBe(true);
-    expect(a.cooldown).toBe(TUNING.manualRocketReload);
+    a.steadyTime = TUNING.rocketAimTime;
+    expect(b.fireAll()).toBe(1);
+    expect(a.cooldown).toBe(CLASSES.bazooka.cooldown);
   });
   it("pauses both timers during deployment", () => {
     const { b, a } = fixture();

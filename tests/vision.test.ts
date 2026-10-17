@@ -76,12 +76,12 @@ describe("directional field of fire", () => {
     expect(headingOf(a)).toBeCloseTo(Math.PI);
     expect(b.stats.shots).toBe(1);
   });
-  it("manual rockets may turn to a deliberate point outside the current arc", () => {
-    const { b, a } = fixture("bazooka");
+  it("manual flames may turn to a deliberate point outside the current arc", () => {
+    const { b, a } = fixture("torch");
     b.command({ type: "select", id: a.id });
-    expect(b.aimRocket(a, { x: 150, y: 250 })).toBe(true);
+    expect(b.aimTorch(a, { x: 250, y: 250 })).toBe(true);
     expect(headingOf(a)).toBeCloseTo(Math.PI);
-    expect(a.cooldown).toBe(TUNING.manualRocketReload);
+    expect(a.cooldown).toBe(CLASSES.torch.cooldown);
   });
   it("turns in cover without moving, cancelling cover, or shortening reload", () => {
     const { b, a } = fixture();

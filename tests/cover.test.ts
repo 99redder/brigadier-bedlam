@@ -46,15 +46,15 @@ describe("individual take-cover stance", () => {
     expect(s.cooldown).toBe(CLASSES.rifleman.cooldown * 2);
     expect(b.fireAll()).toBe(0);
   });
-  it("also penalizes precise manual rockets", () => {
+  it("also penalizes manual flame bursts", () => {
     const b = field(),
-      s = b.get(1)!;
-    b.command({ type: "select", id: 1 });
-    b.command({ type: "cover", id: 1, active: true });
+      s = b.get(3)!;
+    b.command({ type: "select", id: 3 });
+    b.command({ type: "cover", id: 3, active: true });
     s.cooldown = 0;
-    b.command({ type: "aim", id: 1, point: { x: s.x + 100, y: s.y } });
+    b.command({ type: "aim", id: 3, point: { x: s.x + 100, y: s.y } });
     expect(b.shots[0].manual).toBe(true);
-    expect(s.cooldown).toBe(TUNING.manualRocketReload * 2);
+    expect(s.cooldown).toBe(CLASSES.torch.cooldown * 2);
   });
   it("makes distant rifle hits substantially rarer using projectile geometry", () => {
     function hits(covered: boolean, gap = 180) {
@@ -91,7 +91,9 @@ describe("individual take-cover stance", () => {
     b.command({ type: "cover", id: t.id, active: true });
     b.command({ type: "select", id: 1 });
     a.cooldown = 0;
-    b.command({ type: "aim", id: 1, point: { x: t.x, y: t.y } });
+    b.random = () => .5;
+    a.steadyTime = TUNING.rocketAimTime;
+    b.fire(a, t);
     b.resolveShot(b.shots[0]);
     expect(t.life).toBe("dead");
     expect(t.takingCover).toBe(false);
