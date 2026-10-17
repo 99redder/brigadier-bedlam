@@ -117,7 +117,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.37</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.38</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. A gentle opening grows into a tougher fight. A fresh squad arrives on each map.</p><fieldset class="difficulty-picker"><legend>Campaign difficulty · fixed for this tour</legend><div>${(Object.keys(MODES) as DifficultyMode[]).map(mode=>`<label class="difficulty-option"><input type="radio" name="difficulty" value="${mode}" ${difficultyMode===mode?"checked":""}><span><strong>${MODES[mode].name} <small>×${MODES[mode].score} score</small></strong><span>${MODES[mode].description}</span></span></label>`).join("")}</div></fieldset><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -147,6 +147,7 @@ function select(id: number | null) {
 }
 function unitBrief(b:Battle,s:Soldier|undefined) {
   if(!s)return "Select a soldier for orders.<br>Drop gear for speed; recover the marked kit to shoot again.";
+  if((s.traffic??0)>0&&s.path.length)return `CROWDED · Friendly troops block this route<br>Back one troop out or route around · ${esc(input.hint("hold"))}: stop and fire`;
   if(s.unarmed)return `RUN LIGHT · No gun or armor · ${Math.ceil(s.hp)}/${b.maxHp(s)} HP<br>${s.recoveringGear?b.inWater(s)?"Returning to gear · Swim to shore first":"Returning to own gear by a dry route":"Fast movement · Chests and supply drops still usable"}`;
   if(b.isManualTorch(s))return b.weather==="rain"?"RAIN: 84 range · Half damage · Only 3s burns":b.weather==="snow"?"SNOW: 35% slower · Stop to spray · Watch heat":"112 range · Stop to spray · Repeated bursts overheat";
   return `${CLASSES[s.classId].armor} armor · ${b.maxHp(s)} HP · ${b.weaponRange(s)} range<br>${esc(s.takingCover?"Harder to hit · Half fire rate · Leave cover to move":b.weather==="snow"?`Snow: ${Math.round((1-SNOW_SPEED[s.classId])*100)}% slower · Bridges normal`:CLASSES[s.classId].description)}`;
@@ -252,6 +253,8 @@ function renderBattle() {
 function updateBattleHud() {
   const b = scene.battle!,
     s = b.get(b.selected ?? -1);
+  const brief=ui.querySelector(".orders p"),copy=unitBrief(b,s);
+  if(brief&&brief.innerHTML!==copy)brief.innerHTML=copy;
   const write = (selector: string, value: string) => {
     const el = ui.querySelector(selector);
     if (el && el.textContent !== value) el.textContent = value;
@@ -277,7 +280,7 @@ function updateBattleHud() {
   for (const t of b.soldiers.filter((s) => s.side === 0)) {
     const button = ui.querySelector<HTMLButtonElement>(`[data-unit="${t.id}"]`);
     if (!button) continue;
-    button.className = `unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}`;
+    button.className = `unit-card ${t.id === b.selected ? "selected" : ""} ${t.life} ${(t.traffic??0)>0&&t.path.length?"crowded":""}`;
     button.setAttribute(
       "aria-label",
       `${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health`,
@@ -339,6 +342,7 @@ function updateBattleHud() {
   if (log && log.innerHTML !== markup) log.innerHTML = markup;
 }
 function unitStatus(t: Soldier) {
+  if(t.life==="alive"&&(t.traffic??0)>0&&t.path.length&&t.brawl===null&&t.drowningTime<=0&&t.burnRemaining<=0)return "CROWDED";
   if (
     !scene.battle?.planning &&
     t.life === "alive" &&

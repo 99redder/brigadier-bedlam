@@ -808,10 +808,12 @@ export class Battlefield extends Phaser.Scene {
           5,
           2,
         );
+        if(s.side===0&&(s.traffic??0)>0&&s.path.length){g.lineStyle(2,0xefb14b,.9);g.strokeEllipse(p.x,p.y+2,44,20);}
         if (s.burnRemaining > 0) {
           this.drawBurning(p, s.id);
           label!.setText("ON FIRE!");
         } else if (celebrating) label!.setText(EMOTES[s.classId]);
+        else if (s.side===0&&(s.traffic??0)>0&&s.path.length) label!.setText(`${s.slot+1} !`);
         else if (s.takingCover) label!.setText("IN COVER");
         else if (sinking) label!.setText("DROWNING!");
         else if (wet) label!.setText("CROSSING");
@@ -835,7 +837,7 @@ export class Battlefield extends Phaser.Scene {
         );
       label!
         .setBackgroundColor(
-          s.takingCover && alive
+          s.side===0&&(s.traffic??0)>0&&s.path.length ? "#a56b2c" : s.takingCover && alive
             ? "#2d665e"
             : s.side === 0
               ? "#2b5845"

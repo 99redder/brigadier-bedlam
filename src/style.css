@@ -959,3 +959,6 @@ p {
 }
 
 .enemy-odds {display:block;font:700 .58em "DM Sans",sans-serif;letter-spacing:.07em;text-align:center;color:#efc58f;margin-top:.2em;}
+
+.unit-card.crowded {box-shadow:inset 0 0 0 2px #b27a34;}
+.unit-card.crowded .unit-status {color:#995224;}

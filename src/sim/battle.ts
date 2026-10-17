@@ -1,3 +1,4 @@
+import { trafficMove, reserveEnemyGoal, TRAFFIC } from "./traffic";
 import { centeredRoll } from "./luck";
 import { RUN_LIGHT, COMEBACK, CHEST_LABELS, type ChestReward, type GearDrop, type RewardChest } from "./comeback";
 import { RAIN, SNOW_SPEED, weatherAdvice, type Weather } from "./weather";
@@ -36,6 +37,7 @@ export interface Soldier extends Point {
   id: number;
   unarmed?: boolean;
   recoveringGear?: boolean;
+  traffic?: number;
   takingCover?: boolean;
   steadyTime?: number;
   heat?: number;
@@ -233,6 +235,7 @@ export class Battle {
   cover: Cover[] = COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
   rubble: Cover[] = [];
   terrainRevision = 0;
+  trafficNoticeAt = -10;
   water: Rect[] = WATER.map((r) => ({ ...r }));
   bridges: Rect[] = BRIDGES.map((r) => ({ ...r }));
   winner: Side | null = null;
@@ -583,6 +586,7 @@ export class Battle {
       p,
       this.aiSides.includes(s.side) ? this.dryCover() : obstacles,
     );
+    if(s.side===1)s.goal=reserveEnemyGoal(s,s.goal,this.soldiers,obstacles);
     s.path = pathfind(s, s.goal, obstacles);
     if (s.path.length) s.steadyTime = 0;
     s.repath = 0.65;
@@ -733,6 +737,7 @@ export class Battle {
     if (target.life !== "alive") {
       target.recoveringGear = false;
       target.takingCover = false;
+      target.traffic = 0;
       target.burnRemaining = 0;
       target.path = [];
       target.goal = null;
@@ -1533,7 +1538,7 @@ export class Battle {
     }
     if(!point)return false;
     Object.assign(fallen,point,{life:"alive",death:null,burnRemaining:0,drowningTime:0,wasInWater:false,takingCover:false,
-      path:[],goal:null,target:null,terrainTarget:null,hold:true,moving:false,recoveringGear:false,formationSpeed:undefined,
+      path:[],goal:null,target:null,terrainTarget:null,hold:true,moving:false,recoveringGear:false,traffic:0,formationSpeed:undefined,
       brawl:null,blocking:false,autoGuardTime:0,fightMove:null,fightMoveTime:0,recoilTime:0,knockdownTime:0,brawlKnockdown:false,fightAnchor:null,
       cooldown:2,autoFireWait:3,steadyTime:0,jam:0,flash:0});
     fallen.hp=this.maxHp(fallen)*COMEBACK.reviveHealth;this.stats.revives++;
@@ -1680,6 +1685,7 @@ export class Battle {
     for (const unit of this.combatants()) this.tickBurn(unit, dt);
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
     for (const s of this.soldiers) {
+      s.traffic=Math.max(0,(s.traffic??0)-dt);
       s.cooldown -= dt;
       if (s.classId === "torch") {
         s.heat = Math.max(0, (s.heat ?? 0) - TUNING.flameCooling * dt);
@@ -1817,25 +1823,18 @@ export class Battle {
             (s.formationSpeed ?? this.landSpeed(s)) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
             (this.inWater(s) ? s.unarmed ? RUN_LIGHT.waterSpeed : CLASSES[s.classId].waterSpeed : 1) *
             dt;
-        if (d <= speed) {
-          this.facePoint(s, p);
-          s.x = p.x;
-          s.y = p.y;
-          s.path.shift();
-          if (!s.path.length) s.goal = null;
-        } else {
-          const next = {
-            x: s.x + ((p.x - s.x) / d) * speed,
-            y: s.y + ((p.y - s.y) / d) * speed,
-          };
-          if (!blocked(s, next, this.cover, 14)) {
-            this.facePoint(s, next);
-            s.x = next.x;
-            s.y = next.y;
-            s.moving = true;
-          } else if (s.goal && s.repath <= 0)
-            this.setGoal(s, s.goal, s.safeRoute);
+        const desired=d<=speed?p:{x:s.x+(p.x-s.x)/d*speed,y:s.y+(p.y-s.y)/d*speed};
+        const obstacles=s.safeRoute?this.dryCover():this.cover;
+        const motion=trafficMove(s,desired,this.soldiers,obstacles);
+        if(s.side===0&&motion.crowded){
+          const entering=(s.traffic??0)<=0;
+          s.traffic=TRAFFIC.notice;
+          if(entering&&this.time-this.trafficNoticeAt>5){this.note("Friendly traffic: crowded routes slow troops. Back one out or send it around.");this.trafficNoticeAt=this.time;}
         }
+        if(distance(s,motion.point)>1e-8){
+          this.facePoint(s,motion.point);s.x=motion.point.x;s.y=motion.point.y;s.moving=true;
+        } else if(s.goal&&s.repath<=0&&blocked(s,desired,this.cover,14))this.setGoal(s,s.goal,s.safeRoute);
+        if(distance(s,p)<.01){s.path.shift();if(!s.path.length)s.goal=null;}
       }
       if (!s.path.length && s.watchAngle !== undefined) this.setHeading(s, s.watchAngle);
       this.updateWater(s);
@@ -1854,42 +1853,6 @@ export class Battle {
         else if (s.cooldown <= 0) this.fireDistant(s, this.nearestEnemy(s, true));
       }
     }
-    // Soft separation keeps allied silhouettes readable without moving held units far.
-    for (let i = 0; i < this.soldiers.length; i++)
-      for (let j = i + 1; j < this.soldiers.length; j++) {
-        const a = this.soldiers[i],
-          b = this.soldiers[j];
-        if (
-          a.side !== b.side ||
-          a.life !== "alive" ||
-          b.life !== "alive" ||
-          a.brawl !== null ||
-          b.brawl !== null ||
-          a.drowningTime > 0 ||
-          b.drowningTime > 0
-        )
-          continue;
-        const d = distance(a, b);
-        if (d < 24) {
-          const angle =
-              d < 0.01 ? (i + j) * 2.4 : Math.atan2(b.y - a.y, b.x - a.x),
-            push = Math.min((24 - d) / 2, dt * 36);
-          for (const [s, sign] of [
-            [a, -1],
-            [b, 1],
-          ] as [Soldier, number][]) {
-            const next = {
-              x: s.x + Math.cos(angle) * push * sign,
-              y: s.y + Math.sin(angle) * push * sign,
-            };
-            const obstacles = s.safeRoute ? this.dryCover() : this.cover;
-            if (legal(next, obstacles) && !blocked(s, next, obstacles, 14)) {
-              s.x = next.x;
-              s.y = next.y;
-            }
-          }
-        }
-      }
     for (const s of this.soldiers) this.updateWater(s);
     for (const a of this.soldiers.filter(
       (s) =>
@@ -1935,6 +1898,7 @@ export class Battle {
           if (t.life === "down") {
             t.life = "alive";
             t.recoveringGear = false;
+            t.traffic = 0;
             t.takingCover = false;
             t.burnRemaining = 0;
             t.wasInWater = false;
