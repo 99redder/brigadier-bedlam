@@ -1,3 +1,4 @@
+import { drawRunner } from "./view/runner";
 import { weatherLabel, weatherBrief, SNOW_SPEED } from "./sim/weather";
 import { MAPS, difficulty } from "./sim/maps";
 import { type Campaign, type RoundResult, newCampaign, roundScore, totalScore, nickname } from "./sim/campaign";
@@ -23,7 +24,7 @@ import {
   type Context,
 } from "./input/bindings";
 import { Battlefield, unproject } from "./view/scene";
-import { inside } from "./sim/geometry";
+import { inside, distance } from "./sim/geometry";
 import { drawCharacter } from "./view/characters";
 import { drawShowcase, WEAPON_LABELS } from "./view/showcase";
 let campaign:Campaign|null=saved.run;
@@ -82,8 +83,8 @@ const esc = (v: string) =>
       ]!,
   );
 const portraits = new Map<string, string>();
-function portrait(id: ClassId, side = 0, showcase = false) {
-  const key = `${id}-${side}-${showcase}`;
+function portrait(id: ClassId, side = 0, showcase = false, light=false) {
+  const key = `${id}-${side}-${showcase}-${light}`;
   if (portraits.has(key)) return portraits.get(key)!;
   const canvas = document.createElement("canvas");
   const scale = showcase ? 6 : 4;
@@ -94,7 +95,7 @@ function portrait(id: ClassId, side = 0, showcase = false) {
   if (showcase) {
     context.translate(6, 6);
     drawShowcase(context, id, side);
-  } else drawCharacter(context, id, side);
+  } else if(light)drawRunner(context,id,side);else drawCharacter(context, id, side);
   const url = canvas.toDataURL();
   portraits.set(key, url);
   return url;
@@ -114,7 +115,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.33</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.34</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. Stage 1 is easy; the challenge grows through stage 10. A fresh squad arrives on each map.</p><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -142,6 +143,12 @@ function select(id: number | null) {
   renderBattle();
   wire();
 }
+function unitBrief(b:Battle,s:Soldier|undefined) {
+  if(!s)return "Select a soldier for orders.<br>Drop gear for speed; recover the marked kit to shoot again.";
+  if(s.unarmed)return `RUN LIGHT · No gun or armor · ${Math.ceil(s.hp)}/${b.maxHp(s)} HP<br>${s.recoveringGear?b.inWater(s)?"Returning to gear · Swim to shore first":"Returning to own gear by a dry route":"Fast movement · Chests and supply drops still usable"}`;
+  if(b.isManualTorch(s))return b.weather==="rain"?"RAIN: 84 range · Half damage · Only 3s burns":b.weather==="snow"?"SNOW: 35% slower · Stop to spray · Watch heat":"112 range · Stop to spray · Repeated bursts overheat";
+  return `${CLASSES[s.classId].armor} armor · ${b.maxHp(s)} HP · ${b.weaponRange(s)} range<br>${esc(s.takingCover?"Harder to hit · Half fire rate · Leave cover to move":b.weather==="snow"?`Snow: ${Math.round((1-SNOW_SPEED[s.classId])*100)}% slower · Bridges normal`:CLASSES[s.classId].description)}`;
+}
 function renderBattle() {
   tutorial?.update();
   scene.tutorialMarker = tutorial?.marker ?? null;
@@ -166,11 +173,11 @@ function renderBattle() {
     .filter((t) => t.side === 0)
     .map(
       (t) =>
-        `<button class="unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}" data-unit="${t.id}" aria-label="${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health"><img alt="" src="${portrait(t.classId)}"><div><div class="slot">${esc(input.hint(`slot${t.slot + 1}` as Action))}</div><div class="unit-name">${CLASSES[t.classId].name}</div><div class="hp"><div style="width:${(t.hp / CLASSES[t.classId].hp) * 100}%"></div></div><div class="unit-status">${unitStatus(t)}</div></div></button>`,
+        `<button class="unit-card ${t.id === b.selected ? "selected" : ""} ${t.life}" data-unit="${t.id}" aria-label="${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health${t.unarmed?", unarmed":""}"><img alt="" src="${portrait(t.classId,0,false,!!t.unarmed)}"><div><div class="slot">${esc(input.hint(`slot${t.slot + 1}` as Action))}</div><div class="unit-name">${CLASSES[t.classId].name}</div><div class="hp"><div style="width:${(t.hp / b.maxHp(t)) * 100}%"></div></div><div class="unit-status">${unitStatus(t)}</div></div></button>`,
     )
     .join(
       "",
-    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${s && b.isManualTorch(s) ? (b.weather==="rain" ? "RAIN: 84 range · Half damage · Only 3s burns" : b.weather==="snow" ? "SNOW: 35% slower · Stop to spray · Watch heat" : "112 range · Stop to spray · Repeated bursts overheat") : s ? `${s.takingCover ? "Low profile: harder for rifles to hit. Half fire rate; blasts still lethal." : CLASSES[s.classId].description}<br>${CLASSES[s.classId].armor} armor · ${CLASSES[s.classId].hp} HP · ${b.weaponRange(s)} range${s.classId === "torch" ? `<br>Click enemy: spray once · ground: move · ${esc(input.hint("rocketFire"))}: spray at cursor` : `<br>${b.weather==="snow" ? `Deep snow: ${Math.round((1-SNOW_SPEED[s.classId])*100)}% slower · Bridges normal` : `River: ${Math.round(CLASSES[s.classId].drowningRisk * 100)}% drown risk · ${esc(input.hint("hold"))}: hold`}`}` : `Select a soldier to see strengths and weaknesses.<br>Troops fire slowly inside their facing arc. Select Torch for manual flame bursts. Fire All increases the pace.`}</p>${s && b.isManualTorch(s) ? btn(`Spray flame · ${esc(input.hint("rocketFire"))} · Heat ${Math.round((s.heat ?? 0) / TUNING.flameMaxHeat * 100)}%`, "flame-fire", "flame-fire") : ""}</div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
+    )}</div><div class="orders"><div class="order-heading"><h3>${s ? `${CLASSES[s.classId].name} · ${s.slot + 1}` : "Awaiting orders"}</h3>${s?.life === "alive" ? btn(`${s.takingCover ? "Leave cover" : "Take cover"} · ${esc(input.hint("cover"))}`, "cover", "cover-order") : ""}${s?.life === "alive" ? btn(`${faceArmed ? "Cancel facing" : "Face direction"} · ${esc(input.hint("face"))}`, "face", "face-order") : ""}</div><p>${unitBrief(b,s)}</p><div class="equipment-actions">${s?.life==="alive"&&!tutorial?btn(`${s.unarmed?"Return for gear":"Drop gear"} · ${esc(input.hint("gear"))}`,"gear","gear-control"):""}${s && b.isManualTorch(s) ? btn(`Spray flame · ${esc(input.hint("rocketFire"))} · Heat ${Math.round((s.heat ?? 0) / TUNING.flameMaxHeat * 100)}%`, "flame-fire", "flame-fire") : ""}</div></div><button class="medic-button" data-do="medic"><span>✚ FIELD MEDICS</span><strong>${b.calls[0]} / ${TUNING.medicCalls} CALLS</strong><span>${esc(input.hint("medic"))} · nearest downed</span></button></footer>`;
   if (!tutorial) {
     const description =
       armedSuper === "airstrike"
@@ -180,7 +187,7 @@ function renderBattle() {
           : "Move onto a ? drop to claim an airstrike or sniper shot";
     ui.insertAdjacentHTML(
       "beforeend",
-      `<aside class="super-panel" aria-label="Supply rewards"><strong>${armedSuper ? `TARGET: ${SUPER_LABELS[armedSuper]}` : "SUPPLY REWARDS"}</strong><span>${description}${armedSuper ? " · Right-click cancels" : ""}</span><div>${b.powers[0].map((w) => btn(SUPER_LABELS[w], `super:${w}`, armedSuper === w ? "armed" : "")).join("")}</div></aside>`,
+      `<aside class="super-panel" aria-label="Supply rewards"><strong>${armedSuper ? `TARGET: ${SUPER_LABELS[armedSuper]}` : "SUPPLY REWARDS"}</strong><span>${description}${armedSuper ? " · Right-click cancels" : ""}</span><div>${b.powers[0].map((w) => btn(SUPER_LABELS[w], `super:${w}`, armedSuper === w ? "armed" : "")).join("")}</div><small class="chest-status" role="status">${esc(b.chestStatus)}</small></aside>`,
     );
     supplyRevision = b.supplyRevision;
     if (squadMoveArmed)
@@ -274,7 +281,7 @@ function updateBattleHud() {
       `${CLASSES[t.classId].name} slot ${t.slot + 1}, ${t.life}, ${Math.ceil(t.hp)} health`,
     );
     const hp = button.querySelector<HTMLElement>(".hp div");
-    if (hp) hp.style.width = `${(t.hp / CLASSES[t.classId].hp) * 100}%`;
+    if (hp) hp.style.width = `${(t.hp / b.maxHp(t)) * 100}%`;
     write(`[data-unit="${t.id}"] .unit-status`, unitStatus(t));
   }
   const coverControl = ui.querySelector<HTMLButtonElement>(".cover-order");
@@ -285,6 +292,12 @@ function updateBattleHud() {
         (s.brawl !== null || s.drowningTime > 0 || b.inWater(s)));
   const faceButton = ui.querySelector<HTMLButtonElement>(".face-order");
   if (faceButton && s) faceButton.disabled = s.life !== "alive" || s.brawl !== null || s.drowningTime > 0;
+  const gearButton=ui.querySelector<HTMLButtonElement>(".gear-control");
+  if(gearButton&&s){
+    gearButton.disabled=s.life!=="alive"||s.brawl!==null||s.drowningTime>0||(s.unarmed?!!s.takingCover:b.inWater(s));
+    gearButton.title=s.unarmed?"Return to this soldier's marked kit by a dry route. Reclaims weapon and armor; health percentage is preserved.":"Leaves weapon and armor at this exact point. Faster running, 130 base maximum HP, no ranged attacks. Pick up your own kit to rearm.";
+  }
+  write(".chest-status",b.chestStatus);
   const flameButton = ui.querySelector<HTMLButtonElement>(".flame-fire");
   if (flameButton && s) {
     flameButton.disabled =
@@ -327,11 +340,13 @@ function unitStatus(t: Soldier) {
   if (
     !scene.battle?.planning &&
     t.life === "alive" &&
+    !t.unarmed &&
     !t.moving &&
     !t.path.length &&
     (t.steadyTime ?? scene.battle!.aimDelay(t)) < scene.battle!.aimDelay(t)
   )
     return "AIMING";
+  if(t.life==="alive"&&t.unarmed&&!scene.battle?.planning)return t.drowningTime>0?"DROWNING":t.brawl!==null?"BRAWLING":t.burnRemaining>0?"ON FIRE":t.takingCover?"COVER · UNARMED":t.recoveringGear?"TO GEAR":t.moving?"RUN LIGHT":"UNARMED";
   if (scene.battle?.planning)
     return t.takingCover ? "IN COVER" : t.goal ? "MOVE QUEUED" : "DEPLOYING";
   if (t.life === "alive" && t.burnRemaining > 0) return "ON FIRE";
@@ -460,6 +475,10 @@ function action(a: Action, held = true, event?: Event) {
     if (s) issue({ type: a, id: s.id });
     return;
   }
+  if(a==="gear") {
+    if(s&&!tutorial)issue({type:s.unarmed?"recover-gear":"drop-gear",id:s.id});
+    faceArmed=false;scene.facePreview=false;renderBattle();wire();return;
+  }
   if (a === "rocketFire") {
     if (s && b.isManualTorch(s))
       issue({ type: "aim", id: s.id, point: scene.aimPoint() });
@@ -528,6 +547,10 @@ function action(a: Action, held = true, event?: Event) {
       wire();
       return;
     }
+    const kit=b.gear.find(g=>distance(g,scene.cursor)<25);
+    const chest=b.chests.find(c=>c.claimedBy===null&&distance(c,scene.cursor)<28);
+    if(s?.life==="alive"&&kit&&s.id===kit.owner&&s.unarmed){issue({type:"recover-gear",id:s.id});return;}
+    if(s?.life==="alive"&&chest){issue({type:"move",id:s.id,point:{x:chest.x,y:chest.y}});return;}
     if (near?.side === 0) {
       if (!("classId" in near)) return;
       if (near.life === "down")
@@ -682,6 +705,7 @@ function wire() {
           renderBattle();
           wire();
         }
+        if (what === "gear") action("gear");
         if (what === "face") action("face");
         if (what === "cover") action("cover");
         if (what === "fire-all") action("fireAll");

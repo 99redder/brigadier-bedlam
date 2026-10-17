@@ -12,6 +12,7 @@ export const ACTIONS = {
   medic: { label: "Medic nearest cursor", context: "field" },
   face: { label: "Face direction (then click map)", context: "field" },
   cover: { label: "Take / leave cover", context: "field" },
+  gear: { label: "Drop weapon/armor / return for gear", context: "field" },
   hold: { label: "Hold position", context: "field" },
   // Keep the legacy action id so existing custom fire bindings survive the Torch change.
   rocketFire: { label: "Spray selected flamethrower at cursor", context: "field" },
@@ -44,6 +45,7 @@ export function defaults(leftHanded = false): Bindings {
     previous: "KeyQ",
     next: "KeyE",
     medic: "KeyR",
+    gear: "KeyB",
     hold: "KeyF",
     cover: "KeyC",
     face: "KeyV",
@@ -65,6 +67,7 @@ export function defaults(leftHanded = false): Bindings {
       previous: "KeyU",
       next: "KeyO",
       medic: "KeyP",
+      gear: "KeyM",
       hold: "KeyJ",
       cover: "KeyK",
       face: "KeyN",
@@ -160,6 +163,12 @@ export function loadBindings(storage: StorageLike): Bindings {
       const key = [preferred, ..."BCIJKLMNOPRTUVXYZ".split("").map(k => `Key${k}`), "F6", "F7"]
         .find(code => !Object.values(raw).some(value => Array.isArray(value) && value.includes(code)));
       raw.face = [key ?? preferred, null];
+    }
+    if (!("gear" in raw)) {
+      const preferred=raw.hold?.includes?.("KeyJ")?"KeyM":"KeyB";
+      const candidates=[preferred,..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(k=>`Key${k}`),...Array.from({length:10},(_,i)=>`Digit${i}`),"F1","F2","F3","F4","F6","F7","F8","F9","F10","F12"];
+      const key=candidates.find(code=>!Object.values(raw).some(value=>Array.isArray(value)&&value.includes(code)));
+      raw.gear=[key??preferred,null];
     }
     for (const a of Object.keys(ACTIONS) as Action[]) {
       if (

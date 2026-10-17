@@ -107,10 +107,10 @@ describe("Fire all bindings and saved-control upgrades", () => {
     const s = store(),
       b = defaults();
     expect(rebind(b, "fireAll", 1, "Mouse4")).toBe(true);
-    expect(rebind(b, "fireAll", 0, "KeyB")).toBe(true);
+    expect(rebind(b, "fireAll", 0, "KeyZ")).toBe(true);
     saveBindings(s, b);
-    expect(loadBindings(s).fireAll).toEqual(["KeyB", "Mouse4"]);
-    expect(conflicts(b, "hold", "KeyB")).toEqual([
+    expect(loadBindings(s).fireAll).toEqual(["KeyZ", "Mouse4"]);
+    expect(conflicts(b, "hold", "KeyZ")).toEqual([
       { action: "fireAll", slot: 0 },
     ]);
   });
@@ -118,6 +118,7 @@ describe("Fire all bindings and saved-control upgrades", () => {
     const s = store(),
       old = defaults() as Partial<ReturnType<typeof defaults>>;
     delete old.fireAll;
+    delete old.gear;
     old.hold = ["KeyG", "Mouse3"];
     old.medic = ["KeyB", null];
     s.setItem(STORAGE_KEY, JSON.stringify(old));

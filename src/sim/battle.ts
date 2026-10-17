@@ -1,3 +1,4 @@
+import { RUN_LIGHT, COMEBACK, CHEST_LABELS, type ChestReward, type GearDrop, type RewardChest } from "./comeback";
 import { RAIN, SNOW_SPEED, weatherAdvice, type Weather } from "./weather";
 import { MAPS, difficulty, validMapId } from "./maps";
 import { scatterAirstrike, AIRSTRIKE_ACCURACY, type AirstrikeAccuracy } from "./airstrike";
@@ -32,6 +33,8 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  unarmed?: boolean;
+  recoveringGear?: boolean;
   takingCover?: boolean;
   steadyTime?: number;
   heat?: number;
@@ -129,6 +132,7 @@ export const SUPER_LABELS: Record<SuperWeapon, string> = {
   sniper: "Sniper shot",
 };
 export type Command =
+  | { type: "drop-gear" | "recover-gear"; id: number }
   | { type: "face"; id: number; point: Point }
   | { type: "cover"; id: number; active: boolean }
   | { type: "squad-move"; point: Point }
@@ -165,6 +169,16 @@ export class Battle {
     id,
     claimedBy: null as Side | null,
   }));
+  gear: GearDrop[]=[];
+  chests: RewardChest[]=[];
+  chestsSpawned=0;
+  chestsOpened=0;
+  nextChestAt: number=COMEBACK.first;
+  get chestStatus() {
+    const live=this.chests.find(c=>c.claimedBy===null);
+    if(live)return `CHEST LIVE · ${Math.max(0,Math.ceil(live.expiresAt-this.time))}s left`;
+    return this.chestsSpawned<COMEBACK.limit ? `NEXT CHEST IN ${Math.max(0,Math.ceil(this.nextChestAt-this.time))}s` : "NO MORE CHESTS THIS MAP";
+  }
   powers: [SuperWeapon[], SuperWeapon[]] = [[], []];
   strikes: {
     id: number;
@@ -303,16 +317,17 @@ export class Battle {
       if(this.weather!=="clear")this.note(this.weather==="rain" ? "Rain: Torch weakened. Favor rifles and explosives." : "Deep snow: heavy troops slowed. Light troops lead.");
     } else this.note("Operation: questionable decisions.");
   }
-  maxHp(s:Soldier) {return Math.round(CLASSES[s.classId].hp*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
+  maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
   get challenge() { return this.operation ? difficulty(this.operation.level) : null; }
   get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
   get weatherAdvice() {return weatherAdvice(this.weather);}
   weaponRange(s:Soldier) {return CLASSES[s.classId].range * (s.classId==="torch" && this.weather==="rain" ? RAIN.flameRange : 1);}
   preferredRange(s:Soldier) {return s.classId==="torch" && this.weather==="rain" ? Math.min(CLASSES[s.classId].preferred,this.weaponRange(s)*.8) : CLASSES[s.classId].preferred;}
   movementMultiplier(s:Soldier) {
-    return this.weather==="snow" && !this.inWater(s) && !this.bridges.some(r=>inside(s,r)) ? SNOW_SPEED[s.classId] : 1;
+    return this.weather==="snow" && !this.inWater(s) && !this.bridges.some(r=>inside(s,r)) ? (s.unarmed ? .95 : SNOW_SPEED[s.classId]) : 1;
   }
 
+  landSpeed(s:Soldier) {return s.unarmed ? RUN_LIGHT.speed : CLASSES[s.classId].speed;}
   random() {
     let t = (this.rngState += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -338,7 +353,7 @@ export class Battle {
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
     if (
       this.planning &&
-      !["select", "move", "squad-move", "bridge", "hold", "cover", "face"].includes(
+      !["select", "move", "squad-move", "bridge", "hold", "cover", "face", "drop-gear", "recover-gear"].includes(
         c.type,
       )
     ) {
@@ -369,6 +384,10 @@ export class Battle {
     const s = this.get(c.id);
     if (!s || s.life !== "alive" || s.drowningTime > 0)
       return;
+    if(c.type==="drop-gear") {this.dropGear(s);return;}
+    if(c.type==="recover-gear") {this.recoverGear(s);return;}
+    if(s.unarmed && (c.type==="attack"||c.type==="demolish"||c.type==="aim")) {this.note("Unarmed: recover your gear before shooting. Move away or collect a chest.");return;}
+    if(["move","bridge","hold","cover"].includes(c.type))s.recoveringGear=false;
     if (
       ["move", "bridge", "attack", "demolish", "hold", "aim"].includes(c.type)
     )
@@ -494,6 +513,7 @@ export class Battle {
       s.target = null;
       s.terrainTarget = null;
       s.hold = false;
+      s.recoveringGear=false;
       s.watchAngle = undefined;
       this.setGoal(s, {
         x: point.x + (i % 2) * 22,
@@ -509,12 +529,12 @@ export class Battle {
     });
     const duration = Math.max(
       0,
-      ...routes.map((r) => r.length / (CLASSES[r.s.classId].speed*this.movementMultiplier(r.s))),
+      ...routes.map((r) => r.length / (this.landSpeed(r.s)*this.movementMultiplier(r.s))),
     );
     for (const { s, length } of routes)
       s.formationSpeed =
         duration > 0
-          ? Math.min(CLASSES[s.classId].speed, length / duration / this.movementMultiplier(s))
+          ? Math.min(this.landSpeed(s), length / duration / this.movementMultiplier(s))
           : undefined;
     this.note(
       `Squad movement: ${units.length} troops to spaced positions. Moving troops hold fire.`,
@@ -570,7 +590,7 @@ export class Battle {
     if (wet && !s.wasInWater) {
       this.effects.push({ ...s, kind: "splash", time: 0.6, size: 22 });
       // One seeded roll on entry, never a repeated chance on each frame.
-      if (!this.training && this.random() < CLASSES[s.classId].drowningRisk) {
+      if (!this.training && this.random() < (s.unarmed ? RUN_LIGHT.drowningRisk : CLASSES[s.classId].drowningRisk)) {
         s.takingCover = false;
         s.drowningTime = TUNING.drowningDuration;
         s.path = [];
@@ -609,6 +629,7 @@ export class Battle {
     const w = CLASSES[s.classId];
     return (
       !this.planning &&
+      !s.unarmed &&
       s.life === "alive" &&
       s.drowningTime <= 0 &&
       (!("classId" in t) || t.drowningTime <= 0) &&
@@ -701,6 +722,7 @@ export class Battle {
       target.knockdownTime = TUNING.knockdownAnimation;
     }
     if (target.life !== "alive") {
+      target.recoveringGear = false;
       target.takingCover = false;
       target.burnRemaining = 0;
       target.path = [];
@@ -722,7 +744,7 @@ export class Battle {
   isManualTorch(s: Soldier) {
     return (
       s.side === 0 &&
-      s.classId === "torch" &&
+      s.classId === "torch" && !s.unarmed &&
       s.id === this.selected &&
       !this.aiSides.includes(0)
     );
@@ -837,6 +859,7 @@ export class Battle {
   }
   fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
+    if(s.unarmed)return false;
     if (manual && !this.isManualTorch(s)) return false;
     if (!manual && !inView(s, point)) return false;
     const d = distance(s, point);
@@ -1222,6 +1245,17 @@ export class Battle {
       })[0];
   }
   ai(s: Soldier) {
+    const chest=this.chests.find(c=>c.claimedBy===null&&c.expiresAt>this.time);
+    if(chest) {
+      const runners=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive"&&u.brawl===null&&u.drowningTime<=0&&!u.takingCover)
+        .sort((a,b)=>distance(a,chest)/this.landSpeed(a)-distance(b,chest)/this.landSpeed(b)||a.id-b.id);
+      const allies=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive").length;
+      const foes=this.soldiers.filter(u=>u.side!==s.side&&u.life==="alive").length;
+      if(runners[0]?.id===s.id&&distance(s,chest)<(allies<foes?600:360)&&!this.soldiers.some(t=>t.side!==s.side&&t.life==="alive"&&distance(s,t)<95)){
+        s.target=null;s.terrainTarget=null;this.setGoal(s,chest,true);return;
+      }
+    }
+
     if (this.powers[s.side].length === 0) {
       const routes = this.soldiers
         .filter(
@@ -1231,7 +1265,7 @@ export class Battle {
             unit.life === "alive" &&
             unit.drowningTime <= 0 &&
             unit.brawl === null &&
-            unit.hp >= CLASSES[unit.classId].hp * 0.7,
+            unit.hp >= this.maxHp(unit) * 0.7,
         )
         .flatMap((unit) =>
           this.supplies
@@ -1239,7 +1273,7 @@ export class Battle {
             .map((drop) => ({
               unit,
               drop,
-              cost: distance(unit, drop) / (CLASSES[unit.classId].speed*this.movementMultiplier(unit)),
+              cost: distance(unit, drop) / (this.landSpeed(unit)*this.movementMultiplier(unit)),
             })),
         )
         .sort(
@@ -1365,6 +1399,101 @@ export class Battle {
         `${unit.side === 0 ? "Your squad" : "Enemy"} captured ${drop.label}: ${SUPER_LABELS[weapon]} ready!`,
       );
       this.effects.push({ ...drop, kind: "revive", time: 1, size: 30 });
+    }
+  }
+  dropGear(s:Soldier) {
+    if(this.training||this.winner!==null||s.unarmed||s.life!=="alive"||s.brawl!==null||s.drowningTime>0||this.inWater(s))return false;
+    const fraction=s.hp/this.maxHp(s);
+    this.gear.push({owner:s.id,side:s.side,classId:s.classId,x:s.x,y:s.y});
+    s.unarmed=true;s.recoveringGear=false;s.hp=this.maxHp(s)*fraction;s.formationSpeed=undefined;
+    if(s.target!==null||s.terrainTarget){s.goal=null;s.path=[];s.moving=false;}
+    s.target=null;s.terrainTarget=null;s.flash=0;
+    this.supplyRevision++;this.note(`${CLASSES[s.classId].name} dropped weapon and armor. Run light: no shooting, ${this.maxHp(s)} maximum HP. Gear stays here.`);return true;
+  }
+  recoverGear(s:Soldier) {
+    const gear=this.gear.find(g=>g.owner===s.id);
+    if(this.training||this.winner!==null||!gear||!s.unarmed||s.life!=="alive"||s.brawl!==null||s.drowningTime>0||s.takingCover)return false;
+    s.recoveringGear=true;s.formationSpeed=undefined;s.target=null;s.terrainTarget=null;s.hold=false;s.watchAngle=undefined;
+    const swimming=this.inWater(s);
+    this.setGoal(s,gear,!swimming);this.note(`${CLASSES[s.classId].name}: returning to the marked gear bag${swimming ? "; swim out of the river first" : " by a dry route"}.`);return true;
+  }
+  pickupGear(s:Soldier) {
+    const gear=this.gear.find(g=>g.owner===s.id);
+    if(this.training||this.winner!==null||!gear||!s.unarmed||!s.recoveringGear||s.life!=="alive"||s.brawl!==null||s.drowningTime>0||s.takingCover||distance(s,gear)>18)return false;
+    const fraction=s.hp/this.maxHp(s);s.unarmed=false;s.hp=this.maxHp(s)*fraction;
+    s.recoveringGear=false;s.goal=null;s.path=[];s.moving=false;s.hold=true;s.steadyTime=0;s.formationSpeed=undefined;
+    s.cooldown=Math.max(s.cooldown,RUN_LIGHT.equipTime);s.autoFireWait=Math.max(s.autoFireWait??0,s.cooldown);
+    this.gear=this.gear.filter(g=>g!==gear);this.supplyRevision++;
+    this.note(`${CLASSES[s.classId].name}: weapon and armor recovered. Equipping before firing.`);return true;
+  }
+  spawnChest() {
+    if(this.training||this.planning||this.winner!==null||!this.operation||this.chestsSpawned>=COMEBACK.limit||this.time+1e-8<this.nextChestAt)return false;
+    const units=this.soldiers.filter(s=>s.life==="alive"&&s.drowningTime<=0);
+    const count=(side:Side)=>units.filter(s=>s.side===side).length;
+    if(!count(0)||!count(1))return false;
+    const strength=(side:Side)=>count(side)/this.soldiers.filter(s=>s.side===side).length;
+    const trailing:Side|null=strength(0)<strength(1)?0:strength(1)<strength(0)?1:null;
+    const candidates:Point[]=[];
+    for(const x of [170,300,410,690,800,930])for(const y of [60,170,280,390,500]){
+      const p={x,y};if(!legal(p,this.cover)||this.inWater(p)||units.some(s=>distance(s,p)<75))continue;
+      if(this.chests.some(c=>c.claimedBy===null&&distance(c,p)<80)||this.gear.some(g=>distance(g,p)<30))continue;
+      candidates.push(p);
+    }
+    if(!candidates.length){this.nextChestAt=this.time+5;return false;}
+    const score=(p:Point)=>{
+      if(trailing===null)return 0;
+      const allies=units.filter(s=>s.side===trailing),foes=units.filter(s=>s.side!==trailing);
+      return Math.min(...allies.map(s=>distance(s,p)))-Math.min(350,Math.min(...foes.map(s=>distance(s,p))))*.7;
+    };
+    candidates.sort((a,b)=>score(a)-score(b)||a.x-b.x||a.y-b.y);
+    const shortlist=candidates.slice(0,trailing===null?candidates.length:6);
+    const point=shortlist[Math.floor(this.random()*shortlist.length)];
+    this.chests.push({...point,id:this.chestsSpawned++,expiresAt:this.time+COMEBACK.lifetime,claimedBy:null});
+    this.nextChestAt=this.time+COMEBACK.interval;this.supplyRevision++;
+    this.note(`COMEBACK CHEST spotted! Reach the glowing chest within ${COMEBACK.lifetime}s. Both teams can claim it.`);return true;
+  }
+  recallSoldier(collector:Soldier) {
+    const fallen=this.soldiers.filter(s=>s.side===collector.side&&s.life!=="alive").sort((a,b)=>a.id-b.id)[0];
+    if(!fallen)return false;
+    let point:Point|undefined;
+    for(const radius of [44,68,92])for(let i=0;i<12;i++){
+      if(point)break;const p={x:collector.x+Math.cos(i*Math.PI/6)*radius,y:collector.y+Math.sin(i*Math.PI/6)*radius};
+      if(legal(p,this.cover)&&!this.inWater(p)&&!this.soldiers.some(s=>s.life==="alive"&&distance(s,p)<(s.side===collector.side?25:60)))point=p;
+    }
+    if(!point)return false;
+    Object.assign(fallen,point,{life:"alive",death:null,burnRemaining:0,drowningTime:0,wasInWater:false,takingCover:false,
+      path:[],goal:null,target:null,terrainTarget:null,hold:true,moving:false,recoveringGear:false,formationSpeed:undefined,
+      brawl:null,blocking:false,autoGuardTime:0,fightMove:null,fightMoveTime:0,recoilTime:0,knockdownTime:0,brawlKnockdown:false,fightAnchor:null,
+      cooldown:2,autoFireWait:3,steadyTime:0,jam:0,flash:0});
+    fallen.hp=this.maxHp(fallen)*COMEBACK.reviveHealth;this.stats.revives++;
+    this.effects.push({...fallen,kind:"revive",time:1,size:35});return true;
+  }
+  grantChestReward(collector:Soldier,choice?:ChestReward):ChestReward {
+    const allies=this.soldiers.filter(s=>s.side===collector.side),living=allies.filter(s=>s.life==="alive");
+    const foes=this.soldiers.filter(s=>s.side!==collector.side&&s.life==="alive");
+    const fallen=allies.some(s=>s.life!=="alive");
+    const pool:ChestReward[]=["sniper","airstrike"];
+    if(living.some(s=>s.hp<this.maxHp(s)||s.burnRemaining>0))pool.push("treatment");
+    if(fallen){pool.push("recall");if(foes.length-living.length>=2)pool.push("recall","recall");}
+    let reward=choice??pool[Math.floor(this.random()*pool.length)];
+    if(reward==="recall"&&!this.recallSoldier(collector))reward=living.some(s=>s.hp<this.maxHp(s)||s.burnRemaining>0)?"treatment":"sniper";
+    if(reward==="treatment")for(const s of living){s.hp=Math.min(this.maxHp(s),s.hp+this.maxHp(s)*COMEBACK.healFraction);s.burnRemaining=0;}
+    else if(reward==="sniper"||reward==="airstrike")this.powers[collector.side].push(reward);
+    this.supplyRevision++;this.note(`${collector.side===0?"Your squad":"Enemy"} opened a chest: ${CHEST_LABELS[reward]}!`);
+    this.effects.push({...collector,kind:"revive",time:1,size:35});return reward;
+  }
+  tickComeback() {
+    for(const s of this.soldiers)if(s.recoveringGear)this.pickupGear(s);
+    if(this.training||!this.operation)return;
+    const old=this.chests.length;
+    this.chests=this.chests.filter(c=>c.claimedBy===null?c.expiresAt>this.time:this.time-(c.openedAt??0)<3);
+    if(old!==this.chests.length)this.supplyRevision++;
+    if(this.time+1e-8>=this.nextChestAt)this.spawnChest();
+    for(const chest of this.chests){
+      if(chest.claimedBy!==null)continue;
+      const collector=this.soldiers.filter(s=>s.life==="alive"&&s.drowningTime<=0&&s.brawl===null&&!s.takingCover&&distance(s,chest)<=COMEBACK.radius)
+        .sort((a,b)=>distance(a,chest)-distance(b,chest)||a.id-b.id)[0];
+      if(!collector)continue;chest.claimedBy=collector.side;chest.openedAt=this.time;this.chestsOpened++;chest.reward=this.grantChestReward(collector);
     }
   }
   useSuper(side: Side, weapon: SuperWeapon, point: Point) {
@@ -1502,6 +1631,7 @@ export class Battle {
         if (s.drowningTime <= 0) {
           s.hp = 0;
           s.life = "dead";
+          s.recoveringGear = false;
           s.death = "drowned";
           this.stats.drownings++;
           this.effects.push({ ...s, kind: "splash", time: 0.8, size: 30 });
@@ -1613,8 +1743,8 @@ export class Battle {
         const p = s.path[0],
           d = distance(s, p),
           speed =
-            (s.formationSpeed ?? CLASSES[s.classId].speed) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
-            (this.inWater(s) ? CLASSES[s.classId].waterSpeed : 1) *
+            (s.formationSpeed ?? this.landSpeed(s)) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
+            (this.inWater(s) ? s.unarmed ? RUN_LIGHT.waterSpeed : CLASSES[s.classId].waterSpeed : 1) *
             dt;
         if (d <= speed) {
           this.facePoint(s, p);
@@ -1733,6 +1863,7 @@ export class Battle {
         if (m.timer > 0.8) {
           if (t.life === "down") {
             t.life = "alive";
+            t.recoveringGear = false;
             t.takingCover = false;
             t.burnRemaining = 0;
             t.wasInWater = false;
@@ -1780,6 +1911,7 @@ export class Battle {
         if (t) this.callMedic(t.id, side);
       }
     }
+    this.tickComeback();
     const alive = (side: Side) =>
       this.soldiers.some(
         (s) => s.side === side && s.life === "alive",

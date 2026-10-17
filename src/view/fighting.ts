@@ -1,6 +1,7 @@
 import type { ClassId } from "../sim/data";
 import { TUNING } from "../sim/data";
 import type { Soldier } from "../sim/battle";
+import { drawRunner } from "./runner";
 import { drawCharacter } from "./characters";
 export type FightPose = "guard" | "punch" | "kick" | "block" | "hurt";
 export const FIGHT_FRAMES: Record<FightPose, number> = {
@@ -15,7 +16,8 @@ export const fighterKey = (
   side: number,
   pose: FightPose,
   frame: number,
-) => `fighter-${id}-${side}-${pose}-${frame}`;
+  light=false,
+) => `fighter-${id}-${side}-${pose}-${frame}${light?"-light":""}`;
 export function fightFrame(
   s: Soldier,
   time: number,
@@ -49,11 +51,12 @@ export function drawFighter(
   side: number,
   pose: FightPose,
   frame: number,
+  light=false,
 ) {
   const stretch = [1, 0.9, 0.55, 0.15, 0][frame] ?? 0,
     kicking = pose === "kick" && frame < 4,
     ink = "#27362f";
-  drawCharacter(c, id, side, true, kicking);
+  if(light)drawRunner(c,id,side);else drawCharacter(c, id, side, true, kicking);
   const skin =
     id === "torch"
       ? "#776744"

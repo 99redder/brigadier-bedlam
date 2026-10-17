@@ -1,5 +1,6 @@
 import type { Soldier } from "../sim/battle";
 import type { ClassId } from "../sim/data";
+import { drawRunner } from "./runner";
 import { drawCharacter } from "./characters";
 
 export const VICTORY_SECONDS = 3.5;
@@ -10,8 +11,8 @@ export const EMOTES: Record<ClassId, string> = {
   torch: "FIRED UP!",
   sapper: "JUMP FOR JOY!",
 };
-export const victoryKey = (id: ClassId, side: number, frame: number) =>
-  `victory-${id}-${side}-${frame}`;
+export const victoryKey = (id: ClassId, side: number, frame: number, light=false) =>
+  `victory-${id}-${side}-${frame}${light?"-light":""}`;
 export function isCelebrating(
   s: Pick<Soldier, "life" | "side">,
   winner: number | null,
@@ -58,8 +59,9 @@ export function drawVictory(
   id: ClassId,
   side: number,
   frame: number,
+  light=false,
 ) {
-  drawCharacter(c, id, side, true, id === "lobber" && frame % 4 < 2);
+  if(light)drawRunner(c,id,side);else drawCharacter(c, id, side, true, id === "lobber" && frame % 4 < 2);
   const wave = Math.sin((frame / 8) * Math.PI * 2);
   const skin =
     id === "torch"

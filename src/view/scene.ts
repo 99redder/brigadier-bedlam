@@ -1,3 +1,5 @@
+import { drawFieldLoot } from "./field-loot";
+import { runnerKey } from "./runner";
 import { drawRain } from "./weather";
 import { drawEnvironment } from "./environment";
 import { ENVIRONMENTS } from "../sim/environments";
@@ -80,6 +82,9 @@ export class Battlefield extends Phaser.Scene {
   }
   squadMovePreview = false;
   superAim: SuperWeapon | null = null;
+  private lootLabels: Phaser.GameObjects.Text[]=[];
+  private previousChestOpened=0;
+  private previousChestSpawned=0;
   private supplyLabels: Phaser.GameObjects.Text[] = [];
   facePreview = false;
   cursor: Point = { x: 100, y: 280 };
@@ -386,6 +391,7 @@ export class Battlefield extends Phaser.Scene {
     this.lastAirstrikeEvent = -1;
     this.lastMeleeEvent = -1;
     this.previousRevives = 0;
+    this.previousChestOpened=0;this.previousChestSpawned=0;
     this.previousBrawls = 0;
     this.drawTerrain();
     this.render();
@@ -421,11 +427,13 @@ export class Battlefield extends Phaser.Scene {
           this.sfx.melee(event.kind, event.blocked);
           this.lastMeleeEvent = event.id;
         }
-      if (this.battle.stats.revives > this.previousRevives)
+      if (this.battle.stats.revives > this.previousRevives || this.battle.chestsOpened>this.previousChestOpened)
         this.sfx.play("revive");
       if (this.battle.stats.brawls > this.previousBrawls)
         this.sfx.play("brawl");
 
+      if(this.battle.chestsSpawned>this.previousChestSpawned)this.sfx.play("click");
+      this.previousChestOpened=this.battle.chestsOpened;this.previousChestSpawned=this.battle.chestsSpawned;
       this.previousRevives = this.battle.stats.revives;
       this.previousBrawls = this.battle.stats.brawls;
     }
@@ -458,6 +466,12 @@ export class Battlefield extends Phaser.Scene {
     const g = this.effects;
     g.clear();
     if(b.weather==="rain")drawRain(g,b.tick*TUNING.step+(!this.paused && b.winner===null ? this.accumulator : 0));
+    const loot=drawFieldLoot(g,b,project,visualTime);
+    loot.forEach((info,i)=>{
+      this.lootLabels[i]??=this.add.text(0,0,"",{fontFamily:"monospace",fontSize:"10px",backgroundColor:"#293f35",padding:{x:4,y:2}}).setOrigin(.5).setDepth(10001);
+      this.lootLabels[i].setText(info.text).setColor(info.color).setPosition(info.x,info.y).setVisible(true);
+    });
+    for(let i=loot.length;i<this.lootLabels.length;i++)this.lootLabels[i].setVisible(false);
     for (let i = 0; i < b.supplies.length; i++) {
       const drop = b.supplies[i],
         p = project(drop),
@@ -547,7 +561,7 @@ export class Battlefield extends Phaser.Scene {
     if (
       b.winner === null &&
       selected &&
-      selected.life === "alive" &&
+      selected.life === "alive" && !selected.unarmed &&
       selected.brawl === null &&
       selected.fightMoveTime <= 0
     ) {
@@ -688,10 +702,12 @@ export class Battlefield extends Phaser.Scene {
         s.life === "dead"
           ? s.death!
           : celebrating
-            ? victoryKey(s.classId, s.side, victoryPose.frame)
+            ? victoryKey(s.classId, s.side, victoryPose.frame,!!s.unarmed)
             : fighting
-              ? fighterKey(s.classId, s.side, frame.pose, frame.frame)
-              : s.takingCover
+              ? fighterKey(s.classId, s.side, frame.pose, frame.frame,!!s.unarmed)
+              : s.unarmed
+                ? runnerKey(s.classId,s.side,s.takingCover?13:s.moving?Math.floor(visualTime*15+s.id*2)%12:12)
+                : s.takingCover
                 ? coverKey(s.classId, s.side)
                 : s.moving
                   ? walkKey(

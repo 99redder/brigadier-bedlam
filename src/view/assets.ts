@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { CLASSES, type ClassId } from "../sim/data";
+import { drawRunner, runnerKey } from "./runner";
 import { drawCharacter } from "./characters";
 import {
   FIGHT_FRAMES,
@@ -47,20 +48,24 @@ export function loadAssets(scene: Phaser.Scene) {
         );
         scene.textures.addCanvas(walkKey(classId, side, frame), a.canvas);
       }
+      for(let frame=0;frame<14;frame++) {
+        const light=crispCanvas(80,96);drawRunner(light.context,classId,side,frame<12?Math.sin(frame/12*Math.PI*2):0,frame===13);
+        scene.textures.addCanvas(runnerKey(classId,side,frame),light.canvas);
+      }
       const cover = crispCanvas(80, 96);
       drawCharacter(cover.context, classId, side, false, false, 0, true);
       scene.textures.addCanvas(coverKey(classId, side), cover.canvas);
-      for (let frame = 0; frame < 8; frame++) {
+      for(const light of [false,true]) for (let frame = 0; frame < 8; frame++) {
         const celebration = document.createElement("canvas");
         celebration.width = 128 * ASSET_SCALE;
         celebration.height = 96 * ASSET_SCALE;
         const ctx = celebration.getContext("2d")!;
         ctx.scale(ASSET_SCALE, ASSET_SCALE);
         ctx.translate(24, 0);
-        drawVictory(ctx, classId, side, frame);
-        scene.textures.addCanvas(victoryKey(classId, side, frame), celebration);
+        drawVictory(ctx, classId, side, frame,light);
+        scene.textures.addCanvas(victoryKey(classId, side, frame,light), celebration);
       }
-      for (const pose of Object.keys(FIGHT_FRAMES) as FightPose[])
+      for(const light of [false,true]) for (const pose of Object.keys(FIGHT_FRAMES) as FightPose[])
         for (let frame = 0; frame < FIGHT_FRAMES[pose]; frame++) {
           const fightCanvas = document.createElement("canvas");
           fightCanvas.width = 128 * ASSET_SCALE;
@@ -68,9 +73,9 @@ export function loadAssets(scene: Phaser.Scene) {
           const ctx = fightCanvas.getContext("2d")!;
           ctx.scale(ASSET_SCALE, ASSET_SCALE);
           ctx.translate(24, 0);
-          drawFighter(ctx, classId, side, pose, frame);
+          drawFighter(ctx, classId, side, pose, frame,light);
           scene.textures.addCanvas(
-            fighterKey(classId, side, pose, frame),
+            fighterKey(classId, side, pose, frame,light),
             fightCanvas,
           );
         }

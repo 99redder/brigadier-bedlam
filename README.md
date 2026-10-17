@@ -234,3 +234,12 @@ Soggy Bottom now has visible rain. On both teams, Torch range falls from 112 to 
 Frostbite Fiasco has deep snow. Ground movement slows by class: Bazooka 45%, Torch 35%, Lobber 20%, Rifleman 10%, Sapper 5%. This applies equally to both teams before stage difficulty modifiers. Cleared bridges retain normal speed; river movement uses the existing water penalties and drowning risks. Squad formation pacing and AI supply travel costs account for snow. Forced melee motions and field medics retain their existing behavior.
 
 A persistent header warning, deployment advice, selected-unit notes, moving-unit roster status, radio message, next-map briefing and manual chapter explain conditions before and during play. Rain animation uses simulation time, freezes on pause and never consumes simulation randomness. Map weather is fixed for a round and is derived deterministically from its map ID for replays.
+
+
+### v0.34 — Run light and timed comeback chests
+
+Select a soldier and use **Drop gear** (**B**, or **M** in the left-handed preset) to leave their weapon and armor at their exact position. Unarmed soldiers have 130 maximum HP and move at 36 units/second, with lighter snow/water penalties. They cannot shoot, but can collect supplies/chests, call support powers and fight with fists. Health percentage, reloads and heat persist across equipment changes. Dropping gear requires dry ground.
+
+**Return for gear**, the same key, or clicking the selected soldier's own kit sends them back by a dry route, or swims out first if already in the river. Only its owner can recover it. Another move/hold/cover order cancels recovery. Equipping preserves health percentage and imposes at least 1.5 seconds before firing. Distinct light-shirt sprites, empty hands, roster status and labeled kit markers show the tradeoff.
+
+Campaign chests first arrive after 30 combat seconds, then every 45 seconds, up to six per map. Each expires after 45 seconds; deployment/pause freeze the clock. Safe dry spawn candidates favor a side that has lost more of its starting roster. Both teams compete for chests, including AI runners. Rewards are a sniper shot, an inaccurate airstrike, 35% maximum-health treatment/extinguishing for living allies, or a recall of one fallen soldier at 60% health in a nearby safe spot. Recall can restore permanent casualties, is weighted higher when outnumbered by at least two, and reuses existing roster slots without replacing dropped gear. No chests spawn in Boot camp. The HUD and field manual explain timing, recovery and reward rules.
