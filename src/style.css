@@ -915,3 +915,19 @@ p {
 .scores-screen { inset:4% 6%; height:auto; }
 
 .deployment-title { margin: 0 0 .12em; font: 800 2em "Barlow Condensed", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+
+.result-screen .campaign-continue {
+  display: block;
+  width: 100%;
+  min-height: 76px;
+  padding: .7em 1em;
+  margin: .85em 0 1.1em;
+  border: 2px solid #803d28;
+  font: 800 1.65em "Barlow Condensed", sans-serif;
+  letter-spacing: .06em;
+  box-shadow: 0 5px 0 #803d28;
+}
+.result-screen .campaign-continue:hover { background: #d87550; }
+.result-screen .campaign-continue:focus-visible { outline: 3px solid #263f35; outline-offset: 5px; }
+.result-screen .campaign-continue:active { box-shadow: none; }
+.result-screen .buttons { margin-top: 1em; }
