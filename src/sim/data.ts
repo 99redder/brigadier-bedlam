@@ -217,7 +217,10 @@ export interface Rect {
   w: number;
   h: number;
 }
+export type ArtifactKind = "picnic" | "tank" | "tea-truck" | "tractor" | "plane" | "supply-truck" | "mess-hall" | "boat" | "staff-car" | "radio";
 export interface Cover extends Rect {
+  artifact?: ArtifactKind;
+  label?: string;
   hp?: number;
   material?: "rock" | "sandbags" | "crate";
 }

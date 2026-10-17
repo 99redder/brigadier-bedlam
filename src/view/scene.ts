@@ -1,3 +1,4 @@
+import { drawArtifact } from "./artifacts";
 import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
 import { headingOf, viewArcOf } from "../sim/vision";
@@ -235,6 +236,16 @@ export class Battlefield extends Phaser.Scene {
     this.terrainRevision = this.battle?.terrainRevision ?? -1;
     for (const r of this.battle?.rubble ?? []) {
       const p = project({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
+      if(r.artifact) {
+        g.fillStyle(0x344438,.22);g.fillEllipse(p.x,p.y,r.w*.95,r.h*.4);
+        for(let i=0;i<7;i++) {
+          const x=p.x+((i%4)-1.5)*r.w/4,y=p.y+Math.floor(i/4)*11-5;
+          g.fillStyle(r.artifact==="picnic" ? 0x9a794f : i%2 ? 0x929c8b : 0x53665e,.9);
+          g.fillPoints([{x:x-10,y:y+3},{x:x-4,y:y-5},{x:x+12,y:y-2},{x:x+7,y:y+6}],true);
+          g.lineStyle(1,0x3b4d42,.75);g.lineBetween(x-7,y+1,x+6,y-2);
+        }
+        continue;
+      }
       g.fillStyle(r.material === "crate" ? 0x927451 : 0x7d806f, 0.6);
       for (let i = 0; i < 9; i++)
         g.fillEllipse(
@@ -251,7 +262,9 @@ export class Battlefield extends Phaser.Scene {
       node.add(cg);
       cg.fillStyle(0x586344, 0.3);
       cg.fillEllipse(r.w / 2 + 9, 8, r.w + 30, 18);
-      if (r.material === "rock") {
+      if (r.artifact) {
+        drawArtifact(cg,r);
+      } else if (r.material === "rock") {
         cg.fillStyle(0x747b75);
         cg.fillPoints(
           [
@@ -313,6 +326,10 @@ export class Battlefield extends Phaser.Scene {
               5,
             );
           }
+      }
+      if(r.label && r.w>=160) {
+        const label=this.add.text(r.w/2,18,r.label,{fontFamily:"monospace",fontSize:"8px",color:"#344638",backgroundColor:"#d9d3ae",padding:{x:3,y:2}}).setOrigin(.5,0);
+        node.add(label);
       }
       const hp = r.hp ?? TERRAIN.hp;
       if (hp < TERRAIN.hp) {
