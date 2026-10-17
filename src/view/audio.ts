@@ -147,8 +147,20 @@ export class Sound {
       }
     }
   }
-  weapon(classId: ClassId, kind: CombatEvent["kind"]) {
+  weapon(classId: CombatEvent["classId"], kind: CombatEvent["kind"]) {
     if (this.muted || !this.context || this.context.state !== "running") return;
+    if (classId === "sniper") {
+      // Global report for either squad: sharp crack, heavy body, two distant echoes.
+      // Bypass the ordinary volley throttle so simultaneous sniper shots both sound.
+      if (kind !== "fire") return;
+      this.hiss(0.16, 0.48, 9500);
+      this.tone(155, 32, 0.48, "sine", 0.24);
+      this.tone(720, 90, 0.095, "sawtooth", 0.09);
+      this.hiss(0.42, 0.14, 3600, 0.16);
+      this.hiss(0.5, 0.075, 2200, 0.38);
+      this.tone(1450, 600, 0.055, "triangle", 0.045, 0.68);
+      return;
+    }
     const ctx = this.context,
       key = `${classId}:${kind}`;
     if (ctx.currentTime - (this.last.get(key) ?? -1) < 0.065) return;

@@ -165,7 +165,8 @@ export interface Replay {
 }
 export interface CombatEvent {
   id: number;
-  classId: ClassId;
+  // Support weapons have an audio identity without becoming a soldier class.
+  classId: ClassId | "sniper";
   kind: "fire" | "impact" | "hit";
 }
 export class Battle {
@@ -208,7 +209,7 @@ export class Battle {
   combatEventId = 0;
   meleeEvents: { id: number; kind: "punch" | "kick"; blocked: boolean }[] = [];
   meleeEventId = 0;
-  emitWeapon(classId: ClassId, kind: CombatEvent["kind"]) {
+  emitWeapon(classId: CombatEvent["classId"], kind: CombatEvent["kind"]) {
     this.combatEvents.push({ id: this.combatEventId++, classId, kind });
     if (this.combatEvents.length > 64) this.combatEvents.shift();
   }
@@ -1606,7 +1607,7 @@ export class Battle {
       }
       this.damage(target, 9999, "rifleman", true);
       this.effects.push({ ...target, kind: "hit", time: 0.7, size: 26 });
-      this.emitWeapon("rifleman", "fire");
+      this.emitWeapon("sniper", "fire");
     } else if (weapon === "airstrike") {
       const scatter = scatterAirstrike(point, () => this.random(),this.fortune(side));
       this.strikes.push({

@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.33 — tactical rain and snow with clear player warnings.**
+Current prototype: **v0.39 — distinct sniper reports for both squads.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -271,3 +271,7 @@ Enemy firing positions now take priority over optional loot runs. Tracking a tar
 Friendly troops now body-block at 32 units of separation. Approaching a collision course within 52 units reduces movement to 40%; head-on orders can remain jammed until the player backs a troop out or routes it around. Clear parallel routes retain normal speed. Removed the automatic post-movement push that previously separated allies. Existing overlaps permit outward movement, and held/crouched units are not displaced. Amber rings, roster CROWDED warnings and compact field warning badges, selected-unit advice and a rate-limited radio message explain the jam; Hold cancels a movement order so normal aiming/firing can resume.
 
 Enemies maintain a tighter 24-unit separation, reserve distinct goal locations, and automatically steer around allies using normal movement steps. Candidate steps respect terrain and dry bridge routes. Lookahead considers both allies and terrain; reverse movement is a last resort so troops do not oscillate on a narrow bridge. No side is teleported or pushed through cover. The manual explains route planning, staggered crossings and the enemy coordination advantage.
+
+### v0.39 — Hear the sniper
+
+Player and enemy sniper rewards now use the same loud, distinctive crack, low boom, rolling echoes and bolt click. The sound plays once when a valid shot fires, independently of ordinary rifle volley throttling; aiming or invalid clicks stay silent. It obeys the Sound on/off toggle.
