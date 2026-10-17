@@ -1,6 +1,6 @@
 import { RUN_LIGHT, COMEBACK, CHEST_LABELS, type ChestReward, type GearDrop, type RewardChest } from "./comeback";
 import { RAIN, SNOW_SPEED, weatherAdvice, type Weather } from "./weather";
-import { MAPS, difficulty, validMapId } from "./maps";
+import { MAPS, difficulty, validMapId, validMode, enemyBrief, type DifficultyMode } from "./maps";
 import { scatterAirstrike, AIRSTRIKE_ACCURACY, type AirstrikeAccuracy } from "./airstrike";
 import { headingOf, inView } from "./vision";
 import {
@@ -155,7 +155,7 @@ export interface Replay {
   training?: boolean;
   deploymentSeconds?: number;
   aiSides?: Side[];
-  operation?: {mapId:number;level:number};
+  operation?: {mapId:number;level:number;mode?:DifficultyMode};
   commands: { tick: number; command: Command }[];
 }
 export interface CombatEvent {
@@ -244,7 +244,7 @@ export class Battle {
     squad = 0,
     readonly training = false,
     readonly deploymentSeconds = 0,
-    readonly operation?: {mapId:number;level:number},
+    readonly operation?: {mapId:number;level:number;mode?:DifficultyMode},
   ) {
     this.planningTicks = training
       ? 0
@@ -253,7 +253,7 @@ export class Battle {
     if (training)
       this.cover = TRAINING_COVER.map((r) => ({ ...r, hp: TERRAIN.hp }));
     if (!training && operation) {
-      if(!validMapId(operation.mapId)||!Number.isInteger(operation.level)||operation.level<1||operation.level>10)throw new Error("Invalid campaign operation");
+      if((operation.mode!==undefined&&!validMode(operation.mode))||!validMapId(operation.mapId)||!Number.isInteger(operation.level)||operation.level<1||operation.level>10)throw new Error("Invalid campaign operation");
       const map=MAPS[operation.mapId];
       this.cover=map.cover.map(r=>({...r,hp:TERRAIN.hp}));
       this.water=map.water.map(r=>({...r}));this.bridges=map.bridges.map(r=>({...r}));
@@ -310,15 +310,20 @@ export class Battle {
         },
       );
     if(!training && operation) {
-      const d=difficulty(operation.level);
+      const d=difficulty(operation.level,operation.mode);
       this.soldiers=this.soldiers.filter(s=>s.side===0||s.slot<d.enemyCount);
       this.soldiers.filter(s=>s.side===1).forEach(s=>{s.hp=Math.round(CLASSES[s.classId].hp*d.enemyHealth);});
+      if(d.tactics>=3) {
+        const roster:ClassId[]=["rifleman","bazooka","lobber","bazooka",this.weather==="rain"?"rifleman":"torch"];
+        this.soldiers.filter(s=>s.side===1).forEach(s=>{s.classId=roster[s.slot];s.hp=this.maxHp(s);});
+      }
+      this.note(`Enemy briefing: ${enemyBrief(operation.level,operation.mode)}.`);
       this.note(`Stage ${operation.level}/10: ${MAPS[operation.mapId].name}.`);
       if(this.weather!=="clear")this.note(this.weather==="rain" ? "Rain: Torch weakened. Favor rifles and explosives." : "Deep snow: heavy troops slowed. Light troops lead.");
     } else this.note("Operation: questionable decisions.");
   }
   maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
-  get challenge() { return this.operation ? difficulty(this.operation.level) : null; }
+  get challenge() { return this.operation ? difficulty(this.operation.level,this.operation.mode) : null; }
   get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
   get weatherAdvice() {return weatherAdvice(this.weather);}
   weaponRange(s:Soldier) {return CLASSES[s.classId].range * (s.classId==="torch" && this.weather==="rain" ? RAIN.flameRange : 1);}
@@ -886,7 +891,7 @@ export class Battle {
       s.heat = Math.min(TUNING.flameMaxHeat, (s.heat ?? 0) + TUNING.flameBurstHeat);
       if (s.heat >= TUNING.flameMaxHeat) s.overheated = true;
     }
-    s.autoFireWait = s.cooldown * TUNING.passiveFireMultiplier;
+    s.autoFireWait = s.cooldown * TUNING.passiveFireMultiplier * (s.side===1 ? this.challenge?.volley ?? 1 : 1);
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
     this.stats.shots++;
@@ -1215,6 +1220,46 @@ export class Battle {
     const amount = kind === "kick" ? TUNING.kickDamage : TUNING.brawlDamage;
     this.damage(t, amount * (t.blocking ? TUNING.blockReduction : 1));
   }
+  get enemyTactics() {return this.challenge?.tactics??0;}
+  threatAt(s:Soldier,p:Point) {
+    return this.soldiers.filter(e=>e.side!==s.side&&e.life==="alive"&&!e.unarmed&&distance(e,p)<=this.weaponRange(e)&&inView(e,p)&&!blocked(e,p,this.cover)).length;
+  }
+  // Decisions run on the normal AI think clock, never frame-perfect reactions.
+  assistedOrder(s:Soldier) {
+    const tier=s.side===1?this.enemyTactics:0;
+    if(!tier)return false;
+    if(tier>=3) {
+      const strike=this.strikes.find(a=>!a.impacted&&distance(s,a.point)<TUNING.airstrikeRadius+30);
+      if(strike) {
+        const radius=TUNING.airstrikeRadius+65;
+        const candidates=Array.from({length:16},(_,i)=>({x:strike.point.x+Math.cos(i*Math.PI/8)*radius,y:strike.point.y+Math.sin(i*Math.PI/8)*radius}))
+          .filter(p=>legal(p,this.dryCover())&&pathfind(s,p,this.dryCover()).length>0)
+          .sort((a,b)=>distance(s,a)-distance(s,b));
+        if(candidates[0]) {s.takingCover=false;s.hold=false;s.target=null;s.terrainTarget=null;this.setGoal(s,candidates[0],true);return true;}
+      }
+    }
+    const target=this.chooseTarget(s);
+    if(!target)return false;
+    const range=distance(s,target),canEngage=this.canShoot(s,target)&&range<=this.weaponRange(s);
+    const rifleThreat=this.soldiers.some(e=>e.side!==s.side&&e.life==="alive"&&e.classId==="rifleman"&&distance(e,s)>120&&distance(e,s)<this.weaponRange(e)&&inView(e,s)&&!blocked(e,s,this.cover));
+    if(s.takingCover) {
+      if(tier>=2&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.75) {s.target=target.id;this.facePoint(s,target);return true;}
+      s.takingCover=false;s.hold=false;
+    }
+    if(tier>=2&&!s.unarmed&&!this.inWater(s)&&!s.path.length&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.65&&["rifleman","lobber"].includes(s.classId)) {
+      s.takingCover=true;s.hold=true;s.path=[];s.goal=null;s.terrainTarget=null;s.formationSpeed=undefined;
+      s.cooldown=Math.max(0,s.cooldown)*TUNING.coverReloadMultiplier;s.autoFireWait=(s.autoFireWait??0)*TUNING.coverReloadMultiplier;s.steadyTime=0;
+      s.target=target.id;this.facePoint(s,target);return true;
+    }
+    if(tier>=4&&!s.unarmed&&["bazooka","sapper"].includes(s.classId)&&!this.inWater(s)) {
+      const hit=firstCoverHit(s,target,this.cover);
+      if(hit&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
+        s.target=null;s.terrainTarget={x:hit.cover.x+hit.cover.w/2,y:hit.cover.y+hit.cover.h/2};
+        s.path=[];s.goal=null;s.hold=true;this.facePoint(s,s.terrainTarget);return true;
+      }
+    }
+    return false;
+  }
   chooseTarget(s: Soldier) {
     const w = CLASSES[s.classId];
     return this.combatants()
@@ -1222,7 +1267,7 @@ export class Battle {
       .sort((a, b) => {
         const score = (t: Combatant) =>
           distance(s, t) +
-          t.hp * 0.4 +
+          t.hp * (s.side===1&&this.enemyTactics>=1?.8:.4) +
           (this.safeBlast(s, t) ? 0 : TUNING.aiUnsafeBlastPenalty) +
           this.soldiers.filter(
             (o) =>
@@ -1231,7 +1276,7 @@ export class Battle {
               o.life === "alive" &&
               o.target === t.id,
           ).length *
-            32 +
+            (s.side===1&&this.enemyTactics>=1?-55:32) +
           (w.arc ? 0 : blocked(s, t, this.cover) ? 100 : 0) -
           (w.radius
             ? this.soldiers.filter(
@@ -1245,8 +1290,11 @@ export class Battle {
       })[0];
   }
   ai(s: Soldier) {
+    if(this.assistedOrder(s))return;
+    s.terrainTarget=null;
+    s.hold=false;
     const chest=this.chests.find(c=>c.claimedBy===null&&c.expiresAt>this.time);
-    if(chest) {
+    if(chest&&!this.inWater(s)) {
       const runners=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive"&&u.brawl===null&&u.drowningTime<=0&&!u.takingCover)
         .sort((a,b)=>distance(a,chest)/this.landSpeed(a)-distance(b,chest)/this.landSpeed(b)||a.id-b.id);
       const allies=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive").length;
@@ -1347,6 +1395,7 @@ export class Battle {
       candidates.sort((a, b) => {
         const score = (p: Point) =>
           distance(s, p) +
+          (s.side===1&&this.enemyTactics>=2 ? this.threatAt(s,p)*65+("classId" in t&&inView(t,p)?110:0) : 0) +
           (this.safeBlast({ ...s, ...p }, t)
             ? 0
             : TUNING.aiUnsafePositionPenalty) +

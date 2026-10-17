@@ -1,14 +1,14 @@
 import { type Campaign, validHistory, nickname } from "./sim/campaign";
-import { campaignRoute } from "./sim/maps";
+import { campaignRoute, validMode, type DifficultyMode } from "./sim/maps";
 const KEY="brigadier-bedlam.campaign.v1";
 export const API=import.meta.env.DEV?"http://localhost:8791":"https://brigadier-bedlam-scores.99redder.workers.dev";
-export interface ScoreRow { name:string; score:number; rounds:number; wins:number; }
+export interface ScoreRow { name:string; score:number; rounds:number; wins:number; mode?:DifficultyMode; }
 export interface SaveState { name:string; run:Campaign|null; records:{run:Campaign;name:string;pending:boolean}[]; }
 export let storageAvailable=true;
 export let saved:SaveState={name:"",run:null,records:[]};
 try {
  const raw=JSON.parse(localStorage.getItem(KEY)??"null");
- const validRun=(r:Campaign)=>r&&typeof r.id==="string"&&typeof r.claim==="string"&&Number.isInteger(r.seed)&&r.seed>=0&&r.seed<=0xffffffff&&(r.squad===undefined||[0,1,2].includes(r.squad))&&JSON.stringify(r.route)===JSON.stringify(campaignRoute(r.seed))&&Array.isArray(r.history)&&(r.history.length===0||validHistory(r.history));
+ const validRun=(r:Campaign)=>r&&(r.mode===undefined||validMode(r.mode))&&r.history?.every(x=>x.mode===r.mode)&&typeof r.id==="string"&&typeof r.claim==="string"&&Number.isInteger(r.seed)&&r.seed>=0&&r.seed<=0xffffffff&&(r.squad===undefined||[0,1,2].includes(r.squad))&&JSON.stringify(r.route)===JSON.stringify(campaignRoute(r.seed))&&Array.isArray(r.history)&&(r.history.length===0||validHistory(r.history));
  if(raw&&typeof raw.name==="string"&&Array.isArray(raw.records))saved={name:nickname(raw.name),run:validRun(raw.run)?raw.run:null,records:raw.records.filter((r:{run:Campaign;name:string})=>validRun(r.run)&&typeof r.name==="string"&&(r.name===""||nickname(r.name))).slice(0,50)};
 }catch{storageAvailable=false;/* Private browsing or a corrupt save must never prevent playing. */}
 export function persist(){try{localStorage.setItem(KEY,JSON.stringify(saved));storageAvailable=true;}catch{storageAvailable=false;/* Keep the in-memory run playable. */}}

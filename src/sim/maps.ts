@@ -52,12 +52,34 @@ export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBan
     {x:365,y:530,label:"SOUTH DROP"}, {x:735,y:22,label:"NORTH DROP"},
   ]};
 });
-export function difficulty(level: number) {
+export const MODES = {
+  easy: {name:"Easy",score:1,description:"A gentler tour. Enemy coordination arrives later."},
+  medium: {name:"Medium",score:1.5,description:"Recommended. Flanking, cover and coordinated volleys build across the tour."},
+  hard: {name:"Hard",score:2,description:"Tactical enemies from the start. Stronger armor and faster reloads."},
+} as const;
+export type DifficultyMode = keyof typeof MODES;
+export const validMode=(value:unknown):value is DifficultyMode=>typeof value==="string"&&Object.hasOwn(MODES,value);
+export function difficulty(level: number, mode?: DifficultyMode) {
   const n = Math.max(1,Math.min(10,level));
-  return { level:n, enemyCount:n===1?3:n<=3?4:5,
+  const legacy = { level:n, enemyCount:n===1?3:n<=3?4:5,
     enemyHealth: .55+(n-1)*.075, enemySpeed:.65+(n-1)*.055,
     enemyReload:1.6-(n-1)*.085, enemySpread:1.8-(n-1)*.09,
     enemyThink:2.2-(n-1)*.14, enemyPowers:n>=4, enemyMedics:n>=6,
+    tactics:0, volley:1,
+  };
+  // Preserve existing tours/replays; all newly created tours select an explicit mode.
+  if(!mode)return legacy;
+  const progress=(n-1)/9;
+  const rank=mode==="easy"?0:mode==="medium"?1:2;
+  const tactics=Math.min(4,rank===0?Math.floor((n-1)/4):Math.floor((n-1)/2)+(rank===2?1:0));
+  return {...legacy,tactics,
+    enemyHealth:[.55,.65,.8][rank]+progress*[.6,.9,1.1][rank],
+    enemySpeed:[.62,.7,.78][rank]+progress*[.3,.34,.36][rank],
+    enemyReload:[1.75,1.55,1.35][rank]-progress*[.8,.82,.75][rank],
+    enemySpread:[2.1,1.9,1.7][rank]-progress*[.65,.8,.85][rank],
+    enemyThink:[2.4,1.8,1.35][rank]-progress*[1,1.05,.8][rank],
+    enemyPowers:n>=[6,4,3][rank],enemyMedics:n>=[8,6,4][rank],
+    volley:tactics>=3?(tactics>=4?.15:.4):1,
   };
 }
 export function campaignRoute(seed: number) {
@@ -66,3 +88,14 @@ export function campaignRoute(seed: number) {
   return ids;
 }
 export const validMapId=(id:number)=>Number.isInteger(id)&&id>=0&&id<MAPS.length;
+
+export function enemyBrief(level:number,mode?:DifficultyMode) {
+ const d=difficulty(level,mode),notes=[`${d.enemyCount} opponents`];
+ if(d.tactics>=1)notes.push("focus fire");
+ if(d.tactics>=2)notes.push("flanking & defensive cover");
+ if(d.tactics>=3)notes.push("bomb evasion & rapid volleys");
+ if(d.tactics>=4)notes.push("cover demolition");
+ if(d.enemyPowers)notes.push("support powers");
+ if(d.enemyMedics)notes.push("medics");
+ return notes.join(" · ");
+}

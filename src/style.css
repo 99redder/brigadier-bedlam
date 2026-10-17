@@ -940,3 +940,20 @@ p {
 .gear-control {background:#496b58;color:#f2e7c9;}
 .gear-control:disabled {opacity:.45;cursor:default;}
 .chest-status {display:block;color:#ffe09a;font:700 .8em "DM Sans",sans-serif;margin-top:.3em;}
+
+.difficulty-picker {border:1px solid #8b936c;padding:.7em;margin:.8em 0;color:var(--ink);}
+.difficulty-picker legend {font:700 .75em monospace;text-transform:uppercase;}
+.difficulty-picker>div {display:grid;grid-template-columns:repeat(3,1fr);gap:.65em;}
+.difficulty-option {display:flex;gap:.5em;padding:.6em;border:2px solid transparent;cursor:pointer;background:#d2d0ab;}
+.difficulty-option:has(input:checked) {border-color:#9b452e;background:#e5d797;}
+.difficulty-option input {accent-color:#87432d;align-self:flex-start;margin-top:.2em;}
+.difficulty-option strong {display:block;font-size:1em;}
+.difficulty-option small {font:600 .7em monospace;}
+.difficulty-option span span {display:block;font-size:.75em;line-height:1.35;margin-top:.3em;}
+@media(max-width:650px){.difficulty-picker>div{grid-template-columns:1fr;}}
+@media(min-width:900px){
+ .squad-screen .screen-inner {padding:2% 6%;}
+ .squad-screen .squad-card h3 {margin-top:.3em;}
+ .squad-screen .squad-card p {min-height:2.3em;}
+ .squad-screen .squad-portraits {height:4.6em;}
+}
