@@ -84,11 +84,11 @@ describe("timed comeback chests",()=>{
   advance(b,29);expect(b.chests).toEqual([]);advance(b,1);expect(b.chestsSpawned).toBe(1);expect(b.chests[0].expiresAt).toBeCloseTo(75);
   advance(b,44);expect(b.chestsSpawned).toBe(1);advance(b,1);expect(b.chestsSpawned).toBe(2);expect(b.chests.filter(c=>c.claimedBy===null)).toHaveLength(1);
  });
- for(const map of MAPS)it(`${map.name}: spawns a reachable dry chest away from troops and cover`,()=>{
+ for(const map of MAPS)it(`${map.name}: spawns a reachable chest in its authored reward area, away from troops and cover`,()=>{
   const b=new Battle(42,0,false,0,{mapId:map.id,level:10});b.aiSides=[];b.time=30;
-  expect(b.spawnChest()).toBe(true);const c=b.chests[0];expect(legal(c,b.cover)).toBe(true);expect(b.inWater(c)).toBe(false);
+  expect(b.spawnChest()).toBe(true);const c=b.chests[0];expect(legal(c,b.cover)).toBe(true);expect(b.inWater(c)).toBe(map.layout==="lake");
   expect(b.soldiers.every(s=>distance(s,c)>=75)).toBe(true);
-  for(const side of [0,1]){const start=b.soldiers.find(s=>s.side===side)!;const path=pathfind(start,c,b.dryCover());expect(path.length).toBeGreaterThan(0);expect(distance(path.at(-1)!,c)).toBeLessThan(32);}
+  for(const side of [0,1]){const start=b.soldiers.find(s=>s.side===side)!;const path=pathfind(start,c,map.layout==="lake"?b.cover:b.dryCover());expect(path.length).toBeGreaterThan(0);expect(distance(path.at(-1)!,c)).toBeLessThan(32);}
  });
  it("opens once for a living nearby runner, then shows its reward briefly",()=>{
   const {b,a}=fixture();b.dropGear(a);b.time=30;b.spawnChest();const c=b.chests[0];a.x=c.x;a.y=c.y;b.random=()=>0;

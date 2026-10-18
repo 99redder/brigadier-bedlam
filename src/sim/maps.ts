@@ -5,21 +5,59 @@ export interface MapSpec {
   id: number; name: string; briefing: string;
   ground: number; waterColor: number; environment: Environment;
   cover: Cover[]; water: Rect[]; bridges: Rect[];
+  layout: "river" | "lake"; terrainAdvice: string; rewardZone?: Rect;
   supplies: { x: number; y: number; label: string }[];
 }
-// Each map has authored river bends, bridge placement and shelter rows. Campaign order is independent of difficulty.
-const designs = [
-  ["Picnic Panic", "Broad shelters and a narrow creek. Establish a firing lane before advancing.", [0,-20,10,-10,25,0,20,-5], 78, 0, [120,300,430]],
-  ["Sunstroke Salute", "A winding river puts the safe crossing at the southern end. Watch both approaches.", [-30,0,30,0,-25,10,35,0], 94, 7, [80,245,410]],
-  ["Tea Break Trenches", "Staggered sandbags make diagonal firing lanes. Turn troops to cover the gaps.", [20,-10,-35,0,30,5,-20,10], 90, 1, [145,280,455]],
-  ["Muddy Moustache", "Wide muddy banks and a northern bridge reward a cautious opening route.", [-10,25,0,-30,5,30,0,-25], 118, 0, [100,320,465]],
-  ["Crooked Crossing", "A zigzag channel and a southern crossing split your squad's safe and risky routes.", [35,0,-30,5,30,-5,-35,0], 106, 6, [65,230,390]],
-  ["Quartermaster's Folly", "Shelters face awkward supply alcoves. Leave a covering soldier before making a run.", [-25,5,35,0,-30,0,30,10], 100, 2, [110,285,450]],
-  ["The Long Lunch", "A broad river forces a long northern detour. Coordinate movement rather than trickling in.", [5,30,0,-30,-5,25,5,-20], 126, 0, [75,250,425]],
-  ["Soggy Bottom", "An offset southern bridge and tight bank shelters make explosive cover destruction useful.", [30,10,-20,10,35,0,-30,-5], 112, 7, [140,305,460]],
-  ["Brass Hat Bottleneck", "Paired rock teeth narrow the lanes. Cover your flank and avoid bunching up.", [-35,-5,25,0,-25,5,30,0], 122, 1, [90,260,435]],
-  ["Frostbite Fiasco", "Long diagonal lanes and a remote crossing demand a plan, facing orders and timely volleys.", [15,-20,10,35,0,-30,0,25], 132, 6, [60,220,400]],
-] as const;
+// Actual shoreline geometry, crossings and objectives are authored together.
+// Bands form one continuous silhouette and are shared by rendering and hazards.
+interface Layout {
+  name: string; advice: string; layout: "river" | "lake";
+  start: number; banks: readonly (readonly [number, number])[];
+  bridgeBand: number; drops: readonly (readonly [number, number])[];
+  rows: readonly number[]; rewardZone?: Rect;
+}
+const designs: Layout[] = [
+  {name:"Picnic Panic", layout:"river", start:0,
+    advice:"The creek bends east. Cross safely at the north bridge or risk the central water drop.",
+    banks:[[425,495],[395,485],[440,520],[480,580],[530,610],[565,655],[550,630],[510,590]], bridgeBand:0,
+    drops:[[530,245],[390,275],[690,450]],rows:[120,300,430]},
+  {name:"Sunstroke Salute", layout:"river", start:0,
+    advice:"A diagonal river cuts from northwest to southeast. The southern bridge is a long detour; supplies follow the bends.",
+    banks:[[315,405],[355,455],[395,505],[435,565],[495,635],[555,685],[610,730],[665,775]], bridgeBand:7,
+    drops:[[450,175],[605,385],[535,65]],rows:[80,245,410]},
+  {name:"Tea Break Trenches", layout:"river", start:0,
+    advice:"A westward dogleg splits the firing lanes. The northeast bridge is safe, but the western bend holds two rewards.",
+    banks:[[600,700],[595,705],[565,675],[485,615],[440,540],[385,475],[380,480],[415,505]], bridgeBand:1,
+    drops:[[430,385],[550,245],[570,490]],rows:[145,280,455]},
+  {name:"Muddy Moustache", layout:"lake", start:70,
+    advice:"A broad central mud lake holds EVERY reward, including timed chests. Circle either shore for combat; swim for supplies. The north bridge skirts its narrow head.",
+    banks:[[450,650],[370,730],[330,770],[330,770],[390,710],[460,640]], bridgeBand:0,
+    drops:[[475,235],[620,290],[510,375]],rows:[100,320,465], rewardZone:{x:440,y:210,w:220,h:180}},
+  {name:"Crooked Crossing", layout:"river", start:0,
+    advice:"A Z-shaped river widens into a central reach. Supplies lie on three different bends; the southwest bridge opens a flanking route.",
+    banks:[[375,485],[405,515],[440,600],[505,655],[595,705],[600,700],[530,670],[485,595]], bridgeBand:6,
+    drops:[[460,105],[650,315],[460,455]],rows:[65,230,390]},
+  {name:"Quartermaster's Folly", layout:"river", start:0,
+    advice:"A serpentine channel snakes between the wrecks. The western bridge and eastern supply bend pull troops in opposite directions.",
+    banks:[[515,645],[430,570],[402,498],[440,560],[525,655],[607,713],[545,675],[477,603]], bridgeBand:2,
+    drops:[[580,315],[660,385],[570,215]],rows:[110,285,450]},
+  {name:"The Long Lunch", layout:"lake", start:140,
+    advice:"A sprawling southern lake leaves a broad northern land route. EVERY reward floats in the lake's middle; the southern bridge is the long way around.",
+    banks:[[460,620],[350,740],[320,780],[365,740],[440,650]], bridgeBand:4,
+    drops:[[465,260],[630,305],[520,375]],rows:[75,250,425], rewardZone:{x:430,y:235,w:240,h:150}},
+  {name:"Soggy Bottom", layout:"lake", start:70,
+    advice:"A rain-swollen northern lake leaves the southern shore open. EVERY reward is offshore. Use the north bridge to flank, or send a light swimmer into the middle.",
+    banks:[[450,650],[350,730],[310,790],[340,760],[440,660]], bridgeBand:0,
+    drops:[[470,185],[640,245],[510,325]],rows:[140,305,460], rewardZone:{x:430,y:170,w:240,h:150}},
+  {name:"Brass Hat Bottleneck", layout:"river", start:0,
+    advice:"Wide upper and lower basins squeeze into a narrow central channel. Race for the central bank reward or contest the two basin drops.",
+    banks:[[395,645],[410,630],[465,615],[510,590],[510,590],[490,650],[470,710],[450,730]], bridgeBand:6,
+    drops:[[520,105],[590,525],[650,275]],rows:[90,260,435]},
+  {name:"Frostbite Fiasco", layout:"river", start:0,
+    advice:"An icy diagonal river runs northeast to southwest. The remote northeast bridge is safe; the river reward and two opposite-bank caches demand separate routes.",
+    banks:[[645,775],[600,720],[535,685],[500,620],[430,570],[387,513],[335,445],[297,403]], bridgeBand:0,
+    drops:[[500,315],[450,210],[650,485]],rows:[60,220,400]},
+];
 // Landmark footprints are authored per map. They use the same solid-cover simulation as rocks.
 const landmarks: {kind:ArtifactKind; label:string; briefing:string; footprints:number[][]}[] = [
   {kind:"picnic",label:"OFFICERS' PICNIC",briefing:"Overturned picnic tables and abandoned hampers shelter a lunch nobody ordered.",footprints:[[205,110,170,72],[715,350,165,68],[315,370,104,46],[735,125,112,48]]},
@@ -33,25 +71,31 @@ const landmarks: {kind:ArtifactKind; label:string; briefing:string; footprints:n
   {kind:"staff-car",label:"BRASS HAT PARKING",briefing:"Crumpled staff cars form an extremely unofficial motorcade. Open a lane through the wrecks.",footprints:[[210,180,180,68],[715,355,180,68],[295,415,122,52],[715,110,132,54]]},
   {kind:"radio",label:"LAST ORDERS OUTPOST",briefing:"Toppled aerials and ruined radio huts make a final defensive line. The complaints desk is offline.",footprints:[[205,330,190,84],[705,145,190,84],[285,105,132,62],[710,395,136,62]]},
 ];
-export const MAPS: MapSpec[] = designs.map(([name,briefing,bends,width,bridgeBand,rows],id) => {
-  const water = bends.map((bend,i) => ({x:550 + bend - width/2,y:i*70,w:width,h:70}));
-  const center = 550+bends[bridgeBand];
-  const bridges = [{x:center-width/2-26,y:bridgeBand*70+4,w:width+52,h:62}];
+export const MAPS: MapSpec[] = designs.map((design,id) => {
+  const {name,advice,layout,rows,rewardZone}=design;
+  const water = design.banks.map(([left,right],i) => ({x:left,y:design.start+i*70,w:right-left,h:70}));
+  const crossing=water[design.bridgeBand];
+  const bridges = [{x:crossing.x-26,y:crossing.y+4,w:crossing.w+52,h:62}];
   const theme=landmarks[id], environment=ENVIRONMENTS[id];
-  const cover: Cover[] = theme.footprints.map(([x,y,w,h],index)=>({x,y,w,h,material:"rock",artifact:index===(id%2===0?3:2)?([0,3,6,7].includes(id)?"boulder":"bunker"):theme.kind,indestructible:index===(id%2===0?3:2)||undefined,label:theme.label}));
-  // Smaller barriers frame the wrecks, leaving passages around the broad landmarks.
+  const cover: Cover[] = theme.footprints.map(([originalX,y,originalW,h],index)=>{
+    // Keep broad landmarks on their bank, with room to walk along the shoreline.
+    const banks=water.filter(r=>r.y<y+h+24&&r.y+r.h>y-24);
+    const left=originalX<550;
+    const shore=left?Math.min(...banks.map(r=>r.x),1100):Math.max(...banks.map(r=>r.x+r.w),0);
+    const w=Math.min(originalW,left?shore-56-170:930-shore-56);
+    const x=left?Math.min(originalX,shore-56-w):Math.max(originalX,shore+56);
+    return {x,y,w,h,material:"rock",artifact:index===(id%2===0?3:2)?([0,3,6,7].includes(id)?"boulder":"bunker"):theme.kind,indestructible:index===(id%2===0?3:2)||undefined,label:theme.label};
+  });
   for (const side of [0,1]) {
-    const x=side===0?220:800;
-    const y=rows[1]+(side?20:-20);
-    // Only add a shelter where it leaves a clear gap from the themed footprints.
+    const x=side===0?220:800, y=rows[1]+(side?20:-20);
     const small={x,y,w:82,h:34,material:"sandbags" as const};
-    if(!cover.some(r=>small.x<r.x+r.w+22&&small.x+small.w+22>r.x&&small.y<r.y+r.h+22&&small.y+small.h+22>r.y))cover.push(small);
+    if(![...cover,...water].some(r=>small.x<r.x+r.w+22&&small.x+small.w+22>r.x&&small.y<r.y+r.h+22&&small.y+small.h+22>r.y))cover.push(small);
   }
-  const middle = water[4];
-  return {id,name,briefing:environment.briefing+" "+theme.briefing+" "+briefing,environment,ground:environment.ground,waterColor:environment.water,water,bridges,cover,supplies:[
-    {x:middle.x+middle.w/2,y:middle.y+35,label:"RIVER DROP"},
-    {x:365,y:530,label:"SOUTH DROP"}, {x:735,y:22,label:"NORTH DROP"},
-  ]};
+  return {id,name,layout,terrainAdvice:advice,rewardZone,
+    briefing:environment.briefing+" "+theme.briefing+" "+advice,
+    environment,ground:environment.ground,waterColor:environment.water,water,bridges,cover,
+    supplies:design.drops.map(([x,y],i)=>({x,y,label:layout==="lake"?`LAKE DROP ${i+1}`:`${i+1} / CONTESTED DROP`})),
+  };
 });
 export const MODES = {
   easy: {name:"Easy",score:1,description:"Gentler enemies. A small luck advantage builds gradually."},

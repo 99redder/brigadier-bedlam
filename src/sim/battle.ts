@@ -592,6 +592,15 @@ export class Battle {
     if (s.path.length) s.steadyTime = 0;
     s.repath = 0.65;
   }
+  private setRewardGoal(s: Soldier, point: Point, dry = false) {
+    if (!this.inWater(point)) { this.setGoal(s, point, dry); return; }
+    // A water objective requires swimming; do not snap it back onto the bank.
+    s.goal = { x: point.x, y: point.y };
+    s.path = pathfind(s, point, this.cover);
+    s.safeRoute = false;
+    s.steadyTime = 0;
+    s.repath = 0.65;
+  }
   inWater(p: Point) {
     return (
       this.water.some((r) => inside(p, r)) &&
@@ -1322,13 +1331,13 @@ export class Battle {
       s.target=readyTarget.id;s.path=[];s.goal=null;this.aimAi(s,readyTarget);return;
     }
     const chest=this.chests.find(c=>c.claimedBy===null&&c.expiresAt>this.time);
-    if(chest&&!this.inWater(s)) {
+    if(chest&&(!this.inWater(s)||this.inWater(chest))) {
       const runners=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive"&&u.brawl===null&&u.drowningTime<=0&&!u.takingCover)
         .sort((a,b)=>distance(a,chest)/this.landSpeed(a)-distance(b,chest)/this.landSpeed(b)||a.id-b.id);
       const allies=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive").length;
       const foes=this.soldiers.filter(u=>u.side!==s.side&&u.life==="alive").length;
       if(runners[0]?.id===s.id&&distance(s,chest)<(allies<foes?600:360)&&!this.soldiers.some(t=>t.side!==s.side&&t.life==="alive"&&distance(s,t)<95)){
-        s.target=null;s.terrainTarget=null;this.setGoal(s,chest,true);return;
+        s.target=null;s.terrainTarget=null;this.setRewardGoal(s,chest,true);return;
       }
     }
 
@@ -1367,12 +1376,7 @@ export class Battle {
         const drop = task.drop;
         s.target = null;
         s.terrainTarget = null;
-        if (this.inWater(drop)) {
-          s.goal = { x: drop.x, y: drop.y };
-          s.path = pathfind(s, drop, this.cover);
-          s.safeRoute = false;
-          s.repath = 0.65;
-        } else this.setGoal(s, drop);
+        this.setRewardGoal(s, drop);
         return;
       }
     }
@@ -1511,8 +1515,11 @@ export class Battle {
     const strength=(side:Side)=>count(side)/this.soldiers.filter(s=>s.side===side).length;
     const trailing:Side|null=strength(0)<strength(1)?0:strength(1)<strength(0)?1:null;
     const candidates:Point[]=[];
-    for(const x of [170,300,410,690,800,930])for(const y of [60,170,280,390,500]){
-      const p={x,y};if(!legal(p,this.cover)||this.inWater(p)||units.some(s=>distance(s,p)<75))continue;
+    const zone=MAPS[this.operation.mapId].rewardZone;
+    const xs=zone?Array.from({length:Math.floor(zone.w/60)+1},(_,i)=>zone.x+i*60):[170,300,410,690,800,930];
+    const ys=zone?Array.from({length:Math.floor(zone.h/60)+1},(_,i)=>zone.y+i*60):[60,170,280,390,500];
+    for(const x of xs)for(const y of ys){
+      const p={x,y};if(!legal(p,this.cover)||this.inWater(p)!==!!zone||units.some(s=>distance(s,p)<75))continue;
       if(this.chests.some(c=>c.claimedBy===null&&distance(c,p)<80)||this.gear.some(g=>distance(g,p)<30))continue;
       candidates.push(p);
     }
@@ -1533,7 +1540,7 @@ export class Battle {
     const fallen=this.soldiers.filter(s=>s.side===collector.side&&s.life!=="alive").sort((a,b)=>a.id-b.id)[0];
     if(!fallen)return false;
     let point:Point|undefined;
-    for(const radius of [44,68,92])for(let i=0;i<12;i++){
+    for(const radius of (this.inWater(collector)?[44,68,92,140,200,280,360]:[44,68,92]))for(let i=0;i<12;i++){
       if(point)break;const p={x:collector.x+Math.cos(i*Math.PI/6)*radius,y:collector.y+Math.sin(i*Math.PI/6)*radius};
       if(legal(p,this.cover)&&!this.inWater(p)&&!this.soldiers.some(s=>s.life==="alive"&&distance(s,p)<(s.side===collector.side?25:60)))point=p;
     }

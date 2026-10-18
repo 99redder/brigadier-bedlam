@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.39 — distinct sniper reports for both squads.**
+Current prototype: **v0.40 — authored river courses, broad lakes and contested reward layouts.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -242,7 +242,7 @@ Select a soldier and use **Drop gear** (**B**, or **M** in the left-handed prese
 
 **Return for gear**, the same key, or clicking the selected soldier's own kit sends them back by a dry route, or swims out first if already in the river. Only its owner can recover it. Another move/hold/cover order cancels recovery. Equipping preserves health percentage and imposes at least 1.5 seconds before firing. Distinct light-shirt sprites, empty hands, roster status and labeled kit markers show the tradeoff.
 
-Campaign chests first arrive after 30 combat seconds, then every 45 seconds, up to six per map. Each expires after 45 seconds; deployment/pause freeze the clock. Safe dry spawn candidates favor a side that has lost more of its starting roster. Both teams compete for chests, including AI runners. Rewards are a sniper shot, an inaccurate airstrike, 35% maximum-health treatment/extinguishing for living allies, or a recall of one fallen soldier at 60% health in a nearby safe spot. Recall can restore permanent casualties, is weighted higher when outnumbered by at least two, and reuses existing roster slots without replacing dropped gear. No chests spawn in Boot camp. The HUD and field manual explain timing, recovery and reward rules.
+Campaign chests first arrive after 30 combat seconds, then every 45 seconds, up to six per map. Each expires after 45 seconds; deployment/pause freeze the clock. Spawn candidates (dry ground on rivers, central water on lakes) favor a side that has lost more of its starting roster. Both teams compete for chests, including AI runners. Rewards are a sniper shot, an inaccurate airstrike, 35% maximum-health treatment/extinguishing for living allies, or a recall of one fallen soldier at 60% health in a nearby safe spot. Recall can restore permanent casualties, is weighted higher when outnumbered by at least two, and reuses existing roster slots without replacing dropped gear. No chests spawn in Boot camp. The HUD and field manual explain timing, recovery and reward rules.
 
 
 ### v0.35 — Difficulty modes and progressive enemy tactics
@@ -275,3 +275,11 @@ Enemies maintain a tighter 24-unit separation, reserve distinct goal locations, 
 ### v0.39 — Hear the sniper
 
 Player and enemy sniper rewards now use the same loud, distinctive crack, low boom, rolling echoes and bolt click. The sound plays once when a valid shot fires, independently of ordinary rifle volley throttling; aiming or invalid clicks stay silent. It obeys the Sound on/off toggle.
+
+### v0.40 — Different battlefields, different openings
+
+Every map now has its own authored shoreline, bridge position and three starting reward positions. Rivers include an east-bending creek, opposing diagonals, a western dogleg, a Z crossing, a serpentine channel and an hourglass bottleneck. Water geometry is shared by rendering, swimming hazards and pathfinding. Landmarks sit clear of the shoreline with navigable bank passages. All maps retain a safe dry crossing.
+
+Muddy Moustache, The Long Lunch and Soggy Bottom contain broad, bounded lakes with different north/south land approaches. ALL starting drops and later timed chests appear in central open water on those maps. Going around the lake is safe; collecting rewards requires swimming. The existing class-based slowing/drowning rules apply. Enemy chest runners can pursue water objectives, and recall rewards place revived troops on a nearby dry shore rather than in the lake. Chests retain their normal timing, expiration and reward pool.
+
+Deployment advice describes the current layout without a central title overlay. The field manual and next-stage briefing include each map's route and objective tradeoff. Difficulty remains tied to campaign stage and mode, independently of shuffled map order.
