@@ -65,15 +65,15 @@ describe("enemy tactical assistance in battle",()=>{
   expect(b.assistedOrder(enemy)).toBe(true);expect(enemy.goal).not.toBeNull();expect(distance(enemy.goal!,b.strikes[0].point)).toBeGreaterThan(105);
   const before={x:enemy.x,y:enemy.y};b.step();expect(distance(enemy,before)).toBeGreaterThan(0);expect(distance(enemy,before)).toBeLessThan(2);
  });
- it("orders rockets to breach cover without shooting through it",()=>{
+ it("orders rockets to breach a wall when no safe firing corner exists",()=>{
   const {b,enemy,target}=arena();enemy.classId="bazooka";enemy.hp=b.maxHp(enemy);target.x=350;
-  b.cover=[{x:450,y:200,w:65,h:100,material:"rock",hp:100}];
+  b.cover=[{x:450,y:0,w:65,h:560,material:"rock",hp:100}];
   expect(b.assistedOrder(enemy)).toBe(true);expect(enemy.terrainTarget).not.toBeNull();expect(enemy.target).toBeNull();
   enemy.steadyTime=2;for(let i=0;i<60;i++)b.step();expect(b.stats.shots).toBeGreaterThan(0);expect(target.hp).toBe(230);
  });
  it("clears stale demolition orders when the safe firing solution disappears",()=>{
   const {b,enemy,target}=arena();enemy.classId="bazooka";target.x=350;
-  b.cover=[{x:450,y:200,w:65,h:100,material:"rock",hp:100}];b.assistedOrder(enemy);expect(enemy.terrainTarget).not.toBeNull();
+  b.cover=[{x:450,y:0,w:65,h:560,material:"rock",hp:100}];b.assistedOrder(enemy);expect(enemy.terrainTarget).not.toBeNull();
   b.cover=[];b.ai(enemy);expect(enemy.terrainTarget).toBeNull();expect(enemy.target).toBe(target.id);
  });
  it("does not strand a swimmer with a dry-only chest route",()=>{

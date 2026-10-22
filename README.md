@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.41 — dedicated enemy supply runners.**
+Current prototype: **v0.42 — proactive enemy cover and firing corners.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -289,3 +289,11 @@ Deployment advice describes the current layout without a central title overlay. 
 Hard uses dedicated light supply runners from stage 1; Medium unlocks them at stage 5. Easy and Original retain their prior AI. One healthy, unexposed soldier drops real gear and armor, races for a specific unclaimed supply drop or live chest, then returns to that exact bag to rearm. The planner weighs actual navigable routes, water slowdown/entry risk, enemy firing lanes, chest deadlines and the combat cost of sidelining a class, favoring Lobbers over heavy rockets when routes are comparable. Other enemy troops keep their combat assignments while the runner is out.
 
 Runners commit to their objective rather than changing targets every think. Capture, theft, expiry, injury, nearby threats, visible bomb warnings, a stalled route or an outbound time limit trigger a return. Losing a runner clears the assignment; a revived unarmed runner recovers its equipment before fighting. Re-equipping preserves health fraction and the normal firing delay. Runners get normal light-kit speed, armor loss and drowning rules; existing difficulty modifiers still apply. Inventory is capped at two stored powers for new runs, and a short assignment cooldown prevents repeatedly dropping gear. AI decisions remain deterministic for replays. Existing stage restrictions on spending enemy support powers remain in force.
+
+### v0.42 — Enemy cover positions and peeking
+
+Hard enables proactive cover from stage 1, Medium from stage 4, and Easy from stage 8. Enemy fighters evaluate actual solid objects for a screened shelter and a reachable, unobstructed firing corner. They reserve separate squad positions, walk to shelter, wait for reloads, peek to fire with their normal settling time, and return behind cover when reloading or under fire. A protected unit cannot fire through its own shelter. No movement, range, health or damage bonuses are added by this behavior.
+
+Exposed ranged troops also use the ordinary Take cover stance against rifles before being wounded, paying its existing doubled reload/passive cadence once on entry. They stand up when close enemies, fire or changed conditions make it inappropriate. Physical cover plans release on destruction, flanking, target displacement, an unsafe shelter or stalled movement, and bomb evasion retains priority. Already safe firing lanes are retained. Light supply runners keep their assignment and clear old cover reservations when dropping gear. Melee/short-range fighters can still advance; troops neither teleport between corners nor gain blast immunity from crouching.
+
+Regression coverage checks screened geometry, legal dry routes, clear firing corners, squad spacing, actual shelter/peek/fire/return cycles, preemptive stance penalties, cover destruction and flanking, runner interaction and deterministic replays.

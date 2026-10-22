@@ -1,3 +1,4 @@
+import { coverOrder, type CoverPlan } from "./cover-tactics";
 import { supplyRunOrder, type SupplyRun } from "./supply-runs";
 import { trafficMove, reserveEnemyGoal, TRAFFIC } from "./traffic";
 import { centeredRoll } from "./luck";
@@ -38,6 +39,9 @@ export interface Soldier extends Point {
   id: number;
   unarmed?: boolean;
   recoveringGear?: boolean;
+  coverPlan?: CoverPlan;
+  nextCoverPlanAt?: number;
+  shotsFired?: number;
   traffic?: number;
   takingCover?: boolean;
   steadyTime?: number;
@@ -749,6 +753,7 @@ export class Battle {
     }
     if (target.life !== "alive") {
       target.recoveringGear = false;
+      target.coverPlan = undefined;
       target.takingCover = false;
       target.traffic = 0;
       target.burnRemaining = 0;
@@ -886,7 +891,7 @@ export class Battle {
   }
   fireAt(s: Soldier, point: Point, target = -1, miss = false, manual = false) {
     const w = CLASSES[s.classId];
-    if(s.unarmed)return false;
+    if(s.unarmed || s.coverPlan?.phase==="shelter")return false;
     if (manual && !this.isManualTorch(s)) return false;
     if (!manual && !inView(s, point)) return false;
     const d = distance(s, point);
@@ -917,6 +922,7 @@ export class Battle {
     s.flash = 0.2;
     if (manual) { this.facePoint(s, point); s.watchAngle = undefined; }
     this.stats.shots++;
+    s.shotsFired=(s.shotsFired??0)+1;
     if (w.jam && this.random() < w.jam*(1-.9*this.fortune(s.side))) {
       s.jam = TUNING.jamDuration;
       this.effects.push({ ...s, kind: "jam", time: 1, size: 16 });
@@ -1261,7 +1267,7 @@ export class Battle {
   // Decisions run on the normal AI think clock, never frame-perfect reactions.
   assistedOrder(s:Soldier) {
     const tier=s.side===1?this.enemyTactics:0;
-    if(!tier)return false;
+    if(!tier && !this.challenge?.coverTactics)return false;
     if(tier>=3) {
       const strike=this.strikes.find(a=>!a.impacted&&distance(s,a.point)<TUNING.airstrikeRadius+30);
       if(strike) {
@@ -1269,18 +1275,19 @@ export class Battle {
         const candidates=Array.from({length:16},(_,i)=>({x:strike.point.x+Math.cos(i*Math.PI/8)*radius,y:strike.point.y+Math.sin(i*Math.PI/8)*radius}))
           .filter(p=>legal(p,this.dryCover())&&pathfind(s,p,this.dryCover()).length>0)
           .sort((a,b)=>distance(s,a)-distance(s,b));
-        if(candidates[0]) {s.takingCover=false;s.hold=false;s.target=null;s.terrainTarget=null;this.setGoal(s,candidates[0],true);return true;}
+        if(candidates[0]) {s.coverPlan=undefined;s.takingCover=false;s.hold=false;s.target=null;s.terrainTarget=null;this.setGoal(s,candidates[0],true);return true;}
       }
     }
+    if(coverOrder(this,s))return true;
     const target=this.chooseTarget(s);
     if(!target)return false;
     const range=distance(s,target),canEngage=this.canShoot(s,target)&&range<=this.weaponRange(s);
     const rifleThreat=this.soldiers.some(e=>e.side!==s.side&&e.life==="alive"&&e.classId==="rifleman"&&distance(e,s)>120&&distance(e,s)<this.weaponRange(e)&&inView(e,s)&&!blocked(e,s,this.cover));
-    if(s.takingCover) {
+    if(!this.challenge?.coverTactics && s.takingCover) {
       if(tier>=2&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.75) {s.target=target.id;this.aimAi(s,target);return true;}
       s.takingCover=false;s.hold=false;
     }
-    if(tier>=2&&!s.unarmed&&!this.inWater(s)&&!s.path.length&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.65&&["rifleman","lobber"].includes(s.classId)) {
+    if(!this.challenge?.coverTactics&&tier>=2&&!s.unarmed&&!this.inWater(s)&&!s.path.length&&canEngage&&rifleThreat&&s.hp<this.maxHp(s)*.65&&["rifleman","lobber"].includes(s.classId)) {
       s.takingCover=true;s.hold=true;s.path=[];s.goal=null;s.terrainTarget=null;s.formationSpeed=undefined;
       s.cooldown=Math.max(0,s.cooldown)*TUNING.coverReloadMultiplier;s.autoFireWait=(s.autoFireWait??0)*TUNING.coverReloadMultiplier;s.steadyTime=0;
       s.target=target.id;this.aimAi(s,target);return true;
@@ -1490,7 +1497,7 @@ export class Battle {
     if(this.training||this.winner!==null||s.unarmed||s.life!=="alive"||s.brawl!==null||s.drowningTime>0||this.inWater(s))return false;
     const fraction=s.hp/this.maxHp(s);
     this.gear.push({owner:s.id,side:s.side,classId:s.classId,x:s.x,y:s.y});
-    s.unarmed=true;s.recoveringGear=false;s.hp=this.maxHp(s)*fraction;s.formationSpeed=undefined;
+    s.coverPlan=undefined;s.unarmed=true;s.recoveringGear=false;s.hp=this.maxHp(s)*fraction;s.formationSpeed=undefined;
     if(s.target!==null||s.terrainTarget){s.goal=null;s.path=[];s.moving=false;}
     s.target=null;s.terrainTarget=null;s.flash=0;
     this.supplyRevision++;this.note(`${CLASSES[s.classId].name} dropped weapon and armor. Run light: no shooting, ${this.maxHp(s)} maximum HP. Gear stays here.`);return true;
