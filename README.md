@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.40 — authored river courses, broad lakes and contested reward layouts.**
+Current prototype: **v0.41 — dedicated enemy supply runners.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -283,3 +283,9 @@ Every map now has its own authored shoreline, bridge position and three starting
 Muddy Moustache, The Long Lunch and Soggy Bottom contain broad, bounded lakes with different north/south land approaches. ALL starting drops and later timed chests appear in central open water on those maps. Going around the lake is safe; collecting rewards requires swimming. The existing class-based slowing/drowning rules apply. Enemy chest runners can pursue water objectives, and recall rewards place revived troops on a nearby dry shore rather than in the lake. Chests retain their normal timing, expiration and reward pool.
 
 Deployment advice describes the current layout without a central title overlay. The field manual and next-stage briefing include each map's route and objective tradeoff. Difficulty remains tied to campaign stage and mode, independently of shuffled map order.
+
+### v0.41 — Enemy supply runs
+
+Hard uses dedicated light supply runners from stage 1; Medium unlocks them at stage 5. Easy and Original retain their prior AI. One healthy, unexposed soldier drops real gear and armor, races for a specific unclaimed supply drop or live chest, then returns to that exact bag to rearm. The planner weighs actual navigable routes, water slowdown/entry risk, enemy firing lanes, chest deadlines and the combat cost of sidelining a class, favoring Lobbers over heavy rockets when routes are comparable. Other enemy troops keep their combat assignments while the runner is out.
+
+Runners commit to their objective rather than changing targets every think. Capture, theft, expiry, injury, nearby threats, visible bomb warnings, a stalled route or an outbound time limit trigger a return. Losing a runner clears the assignment; a revived unarmed runner recovers its equipment before fighting. Re-equipping preserves health fraction and the normal firing delay. Runners get normal light-kit speed, armor loss and drowning rules; existing difficulty modifiers still apply. Inventory is capped at two stored powers for new runs, and a short assignment cooldown prevents repeatedly dropping gear. AI decisions remain deterministic for replays. Existing stage restrictions on spending enemy support powers remain in force.

@@ -1,3 +1,4 @@
+import { supplyRunOrder, type SupplyRun } from "./supply-runs";
 import { trafficMove, reserveEnemyGoal, TRAFFIC } from "./traffic";
 import { centeredRoll } from "./luck";
 import { RUN_LIGHT, COMEBACK, CHEST_LABELS, type ChestReward, type GearDrop, type RewardChest } from "./comeback";
@@ -205,6 +206,8 @@ export class Battle {
   }
   supplyRevision = 0;
   aiSides: Side[] = [1];
+  enemySupplyRun: SupplyRun | null = null;
+  nextEnemyRunAt = 0;
   combatEvents: CombatEvent[] = [];
   combatEventId = 0;
   meleeEvents: { id: number; kind: "punch" | "kick"; blocked: boolean }[] = [];
@@ -1323,6 +1326,7 @@ export class Battle {
       })[0];
   }
   ai(s: Soldier) {
+    if(supplyRunOrder(this,s))return;
     if(this.assistedOrder(s))return;
     s.terrainTarget=null;
     s.hold=false;
@@ -1331,7 +1335,7 @@ export class Battle {
       s.target=readyTarget.id;s.path=[];s.goal=null;this.aimAi(s,readyTarget);return;
     }
     const chest=this.chests.find(c=>c.claimedBy===null&&c.expiresAt>this.time);
-    if(chest&&(!this.inWater(s)||this.inWater(chest))) {
+    if(chest&&!(s.side===1&&this.enemySupplyRun)&&(!this.inWater(s)||this.inWater(chest))) {
       const runners=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive"&&u.brawl===null&&u.drowningTime<=0&&!u.takingCover)
         .sort((a,b)=>distance(a,chest)/this.landSpeed(a)-distance(b,chest)/this.landSpeed(b)||a.id-b.id);
       const allies=this.soldiers.filter(u=>u.side===s.side&&u.life==="alive").length;
@@ -1341,7 +1345,7 @@ export class Battle {
       }
     }
 
-    if (this.powers[s.side].length === 0) {
+    if (this.powers[s.side].length === 0 && !(s.side===1&&this.enemySupplyRun)) {
       const routes = this.soldiers
         .filter(
           (unit) =>
