@@ -1,6 +1,6 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.42 — proactive enemy cover and firing corners.**
+Current prototype: **v0.43 — rehearsed enemy playbooks for all ten maps.**
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -297,3 +297,24 @@ Hard enables proactive cover from stage 1, Medium from stage 4, and Easy from st
 Exposed ranged troops also use the ordinary Take cover stance against rifles before being wounded, paying its existing doubled reload/passive cadence once on entry. They stand up when close enemies, fire or changed conditions make it inappropriate. Physical cover plans release on destruction, flanking, target displacement, an unsafe shelter or stalled movement, and bomb evasion retains priority. Already safe firing lanes are retained. Light supply runners keep their assignment and clear old cover reservations when dropping gear. Melee/short-range fighters can still advance; troops neither teleport between corners nor gain blast immunity from crouching.
 
 Regression coverage checks screened geometry, legal dry routes, clear firing corners, squad spacing, actual shelter/peek/fire/return cycles, preemptive stance penalties, cover destruction and flanking, runner interaction and deterministic replays.
+
+### v0.43 — Enemy terrain intelligence
+
+Ten authored playbooks define distinct approaches, firing directions, overwatch/screen positions and reward priorities. Enemy orders are prepared before deployment ends, but movement and combat still wait for GO. Hard uses map intel from stage 1, Medium from stage 3, and Easy from stage 6. Hard and later stages use the full alternate flank; earlier assisted stages keep a simpler main approach. Original tours and Boot camp retain their prior rules.
+
+| Map | Rehearsed opening |
+| --- | --- |
+| Picnic Panic | Northern bridge push, with a lower-bank follow-through and south-drop screen |
+| Sunstroke Salute | Southern bridge hook and diagonal-river crossfire |
+| Tea Break Trenches | Northeast bridge pressure, split across the western dogleg |
+| Muddy Moustache | Opposite lake-shore approaches while a runner contests the central rewards |
+| Crooked Crossing | Southern bridge wing sweep, with guards on separate river bends |
+| Quartermaster's Folly | Central crossing, staggered crossfire and a southern flank |
+| The Long Lunch | Broad northern bypass plus the remote southern bridge approach |
+| Soggy Bottom | Main southern shore attack and a northern bridge flank |
+| Brass Hat Bottleneck | Southern back-door crossing while guards watch the central choke |
+| Frostbite Fiasco | Northern bridge flank with snow-adjusted mobile roles and heavy overwatch |
+
+Long-range weapons take overwatch; faster troops get flanking roles using actual weather-adjusted speed. Assault and support departures are staggered to reduce crossing traffic. Routes are normalized to legal dry positions, use existing pathfinding and squad spacing, expire or release when stalled, and yield to nearby combat, fire, cover and supply runs. Posts are held briefly before troops resume reactive combat. Replays include the same deterministic prepared roles and progress; AI creates no player commands and reads no future orders.
+
+Runner objective costs now include each map's authored drop priority, while route length, danger, deadlines and gear recovery still apply. With terrain intel enabled, sniper rewards prioritize armed heavy threats over naked decoys. Airstrikes score actual enemy groups and avoid friendly concentrations before applying the normal inaccurate scatter. They can still miss and cause friendly fire. Rehearsed troops follow a safe approach before considering demolition; they do not waste distant shots into their own cover. Useful close-range breaching remains available. Movement speeds, weapon stats, reward odds and difficulty multipliers are unchanged.

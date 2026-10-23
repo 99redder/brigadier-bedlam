@@ -1,3 +1,4 @@
+import { mapRewardCost, mapRunnerRoleCost } from "./map-strategy";
 import type { Battle, Soldier } from "./battle";
 import { RUN_LIGHT } from "./comeback";
 import { distance, pathfind, type Point } from "./geometry";
@@ -73,7 +74,7 @@ export function supplyRunOrder(b: Battle, s: Soldier): boolean {
       if(b.threatAt(unit,reward)>0 || b.soldiers.some(t=>t.side===0&&t.life==="alive"&&distance(unit,t)<130))return [];
       const route=runnerRoute(b,unit,reward);
       if(!route || route.cost/(RUN_LIGHT.speed*(b.challenge?.enemySpeed??1))>Math.min(45,reward.expiresAt-b.time-3))return [];
-      return [{unit,reward,route,score:route.cost+roleCost[unit.classId]}];
+      return [{unit,reward,route,score:route.cost+roleCost[unit.classId]+mapRewardCost(b,reward.id,reward.kind)+mapRunnerRoleCost(b,unit.id)}];
     })).sort((a,b)=>a.score-b.score||a.unit.id-b.unit.id||a.reward.id-b.reward.id);
     const task=tasks[0];
     if(task && b.dropGear(task.unit)) {

@@ -1,3 +1,4 @@
+import { prepareMapPlan, mapOpeningOrder, enemySupportTarget, type EnemyMapPlan } from "./map-strategy";
 import { coverOrder, type CoverPlan } from "./cover-tactics";
 import { supplyRunOrder, type SupplyRun } from "./supply-runs";
 import { trafficMove, reserveEnemyGoal, TRAFFIC } from "./traffic";
@@ -211,6 +212,7 @@ export class Battle {
   supplyRevision = 0;
   aiSides: Side[] = [1];
   enemySupplyRun: SupplyRun | null = null;
+  enemyMapPlan: EnemyMapPlan | null = null;
   nextEnemyRunAt = 0;
   combatEvents: CombatEvent[] = [];
   combatEventId = 0;
@@ -335,6 +337,8 @@ export class Battle {
       this.note(`Stage ${operation.level}/10: ${MAPS[operation.mapId].name}.`);
       if(this.weather!=="clear")this.note(this.weather==="rain" ? "Rain: Torch weakened. Favor rifles and explosives." : "Deep snow: heavy troops slowed. Light troops lead.");
     } else this.note("Operation: questionable decisions.");
+    this.enemyMapPlan=prepareMapPlan(this);
+    if(this.enemyMapPlan)this.note(`Enemy terrain plan: ${this.enemyMapPlan.name}.`);
   }
   maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
   get challenge() { return this.operation ? difficulty(this.operation.level,this.operation.mode) : null; }
@@ -870,6 +874,7 @@ export class Battle {
       target.side === s.side
     )
       return false;
+    if(s.side===1&&this.enemyMapPlan&&(blocked(s,target,this.cover)||!this.safeBlast(s,target)))return false;
     const d = distance(s, target),
       range = this.weaponRange(s);
     if (d <= range) return false;
@@ -1294,7 +1299,7 @@ export class Battle {
     }
     if(tier>=4&&!s.unarmed&&["bazooka","sapper"].includes(s.classId)&&!this.inWater(s)) {
       const hit=firstCoverHit(s,target,this.cover);
-      if(hit&&!hit.cover.indestructible&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
+      if(hit&&!hit.cover.indestructible&&(!this.enemyMapPlan||distance(s,target)<=this.weaponRange(s)+50)&&distance(s,hit.point)<this.weaponRange(s)&&this.safeBlast(s,hit.point)) {
         s.target=null;s.terrainTarget={x:hit.cover.x+hit.cover.w/2,y:hit.cover.y+hit.cover.h/2};
         s.path=[];s.goal=null;s.hold=true;this.aimAi(s,s.terrainTarget);return true;
       }
@@ -1334,6 +1339,7 @@ export class Battle {
   }
   ai(s: Soldier) {
     if(supplyRunOrder(this,s))return;
+    if(mapOpeningOrder(this,s))return;
     if(this.assistedOrder(s))return;
     s.terrainTarget=null;
     s.hold=false;
@@ -1684,7 +1690,7 @@ export class Battle {
     if (this.combatTicks % 30 === 0)
       for (const side of this.aiSides) {
         const weapon = this.powers[side][0],
-          target = this.soldiers.find(
+          target = side===1&&this.enemyMapPlan&&weapon ? enemySupportTarget(this,weapon) : this.soldiers.find(
             (s) => s.side !== side && s.life === "alive",
           );
         if (weapon && target && (side===0 || !this.challenge || this.challenge.enemyPowers)) this.useSuper(side, weapon, target);
