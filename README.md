@@ -322,3 +322,7 @@ Runner objective costs now include each map's authored drop priority, while rout
 ### v0.44: enemy elite specialists
 
 Every combat stage starts with five opponents. Two enemy-only specialists replace regular slots on Easy stage 10, Medium stages 7–10 and Hard stages 5–10: Crackshot (navy rifle veteran, 1.35× speed, 0.7× reload, 0.35× spread, 1.2× armor HP) and Blast Marshal (gold armored rocketeer, 1.3× speed, 0.8× reload, 0.45× scatter, 1.25× armor HP). Bonuses stack with difficulty. Elites keep ordinary range, aiming time, line of sight and lethal-hit rules. They prioritize visible bomb warnings, sprint 1.4× along actual escape paths and stay clear until impact. They can still be trapped or killed; sniper shots kill immediately. Elites do not strip equipment for supply runs. Historical early-stage 3/4-enemy wins remain accepted by score validation alongside new five-enemy results.
+
+### v0.44.1: intimidating elite art
+
+Crackshot has a towering officer cap, angry amber glasses, a winged moustache and excessive medals. Blast Marshal has a heavy helmet, furious visor, broad studded shoulder plates, a square clenched jaw and a shark-mouth launcher. The charcoal/navy-and-gold silhouettes appear in idle, walking and crouched poses. Combat tuning is unchanged.
