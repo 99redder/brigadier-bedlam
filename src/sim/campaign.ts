@@ -10,8 +10,10 @@ export function validHistory(value:unknown): value is RoundResult[] {
   const seen=new Set<number>();
   return value.every((r,i)=> {
     if(!r||(r.mode!==undefined&&!validMode(r.mode))||r.mode!==value[0]?.mode||!validMapId(r.mapId)||seen.has(r.mapId)||r.level!==i+1||typeof r.won!=="boolean"||!Number.isFinite(r.seconds)||r.seconds<0||r.seconds>7200||!Number.isInteger(r.enemiesDefeated)||r.enemiesDefeated<0||r.enemiesDefeated>5||!Number.isInteger(r.survivors)||r.survivors<0||r.survivors>5)return false;
-    const enemies=i===0?3:i<=2?4:5;
-    if(r.enemiesDefeated>enemies || (r.won && (r.survivors<1||r.enemiesDefeated!==enemies)) || (!r.won&&r.survivors!==0))return false;
+    // Accept historic 3/4-enemy victories as well as current five-enemy rounds.
+    const legacyEnemies=i===0?3:i<=2?4:5;
+    const enemies=5;
+    if(r.enemiesDefeated>enemies || (r.won && (r.survivors<1||r.enemiesDefeated!==enemies&&r.enemiesDefeated!==legacyEnemies)) || (!r.won&&r.survivors!==0))return false;
     seen.add(r.mapId);return true;
   });
 }

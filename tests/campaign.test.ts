@@ -25,8 +25,8 @@ describe("ten-map tours",()=>{
  it("ramps enemy health, speed and response without strengthening the player's squad",()=>{
   for(let n=1;n<10;n++){const a=difficulty(n),b=difficulty(n+1);expect(b.enemyHealth).toBeGreaterThan(a.enemyHealth);expect(b.enemySpeed).toBeGreaterThan(a.enemySpeed);expect(b.enemyReload).toBeLessThan(a.enemyReload);expect(b.enemyThink).toBeLessThan(a.enemyThink);expect(b.enemyCount).toBeGreaterThanOrEqual(a.enemyCount);}
   const easy=new Battle(44,0,false,0,{mapId:3,level:1}),hard=new Battle(44,0,false,0,{mapId:3,level:10});
-  expect(easy.soldiers.filter(s=>s.side===1)).toHaveLength(3);expect(hard.soldiers.filter(s=>s.side===1)).toHaveLength(5);
-  expect(easy.soldiers.filter(s=>s.side===1).map(s=>s.classId)).toEqual(["rifleman","rifleman","lobber"]);
+  expect(easy.soldiers.filter(s=>s.side===1)).toHaveLength(5);expect(hard.soldiers.filter(s=>s.side===1)).toHaveLength(5);
+  expect(easy.soldiers.filter(s=>s.side===1).map(s=>s.classId)).toEqual(["rifleman","rifleman","lobber","torch","sapper"]);
   expect(easy.get(0)!.hp).toBe(hard.get(0)!.hp);expect(easy.challenge!.enemyPowers).toBe(false);expect(hard.challenge!.enemyPowers).toBe(true);
  });
  it("keeps map selection and difficulty deterministic in exported replays",()=>{
@@ -38,7 +38,7 @@ describe("ten-map tours",()=>{
 describe("campaign scoring",()=>{
  const win:RoundResult={mapId:0,level:1,won:true,seconds:60,enemiesDefeated:3,survivors:5};
  it("awards kills, wins, survivors and speed, scaled by stage",()=>{expect(roundScore(win)).toBe(2430);expect(roundScore({...win,level:2})).toBe(4860);expect(totalScore([win,{...win,mapId:1,level:2}])).toBe(7290);expect(roundScore({...win,won:false,survivors:0,enemiesDefeated:2})).toBe(300);});
- it("validates score histories and rejects duplicate maps or impossible wins",()=>{expect(validHistory([win])).toBe(true);expect(validHistory([win,{...win,level:2}])).toBe(false);expect(validHistory([{...win,survivors:0}])).toBe(false);expect(validHistory([{...win,level:10}])).toBe(false);expect(validHistory([{...win,enemiesDefeated:5}])).toBe(false);expect(validHistory([{...win,seconds:NaN}])).toBe(false);});
+ it("validates score histories and rejects duplicate maps or impossible wins",()=>{expect(validHistory([win])).toBe(true);expect(validHistory([win,{...win,level:2}])).toBe(false);expect(validHistory([{...win,survivors:0}])).toBe(false);expect(validHistory([{...win,level:10}])).toBe(false);expect(validHistory([{...win,enemiesDefeated:5}])).toBe(true);expect(validHistory([{...win,seconds:NaN}])).toBe(false);});
  it("accepts optional public nicknames and rejects markup and oversized names",()=>{expect(nickname("")).toBe("");expect(nickname("  Major   Mishap ")).toBe("Major Mishap");expect(nickname("<script>alert(1)</script>")).toBe("");expect(nickname("x".repeat(21))).toBe("");expect(nickname("O'Brien")).toBe("O'Brien");});
 });
 

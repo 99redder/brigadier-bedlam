@@ -1,3 +1,4 @@
+import { eliteUnlock } from "./elites";
 import { fortuneLabel } from "./luck";
 import { ENVIRONMENTS, type Environment } from "./environments";
 import { type ArtifactKind, type Cover, type Rect } from "./data";
@@ -106,18 +107,18 @@ export type DifficultyMode = keyof typeof MODES;
 export const validMode=(value:unknown):value is DifficultyMode=>typeof value==="string"&&Object.hasOwn(MODES,value);
 export function difficulty(level: number, mode?: DifficultyMode) {
   const n = Math.max(1,Math.min(10,level));
-  const legacy = { level:n, enemyCount:n===1?3:n<=3?4:5,
+  const legacy = { level:n, enemyCount:5,
     enemyHealth: .55+(n-1)*.075, enemySpeed:.65+(n-1)*.055,
     enemyReload:1.6-(n-1)*.085, enemySpread:1.8-(n-1)*.09,
     enemyThink:2.2-(n-1)*.14, enemyPowers:n>=4, enemyMedics:n>=6,
-    tactics:0, volley:1, fortune:0, supplyRunners:false, coverTactics:0, mapIntel:false,
+    tactics:0, volley:1, fortune:0, supplyRunners:false, coverTactics:0, mapIntel:false, elites:false,
   };
-  // Preserve existing tours/replays; all newly created tours select an explicit mode.
+  // Original tours keep their stat curve; every combat stage now fields five enemies.
   if(!mode)return legacy;
   const progress=(n-1)/9;
   const rank=mode==="easy"?0:mode==="medium"?1:2;
   const tactics=Math.min(4,rank===0?Math.floor((n-1)/4):Math.floor((n-1)/2)+(rank===2?1:0));
-  return {...legacy,tactics,mapIntel:mode==="hard"||(mode==="medium"&&n>=3)||(mode==="easy"&&n>=6),coverTactics:mode==="hard"?2+(n>=6?1:0):mode==="medium"?(n>=4?1+(n>=7?1:0):0):(n>=8?1:0),supplyRunners:mode==="hard"||(mode==="medium"&&n>=5),fortune:[.02,.15,.4][rank]+progress*[.28,.5,.6][rank],
+  return {...legacy,tactics,elites:n>=eliteUnlock(mode),mapIntel:mode==="hard"||(mode==="medium"&&n>=3)||(mode==="easy"&&n>=6),coverTactics:mode==="hard"?2+(n>=6?1:0):mode==="medium"?(n>=4?1+(n>=7?1:0):0):(n>=8?1:0),supplyRunners:mode==="hard"||(mode==="medium"&&n>=5),fortune:[.02,.15,.4][rank]+progress*[.28,.5,.6][rank],
     enemyHealth:[.55,.8,1.15][rank]+progress*[.65,.85,.95][rank],
     enemySpeed:[.62,.7,.78][rank]+progress*[.3,.34,.36][rank],
     enemyReload:[1.75,1.35,.95][rank]-progress*[.85,.77,.57][rank],
@@ -146,5 +147,6 @@ export function enemyBrief(level:number,mode?:DifficultyMode) {
  if(d.supplyRunners)notes.push("light supply runners");
  if(d.enemyPowers)notes.push("support powers");
  if(d.enemyMedics)notes.push("medics");
+ if(d.elites)notes.push("ELITES: Crackshot & Blast Marshal — counter with sniper shots");
  return notes.join(" · ");
 }

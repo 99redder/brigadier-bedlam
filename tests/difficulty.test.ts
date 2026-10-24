@@ -20,7 +20,7 @@ describe("campaign difficulty modes",()=>{
    expect(z.enemyThink).toBeLessThan(a.enemyThink);expect(z.tactics).toBeGreaterThanOrEqual(a.tactics);
   }
   const first=new Battle(42,0,false,0,{mapId:0,level:1,mode}),last=new Battle(42,0,false,0,{mapId:0,level:10,mode});
-  expect(first.soldiers.filter(s=>s.side===1)).toHaveLength(3);expect(last.soldiers.filter(s=>s.side===1)).toHaveLength(5);
+  expect(first.soldiers.filter(s=>s.side===1)).toHaveLength(5);expect(last.soldiers.filter(s=>s.side===1)).toHaveLength(5);
   expect(first.maxHp(first.get(0)!)).toBe(last.maxHp(last.get(0)!));expect(last.landSpeed(last.get(0)!)).toBe(first.landSpeed(first.get(0)!));
  });
  it("unlocks tactical assistance earlier on harder modes",()=>{

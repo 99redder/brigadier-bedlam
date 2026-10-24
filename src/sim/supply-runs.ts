@@ -69,7 +69,7 @@ export function supplyRunOrder(b: Battle, s: Soldier): boolean {
       ...b.supplies.filter(d=>d.claimedBy===null).map(d=>({...d,kind:"supply" as const,expiresAt:Infinity})),
       ...b.chests.filter(c=>c.claimedBy===null&&c.expiresAt>b.time).map(c=>({...c,kind:"chest" as const})),
     ];
-    const candidates=b.soldiers.filter(u=>u.side===1&&u.life==="alive"&&!u.unarmed&&!u.takingCover&&u.brawl===null&&u.drowningTime<=0&&u.burnRemaining<=0&&u.hp>=b.maxHp(u)*.75&&!b.inWater(u)&&b.threatAt(u,u)===0);
+    const candidates=b.soldiers.filter(u=>u.side===1&&!u.elite&&u.life==="alive"&&!u.unarmed&&!u.takingCover&&u.brawl===null&&u.drowningTime<=0&&u.burnRemaining<=0&&u.hp>=b.maxHp(u)*.75&&!b.inWater(u)&&b.threatAt(u,u)===0);
     const tasks=candidates.flatMap(unit=>objectives.flatMap(reward=>{
       if(b.threatAt(unit,reward)>0 || b.soldiers.some(t=>t.side===0&&t.life==="alive"&&distance(unit,t)<130))return [];
       const route=runnerRoute(b,unit,reward);

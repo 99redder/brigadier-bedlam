@@ -1,3 +1,4 @@
+import { eliteKey, eliteCaption } from "./elites";
 import { drawFieldLoot } from "./field-loot";
 import { runnerKey } from "./runner";
 import { drawRain } from "./weather";
@@ -697,7 +698,7 @@ export class Battlefield extends Phaser.Scene {
         !celebrating && s.recoilTime > 0 && !s.recoilBlocked
           ? (-5 * s.recoilTime) / TUNING.recoilAnimation
           : 0;
-      sprite.setTexture(
+      const texture = (
         s.life === "dead"
           ? s.death!
           : celebrating
@@ -714,8 +715,9 @@ export class Battlefield extends Phaser.Scene {
                       s.side,
                       Math.floor(visualTime * 12 + s.id * 2) % WALK_FRAMES,
                     )
-                  : assetKey(s.classId, s.side),
+                  : assetKey(s.classId, s.side)
       );
+      sprite.setTexture(s.elite && s.side===1 && s.life!=="dead" && !celebrating && !fighting && !s.unarmed ? eliteKey(s.elite,texture) : texture);
       sprite
         .setPosition(
           p.x + facing * (strike + recoil),
@@ -788,7 +790,7 @@ export class Battlefield extends Phaser.Scene {
         );
       }
       if (alive) {
-        g.lineStyle(1.5, s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
+        g.lineStyle(s.elite ? 2.5 : 1.5, s.elite ? 0xffd470 : s.side === 0 ? 0x477963 : 0xc45e48, 0.8);
         g.strokeEllipse(p.x, p.y + 3, 34, 15);
       }
       if (b.winner === null && b.selected === s.id && alive) {
@@ -814,7 +816,8 @@ export class Battlefield extends Phaser.Scene {
           label!.setText("ON FIRE!");
         } else if (celebrating) label!.setText(EMOTES[s.classId]);
         else if (s.side===0&&(s.traffic??0)>0&&s.path.length) label!.setText(`${s.slot+1} !`);
-        else if (s.takingCover) label!.setText("IN COVER");
+        else if (s.eliteEscape) label!.setText("★ EVADING");
+        else if (s.takingCover) label!.setText(s.elite ? `${eliteCaption(s.elite)} / COVER` : "IN COVER");
         else if (sinking) label!.setText("DROWNING!");
         else if (wet) label!.setText("CROSSING");
         else if (s.jam > 0) {
@@ -823,7 +826,7 @@ export class Battlefield extends Phaser.Scene {
           label!.setText(s.blocking ? "BLOCK" : "BRAWL");
         } else
           label!.setText(
-            `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
+            s.elite ? eliteCaption(s.elite) : `${s.side === 0 ? s.slot + 1 : "×"} ${CLASSES[s.classId].short}`,
           );
       } else
         label!.setText(
@@ -837,7 +840,7 @@ export class Battlefield extends Phaser.Scene {
         );
       label!
         .setBackgroundColor(
-          s.side===0&&(s.traffic??0)>0&&s.path.length ? "#a56b2c" : s.takingCover && alive
+          s.elite && alive ? "#715723" : s.side===0&&(s.traffic??0)>0&&s.path.length ? "#a56b2c" : s.takingCover && alive
             ? "#2d665e"
             : s.side === 0
               ? "#2b5845"

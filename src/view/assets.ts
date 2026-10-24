@@ -1,3 +1,5 @@
+import { ELITES, type EliteId } from "../sim/elites";
+import { eliteKey, drawEliteUniform } from "./elites";
 import Phaser from "phaser";
 import { CLASSES, type ClassId } from "../sim/data";
 import { drawRunner, runnerKey } from "./runner";
@@ -80,6 +82,18 @@ export function loadAssets(scene: Phaser.Scene) {
           );
         }
     }
+  for(const elite of Object.keys(ELITES) as EliteId[]) {
+    const id=ELITES[elite].classId;
+    for(const base of [assetKey(id,1),coverKey(id,1),...Array.from({length:WALK_FRAMES},(_,i)=>walkKey(id,1,i))]) {
+      const key=eliteKey(elite,base);
+      if(scene.textures.exists(key))continue;
+      const a=crispCanvas(80,96);
+      const source=scene.textures.get(base).getSourceImage() as HTMLCanvasElement;
+      a.context.drawImage(source,0,0,80,96);
+      drawEliteUniform(a.context,elite,base===coverKey(id,1));
+      scene.textures.addCanvas(key,a.canvas);
+    }
+  }
   for (const kind of ["skeleton", "ash", "medic", "drowned"]) {
     if (scene.textures.exists(kind)) continue;
     const canvas = document.createElement("canvas");

@@ -1,3 +1,4 @@
+import { ELITES, eliteStats, eliteDanger, eliteEvade, type EliteId } from "./elites";
 import { prepareMapPlan, mapOpeningOrder, enemySupportTarget, type EnemyMapPlan } from "./map-strategy";
 import { coverOrder, type CoverPlan } from "./cover-tactics";
 import { supplyRunOrder, type SupplyRun } from "./supply-runs";
@@ -38,6 +39,8 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  elite?: EliteId;
+  eliteEscape?: Point;
   unarmed?: boolean;
   recoveringGear?: boolean;
   coverPlan?: CoverPlan;
@@ -280,7 +283,7 @@ export class Battle {
     this.squad = squad;
     const enemy = Math.floor(this.random() * SQUADS.length);
     for (const side of (training ? [0] : [0, 1]) as Side[])
-      (side === 0 ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber"] as ClassId[] : SQUADS[enemy].classes).forEach(
+      (side === 0 ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber","torch","sapper"] as ClassId[] : SQUADS[enemy].classes).forEach(
         (classId, slot) => {
           this.soldiers.push({
             id: side * 5 + slot,
@@ -333,6 +336,12 @@ export class Battle {
         const roster:ClassId[]=operation.mode==="hard"&&operation.level>=5 ? ["bazooka","bazooka","lobber","bazooka","lobber"] : ["rifleman","bazooka","lobber","bazooka",this.weather==="rain"?"rifleman":"torch"];
         this.soldiers.filter(s=>s.side===1).forEach(s=>{s.classId=roster[s.slot];s.hp=this.maxHp(s);});
       }
+      if(d.elites) {
+        for(const [slot,elite] of [[2,"crackshot"],[1,"marshal"]] as const) {
+          const unit=this.soldiers.find(s=>s.side===1&&s.slot===slot)!;
+          unit.elite=elite;unit.classId=ELITES[elite].classId;unit.hp=this.maxHp(unit);
+        }
+      }
       this.note(`Enemy briefing: ${enemyBrief(operation.level,operation.mode)}.`);
       this.note(`Stage ${operation.level}/10: ${MAPS[operation.mapId].name}.`);
       if(this.weather!=="clear")this.note(this.weather==="rain" ? "Rain: Torch weakened. Favor rifles and explosives." : "Deep snow: heavy troops slowed. Light troops lead.");
@@ -340,17 +349,17 @@ export class Battle {
     this.enemyMapPlan=prepareMapPlan(this);
     if(this.enemyMapPlan)this.note(`Enemy terrain plan: ${this.enemyMapPlan.name}.`);
   }
-  maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1));}
+  maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1)*(s.unarmed ? 1 : eliteStats(s)?.health ?? 1));}
   get challenge() { return this.operation ? difficulty(this.operation.level,this.operation.mode) : null; }
   get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
   get weatherAdvice() {return weatherAdvice(this.weather);}
   weaponRange(s:Soldier) {return CLASSES[s.classId].range * (s.classId==="torch" && this.weather==="rain" ? RAIN.flameRange : 1);}
   preferredRange(s:Soldier) {return s.classId==="torch" && this.weather==="rain" ? Math.min(CLASSES[s.classId].preferred,this.weaponRange(s)*.8) : CLASSES[s.classId].preferred;}
   movementMultiplier(s:Soldier) {
-    return this.weather==="snow" && !this.inWater(s) && !this.bridges.some(r=>inside(s,r)) ? (s.unarmed ? .95 : SNOW_SPEED[s.classId]) : 1;
+    return this.weather==="snow" && !this.inWater(s) && !this.bridges.some(r=>inside(s,r)) ? (s.unarmed ? .95 : Math.max(eliteStats(s) ? .85 : 0, SNOW_SPEED[s.classId])) : 1;
   }
 
-  landSpeed(s:Soldier) {return s.unarmed ? RUN_LIGHT.speed : CLASSES[s.classId].speed;}
+  landSpeed(s:Soldier) {return s.unarmed ? RUN_LIGHT.speed : CLASSES[s.classId].speed*(eliteStats(s)?.speed??1);}
   random() {
     let t = (this.rngState += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -918,7 +927,7 @@ export class Battle {
     )
       return false;
     s.cooldown =
-      w.cooldown * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (this.fortune(s.side)>0?1-this.random()*.35*this.fortune(s.side):1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
+      w.cooldown * (eliteStats(s)?.reload??1) * (s.side===1 ? this.challenge?.enemyReload ?? 1 : 1) * (this.fortune(s.side)>0?1-this.random()*.35*this.fortune(s.side):1) * (s.takingCover ? TUNING.coverReloadMultiplier : 1);
     if (s.classId === "torch") {
       s.heat = Math.min(TUNING.flameMaxHeat, (s.heat ?? 0) + TUNING.flameBurstHeat);
       if (s.heat >= TUNING.flameMaxHeat) s.overheated = true;
@@ -946,14 +955,14 @@ export class Battle {
       : (w.spread + (coveredTarget ? TUNING.coverRifleSpread : 0)) *
         (s.classId === "bazooka" && s.side === 1
           ? TUNING.enemyRocketScatter
-          : 1) * (s.side===1 ? this.challenge?.enemySpread ?? 1 : 1);
+          : 1) * (s.side===1 ? this.challenge?.enemySpread ?? 1 : 1) * (eliteStats(s)?.spread??1);
     if (spread > 0 && (!miss || s.classId === "bazooka")) {
       const angle =
         Math.atan2(point.y - s.y, point.x - s.x) +
         (centeredRoll(()=>this.random(),this.fortune(s.side)) * spread * Math.PI) / 180;
       const radial =
         s.classId === "bazooka"
-          ? 0.06 * (s.side === 1 ? TUNING.enemyRocketScatter : 1)
+          ? 0.06 * (s.side === 1 ? TUNING.enemyRocketScatter : 1) * (eliteStats(s)?.spread??1)
           : w.arc
             ? 0.015
             : 0;
@@ -1338,6 +1347,7 @@ export class Battle {
       })[0];
   }
   ai(s: Soldier) {
+    if(eliteEvade(this,s))return;
     if(supplyRunOrder(this,s))return;
     if(mapOpeningOrder(this,s))return;
     if(this.assistedOrder(s))return;
@@ -1725,6 +1735,7 @@ export class Battle {
       s.recoilTime = Math.max(0, s.recoilTime - dt);
       s.knockdownTime = Math.max(0, s.knockdownTime - dt);
       s.repath -= dt;
+      if(this.aiSides.includes(s.side)&&eliteDanger(this,s))s.think=Math.min(s.think,.2);
       s.think -= dt;
       s.moving = false;
       if (s.life !== "alive") continue;
@@ -1763,7 +1774,7 @@ export class Battle {
         }
       }
       if (this.aiSides.includes(s.side) && s.think <= 0) {
-        s.think = TUNING.aiThink * (s.side===1 ? this.challenge?.enemyThink ?? 1 : 1);
+        s.think = TUNING.aiThink * (eliteStats(s)?.think??1) * (s.side===1 ? this.challenge?.enemyThink ?? 1 : 1);
         this.ai(s);
       }
       if (s.terrainTarget && s.brawl === null) {
@@ -1845,7 +1856,7 @@ export class Battle {
         const p = s.path[0],
           d = distance(s, p),
           speed =
-            (s.formationSpeed ?? this.landSpeed(s)) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
+            (s.formationSpeed ?? this.landSpeed(s)) * (s.eliteEscape ? 1.4 : 1) * this.movementMultiplier(s) * (s.side===1 ? this.challenge?.enemySpeed ?? 1 : 1) *
             (this.inWater(s) ? s.unarmed ? RUN_LIGHT.waterSpeed : CLASSES[s.classId].waterSpeed : 1) *
             dt;
         const desired=d<=speed?p:{x:s.x+(p.x-s.x)/d*speed,y:s.y+(p.y-s.y)/d*speed};
