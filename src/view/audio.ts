@@ -165,6 +165,17 @@ export class Sound {
       key = `${classId}:${kind}`;
     if (ctx.currentTime - (this.last.get(key) ?? -1) < 0.065) return;
     this.last.set(key, ctx.currentTime);
+    if (classId === "bazooka" && kind === "fire") {
+      // Heavy launch concussion, low growl and a sustained tearing exhaust roar.
+      // Separate from the existing two-note contact cue and the sniper's sharp crack.
+      this.tone(125, 26, .52, "sine", .23);
+      this.tone(68, 22, .42, "triangle", .12);
+      this.tone(170, 40, .22, "sawtooth", .065, .015);
+      this.hiss(.085, .26, 4800);
+      this.hiss(.5, .25, 1900, .025);
+      this.hiss(.24, .09, 3400, .025);
+      return;
+    }
     if (kind === "hit") {
       // Rocket contact: a chunky crack/boom with a bright two-note confirmation.
       // Keep a separate throttle key so a nearby miss cannot suppress this cue.

@@ -379,7 +379,7 @@ describe("destructible scenery", () => {
     setup.b.cover = [
       { x: 240, y: 220, w: 10, h: 60, hp: 100, material: "rock" },
     ];
-    setup.a.x = id === "sapper" ? 185 : 160;
+    setup.a.x = 160;
     setup.t.x = 260;
     return setup;
   }

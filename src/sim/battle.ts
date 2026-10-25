@@ -609,6 +609,12 @@ export class Battle {
     );
     if(s.side===1)s.goal=reserveEnemyGoal(s,s.goal,this.soldiers,obstacles);
     s.path = pathfind(s, s.goal, obstacles);
+    // An AI bridge preference must not strand a unit forever if the dry route
+    // is unavailable. Explicit safe bridge orders never fall back to swimming.
+    if(!s.path.length && preferBridge && !bridge && this.aiSides.includes(s.side)) {
+      s.path=pathfind(s,s.goal,this.cover);
+      if(s.path.length)s.safeRoute=false;
+    }
     if (s.path.length) s.steadyTime = 0;
     s.repath = 0.65;
   }
@@ -977,7 +983,9 @@ export class Battle {
     }
     const hit = firstCoverHit(s, endpoint, this.cover);
     this.emitWeapon(s.classId, "fire");
-    const duration = w.arc ? 0.65 : s.classId === "bazooka" ? 0.55 : 0.1;
+    const duration = s.classId === "bazooka"
+      ? Math.max(TUNING.rocketMinFlight, distance(s, hit?.point ?? endpoint) / TUNING.rocketSpeed)
+      : s.classId === "sapper" ? TUNING.dynamiteFlight : w.arc ? 0.65 : 0.1;
     const fortune=this.fortune(s.side),critical=fortune>0&&this.random()<.3*fortune;
     this.shots.push({
       damageScale:fortune>0?(1+.5*fortune)*(critical?1.75:1):1,critical,

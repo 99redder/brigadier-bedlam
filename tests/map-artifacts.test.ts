@@ -7,9 +7,9 @@ function fixture(mapId:number,index=0){
  const b=new Battle(42,0,false,0,{mapId,level:1});b.aiSides=[];b.water=[];b.random=()=>.5;
  const r=b.cover[index];b.cover=[r];b.soldiers.forEach(s=>s.life="dead");
  const a=b.get(0)!,t=b.get(5)!;
- Object.assign(a,{life:"alive",x:r.x-35,y:r.y+r.h/2,heading:0,steadyTime:2,cooldown:0});
+ Object.assign(a,{life:"alive",x:r.x-85,y:r.y+r.h/2,heading:0,steadyTime:2,cooldown:0});
  Object.assign(t,{life:"alive",x:r.x+r.w+25,y:a.y});
- const fire=(kind:ClassId)=>{a.classId=kind;a.cooldown=0;a.autoFireWait=0;a.heat=0;a.overheated=false;
+ const fire=(kind:ClassId)=>{a.x=r.x-(kind==="torch"?35:85);a.classId=kind;a.cooldown=0;a.autoFireWait=0;a.heat=0;a.overheated=false;
   expect(b.fireAt(a,t,t.id)).toBe(true);b.resolveShot(b.shots.pop()!);
  };
  return {b,r,a,t,fire};

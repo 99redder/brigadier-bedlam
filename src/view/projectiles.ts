@@ -48,6 +48,13 @@ export function drawProjectile(
     g.fillRect(from.x - 10 + progress * 12, from.y - 24 + progress * 18, 4, 2);
   }
   if (shot.classId === "bazooka") {
+    // A long luminous exhaust streak keeps the much faster rocket readable.
+    const tail=at(-76,0), core=at(-20,0);
+    g.lineStyle(7,0xe7c99d,.2);
+    g.lineBetween(tail.x,tail.y,core.x,core.y);
+    g.lineStyle(3,0xffb554,.6);
+    g.lineBetween(at(-58,0).x,at(-58,0).y,core.x,core.y);
+
     polygon(
       [
         [-14, -4],

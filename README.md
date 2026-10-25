@@ -81,7 +81,7 @@ Movement is slower for every class and medics (53 units/second). Weapon strength
 | Bazooka | 20 | 8 | One rocket blast kills; heavy armor (330 HP); automatic scatter |
 | Lobber | 22 | 5 | Accurate 115-damage grenades; two hits kill most classes, three for Bazooka; light armor (180 HP) |
 | Torch | 25 | 2 | 12 contact damage, then 35 damage/second while burning |
-| Sapper | 26 | 6 | Accurate lethal dynamite, 80-unit reach and 34-unit blast; no armor (130 HP) |
+| Sapper | 26 | 6 | Accurate lethal dynamite, 100-unit reach and 72-unit lethal blast; no armor (130 HP) |
 
 A flame hit ignites an eight-second burn, shown by flames and ON FIRE status. It persists outside weapon range and behind cover, eventually killing most full-health soldiers as ash; heavy rocket armor can survive one burn. Further flame hits refresh the duration without stacking burn damage. River water extinguishes burning; cover prevents the initial flame hit. Medics can burn too. Training remains protected.
 
@@ -326,3 +326,9 @@ Every combat stage starts with five opponents. Two enemy-only specialists replac
 ### v0.44.1: intimidating elite art
 
 Crackshot has a towering officer cap, angry amber glasses, a winged moustache and excessive medals. Blast Marshal has a heavy helmet, furious visor, broad studded shoulder plates, a square clenched jaw and a shark-mouth launcher. The charcoal/navy-and-gold silhouettes appear in idle, walking and crouched poses. Combat tuning is unchanged.
+
+### v0.45: rocket punch and dynamite payoff
+
+Rockets now fly at 1,600 world units/second (about 0.24 seconds at maximum range), with a bright exhaust streak and a much louder layered launch concussion/growl/roar. The distinct hit confirmation is preserved. Sapper dynamite has a 72-unit guaranteed lethal radius (previously 34), 520 damage, a 100-unit short toss (previously 80), and a quicker 0.42-second flight. Preferred AI spacing is 88 units so the larger blast does not make every throw suicidal. Friendly fire and solid cover still apply. Grenades retain 350 range, 48 radius and 115 damage.
+
+AI troops can fall back to a risky swim when their preferred dry bridge route is impossible; explicit safe bridge orders retain their guarantee. This prevents an unreachable firing position from stalling combat.

@@ -12,7 +12,7 @@ export const BIOS: Record<ClassId, { name: string; story: string; advice: string
   bazooka: {
     name: 'Private Beatrice “Backblast” Briggs',
     story: 'Joined the army believing “heavy artillery” involved moving furniture. Now solves every problem with a rocket, including locked doors and awkward silences. Her armor was reinforced after she repeatedly forgot which end of the launcher was dangerous.',
-    advice: 'Heavy armor and lethal direct hits, balanced by scatter, a 70° firing arc, 1.5 seconds to aim and an eight-second reload. Selection never grants precise manual fire. Position him and set his facing before commanding a volley.',
+    advice: 'Heavy armor and lethal direct hits, balanced by scatter, a 70° firing arc, 1.5 seconds to aim and an eight-second reload. Selection never grants precise manual fire. Fast rockets cross maximum range in about a quarter-second, announced by a heavy launch roar. Position him and set his facing before commanding a volley.',
   },
   lobber: {
     name: 'Sergeant Lionel “Butterfingers” Bell',
@@ -27,7 +27,7 @@ export const BIOS: Record<ClassId, { name: string; story: string; advice: string
   sapper: {
     name: 'Private Sidney “Short Fuse” Sparks',
     story: 'A demolition apprentice fired for completing a twelve-week project in eight seconds. Wears no armor because it “slows down the inspiration.” His battle plan has two steps: get extremely close, then discover whether he remembered to light the fuse.',
-    advice: 'Accurate and lethal at very short range. No armor means little room for mistakes. Approach behind cover and commit only when the route is clear.',
+    advice: 'Get within 100 units and deliver a 72-unit lethal blast: more than four times the old blast area, and wider than a grenade. The quick toss punishes groups and moving targets. Grenades reach 350 units but deal moderate damage. No armor means little room for mistakes: approach behind cover, keep allies clear, and leave room between yourself and the explosion. Solid cover still shields enemies.',
   },
 };
 export const MANUAL_CHAPTERS = ["Getting started", "Field tactics", "Personnel files", "Controls", "Campaign & scores"] as const;
