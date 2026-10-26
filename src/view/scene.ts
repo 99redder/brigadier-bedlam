@@ -208,20 +208,22 @@ export class Battlefield extends Phaser.Scene {
       g.fillStyle(0x8b6848);
       g.fillPoints(corners, true);
       g.lineStyle(2, 0xc4a473);
-      for (let x = r.x + 6; x < r.x + r.w; x += 13) {
-        const a = project({ x, y: r.y }),
-          b = project({ x, y: r.y + r.h });
-        g.lineBetween(a.x, a.y, b.x, b.y);
+      const vertical=this.battle?.verticalFront;
+      if(vertical)for(let y=r.y+6;y<r.y+r.h;y+=10){
+        const a=project({x:r.x,y}),b=project({x:r.x+r.w,y});
+        g.lineBetween(a.x,a.y,b.x,b.y);
+      } else for(let x=r.x+6;x<r.x+r.w;x+=13){
+        const a=project({x,y:r.y}),b=project({x,y:r.y+r.h});
+        g.lineBetween(a.x,a.y,b.x,b.y);
       }
-      g.lineStyle(5, 0x4d503c);
-      for (const y of [r.y, r.y + r.h]) {
-        const a = project({ x: r.x, y }),
-          b = project({ x: r.x + r.w, y });
-        g.lineBetween(a.x, a.y - 5, b.x, b.y - 5);
-      }
+      g.lineStyle(5,0x4d503c);
+      const rails=vertical
+        ? [[{x:r.x,y:r.y},{x:r.x,y:r.y+r.h}],[{x:r.x+r.w,y:r.y},{x:r.x+r.w,y:r.y+r.h}]]
+        : [[{x:r.x,y:r.y},{x:r.x+r.w,y:r.y}],[{x:r.x,y:r.y+r.h},{x:r.x+r.w,y:r.y+r.h}]];
+      for(const [from,to] of rails){const a=project(from),b=project(to);g.lineBetween(a.x,a.y-5,b.x,b.y-5);}
     }
     if(env.biome==="snow") for(const r of this.battle?.bridges ?? BRIDGES) {
-      const a=project(r),b=project({x:r.x+r.w,y:r.y});
+      const a=project(r),b=project(this.battle?.verticalFront?{x:r.x,y:r.y+r.h}:{x:r.x+r.w,y:r.y});
       g.lineStyle(3,0xf5faf0,.9);g.lineBetween(a.x,a.y-5,b.x,b.y-5);
     }
     for (const node of this.coverNodes) node.destroy();

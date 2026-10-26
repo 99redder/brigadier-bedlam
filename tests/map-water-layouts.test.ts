@@ -32,7 +32,11 @@ describe("authored water and reward layouts", () => {
         const bridge=b.bridges[0];
         b.command({type:"bridge",id:start.id,point:{x:bridge.x+bridge.w/2,y:bridge.y+bridge.h/2}});
         expect(start.path.length).toBeGreaterThan(0);
-        expect(start.goal!.x).toBe(side===0?bridge.x+bridge.w-2:bridge.x+2);
+        if(map.axis==="north-south") {
+          expect(start.goal!.x).toBeGreaterThan(bridge.x);expect(start.goal!.x).toBeLessThan(bridge.x+bridge.w);
+          if(side===0)expect(start.goal!.y).toBeGreaterThan(bridge.y+bridge.h);
+          else expect(start.goal!.y).toBeLessThan(bridge.y);
+        } else expect(start.goal!.x).toBe(side===0?bridge.x+bridge.w-2:bridge.x+2);
         let from={x:start.x,y:start.y};
         for (const to of start.path) {
           const steps=Math.ceil(distance(from,to));

@@ -20,8 +20,8 @@ describe("themed battlefield cover",()=>{
  for(const map of MAPS){expect(map.cover.filter(r=>r.artifact)).toHaveLength(4);expect(map.cover.every(r=>r.w>0&&r.h>0)).toBe(true);expect(map.cover.filter(r=>r.artifact).every(r=>!!r.label)).toBe(true);}
  });
  it("distributes permanent shelters across both banks over the tour",()=>{
-  const fixed=MAPS.flatMap(m=>m.cover.filter(r=>r.indestructible));expect(fixed).toHaveLength(10);
-  expect(fixed.filter(r=>r.x<550)).toHaveLength(5);expect(fixed.filter(r=>r.x>550)).toHaveLength(5);
+  const fixed=MAPS.flatMap(m=>m.cover.filter(r=>r.indestructible).map(r=>({...r,bank:m.axis==="north-south"?r.y<280:r.x<550})));expect(fixed).toHaveLength(10);
+  expect(fixed.filter(r=>r.bank)).toHaveLength(5);expect(fixed.filter(r=>!r.bank)).toHaveLength(5);
  });
  for(const map of MAPS){
   it(`${map.name}: solid wrecks stop gunfire and take three rockets to destroy`,()=>{

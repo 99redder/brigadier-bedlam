@@ -1,9 +1,10 @@
+import { northSouth, orientPoint, orientRect } from "./orientation";
 import { eliteUnlock } from "./elites";
 import { fortuneLabel } from "./luck";
 import { ENVIRONMENTS, type Environment } from "./environments";
 import { type ArtifactKind, type Cover, type Rect } from "./data";
 export interface MapSpec {
-  id: number; name: string; briefing: string;
+  id: number; name: string; briefing: string; axis: "east-west" | "north-south";
   ground: number; waterColor: number; environment: Environment;
   cover: Cover[]; water: Rect[]; bridges: Rect[];
   layout: "river" | "lake"; terrainAdvice: string; rewardZone?: Rect;
@@ -92,10 +93,17 @@ export const MAPS: MapSpec[] = designs.map((design,id) => {
     const small={x,y,w:82,h:34,material:"sandbags" as const};
     if(![...cover,...water].some(r=>small.x<r.x+r.w+22&&small.x+small.w+22>r.x&&small.y<r.y+r.h+22&&small.y+small.h+22>r.y))cover.push(small);
   }
-  return {id,name,layout,terrainAdvice:advice,rewardZone,
-    briefing:environment.briefing+" "+theme.briefing+" "+advice,
-    environment,ground:environment.ground,waterColor:environment.water,water,bridges,cover,
-    supplies:design.drops.map(([x,y],i)=>({x,y,label:layout==="lake"?`LAKE DROP ${i+1}`:`${i+1} / CONTESTED DROP`})),
+  const verticalAdvice:Record<number,string>={
+    2:"NORTH–SOUTH FRONT: Advance south across a dogleg river. The west bridge is a safe detour; rewards straddle the bends.",
+    4:"NORTH–SOUTH FRONT: Advance south through aircraft wrecks. The east bridge flanks a wide zigzag channel.",
+    8:"NORTH–SOUTH FRONT: Advance south through narrow firing lanes. The east bridge bypasses the central river pinch.",
+    9:"NORTH–SOUTH FRONT: Advance south in deep snow. The west bridge crosses an icy diagonal channel; send light troops for rewards.",
+  };
+  const terrainAdvice=verticalAdvice[id]??advice;
+  return {id,name,layout,axis:northSouth(id)?"north-south":"east-west",terrainAdvice,rewardZone:rewardZone?orientRect(rewardZone,id):undefined,
+    briefing:environment.briefing+" "+theme.briefing+" "+terrainAdvice,
+    environment,ground:environment.ground,waterColor:environment.water,water:water.map(r=>orientRect(r,id)),bridges:bridges.map(r=>orientRect(r,id)),cover:cover.map(r=>orientRect(r,id)),
+    supplies:design.drops.map(([x,y],i)=>({...orientPoint({x,y},id),label:layout==="lake"?`LAKE DROP ${i+1}`:`${i+1} / CONTESTED DROP`})),
   };
 });
 export const MODES = {

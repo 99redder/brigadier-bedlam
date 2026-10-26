@@ -6,7 +6,7 @@ export const artifactHeight=(r:Cover)=>Math.max(68,r.h*.74+30);
 // Supersampled painted props: lighting, panel seams, rust and volume are baked once.
 // The simulation footprint remains the sole source of collision and blast shielding.
 export function artifactTexture(scene:Phaser.Scene,r:Cover,biome:Biome) {
- const key=`landmark-v2-${r.artifact}-${biome}-${r.x}-${r.y}-${r.w}-${r.h}`;
+ const key=`landmark-v3-${r.artifact}-${biome}-${r.x}-${r.y}-${r.w}-${r.h}`;
  if(scene.textures.exists(key))return key;
  const height=artifactHeight(r),scale=3,canvas=document.createElement("canvas");
  canvas.width=Math.ceil((r.w+16)*scale);canvas.height=Math.ceil((height+14)*scale);
@@ -32,32 +32,68 @@ export function paintArtifact(c:CanvasRenderingContext2D,r:Cover,biome:Biome) {
  const truckBase=(paint:string)=>{wheel(22,83,12);wheel(79,81,12);poly([[5,61],[87,54],[97,65],[92,83],[8,88]],gradient(paint,"#3d493d"));poly([[5,61],[14,51],[87,48],[97,65],[24,70]],gradient("#a0a389",paint));line(7,77,92,72,"#252e28",2);rect(5,80,13,4,"#999783");rect(88,75,9,5,"#bbb799");};
  switch(r.artifact){
  case "tank": {
-  // Continuous tracks, sloped armor and a full-length gun make the silhouette readable.
-  poly([[6,63],[85,55],[97,65],[94,90],[15,99],[3,88]],"#28302a");
-  for(let i=0;i<7;i++){const x=14+i*11;ellipse(x,88-i*.8,6,11,gradient("#7a7c65","#3c4438"));ellipse(x-1,87-i*.8,2.4,5,"#303a31");}
-  for(let i=0;i<17;i++){const x=7+i*5.2;line(x,64-(x-7)*.08,x+2,68-(x-7)*.08,"#96957a",1);line(x+4,94-(x-7)*.08,x+5,89-(x-7)*.08,"#787866",1);}
-  poly([[9,62],[25,37],[79,33],[96,56],[86,72],[17,79]],gradient("#919776","#4b5b43"));
-  poly([[17,77],[86,70],[96,56],[94,65],[84,77],[20,84]],gradient("#667252","#3c493a"));
-  poly([[31,39],[38,18],[65,16],[76,30],[69,48],[40,53]],gradient("#a0a384","#58694a"));
-  poly([[40,53],[69,48],[76,30],[74,42],[67,55],[43,61]],"#48583f");
-  poly([[63,27],[88,13],[91,18],[67,34]],gradient("#9da58b","#43513f"));poly([[86,13],[94,9],[97,16],[90,19]],"#414a3d");line(90,13,94,12,"#1f2823",2);
-  ellipse(49,21,9,3.5,"#303c30");poly([[43,19],[50,11],[57,16],[52,22]],"#838d6a");
-  rect(24,48,12,8,"#525c45");for(let i=0;i<5;i++)line(25+i*2,49,26+i*2,55,"#242f28",.7);
-  rivets(22,71,10,6,-.7);scratch(24,41,44,25);scorch(34,58,13,12);poly([[17,68],[30,65],[26,76],[18,77]],"#33392f");break;
+  // Readable side silhouette: continuous caterpillar track, six road wheels,
+  // a distinct turret and a long, snapped gun barrel. Wreckage, not a green box.
+  poly([[5,64],[87,60],[97,69],[94,91],[83,98],[15,98],[3,88]],"#252c29",ink,1.5);
+  rect(10,69,78,23,gradient("#5e6659","#353f36"),9);
+  for(let i=0;i<6;i++){
+    ellipse(20+i*12,82,6,8,gradient("#a2a287","#65715a"));
+    ellipse(20+i*12,82,2.2,3,"#303b31");
+  }
+  for(let i=0;i<17;i++){const x=8+i*5;line(x,65,x+1,70,"#aaa58a",1.5);line(x,94,x+1,98,"#888876",1.2);}
+  // Crumpled sloping hull and an exposed engine compartment.
+  poly([[9,57],[22,43],[78,43],[94,58],[88,72],[16,73]],gradient("#929c77","#4a5945"),ink,1.1);
+  poly([[18,56],[29,47],[74,47],[84,57]],"#adb08c");
+  poly([[8,58],[21,58],[26,65],[19,69],[8,67]],"#222d29");
+  line(12,57,24,63,rust,2);line(12,63,23,58,"#d6ad76",1.2);
+  poly([[28,42],[32,24],[52,19],[68,28],[67,45],[54,52],[33,51]],gradient("#b1b491","#526448"),ink,1.2);
+  poly([[32,44],[54,46],[67,38],[67,45],[54,52],[33,51]],"#44553e");
+  // Oversized recognizable barrel, with a torn muzzle instead of a rounded tube.
+  poly([[60,31],[91,30],[94,34],[91,39],[61,39]],gradient("#a0aa8e","#485b46"),ink,1.1);
+  poly([[91,30],[99,29],[96,33],[99,37],[94,40],[91,39]],"#485447");
+  line(95,32,96,37,"#131f1c",2);
+  ellipse(44,25,9,4,"#1d2c26");
+  poly([[37,21],[40,10],[50,14],[49,23]],"#a2ab83",ink,1.1);
+  line(39,13,46,16,"#d5d7b7",1);
+  // Missing armor plate, black scorch and a broken track hanging loose.
+  poly([[62,52],[75,49],[80,53],[75,61],[63,60]],"#202b26");
+  line(67,51,72,59,"#ba8258",1);line(71,51,68,59,"#77786a",1);
+  poly([[82,83],[91,80],[95,91],[88,95],[82,91]],"#131f1b");
+  line(86,90,94,98,"#777c69",2);line(91,96,98,94,"#777c69",2);
+  rivets(21,69,9,7);scratch(24,47,38,20);scorch(69,58,15,13);
+  // Faded roundel keeps the military identity clear without lettering.
+  ellipse(42,36,4,5,"#d4caaa");ellipse(42,36,2,3,"#62765d");break;
  }
  case "plane": {
-  // Bent landing gear and a collapsed wing anchor the wreck to the ground.
-  line(20,76,18,93,"#59665b",2);wheel(18,93,6);line(83,60,82,83,"#58665c",2);wheel(82,83,5);
-  poly([[18,49],[11,20],[23,23],[43,51],[65,63],[82,95],[65,89],[43,69]],gradient("#c0c4b5","#7b8780"));
-  poly([[40,50],[69,30],[93,30],[63,60],[57,67],[30,85],[11,87],[27,67]],gradient("#aab2ac","#626f6a"));
-  poly([[4,65],[14,48],[75,39],[92,46],[98,58],[91,68],[55,76],[17,84],[8,80]],gradient("#d0d1bd","#76857f"));
-  poly([[8,80],[55,71],[91,62],[98,58],[91,68],[55,76],[17,84]],"#5c6c68");
-  window([[66,44],[75,42],[84,46],[78,53],[65,56]]);line(73,43,72,54,"#ced5c6",1);
-  ellipse(92,57,5,7,"#4a5651");ellipse(93,57,2.2,4,"#222c29");line(93,43,91,70,"#454c46",1.8);
-  poly([[11,50],[9,29],[20,43],[28,51]],"#86958b");poly([[6,62],[17,56],[28,56],[14,67]],"#b8c0ad");
-  line(24,43,36,59,"#697973");line(54,70,71,91,"#d0d5c4");rivets(30,64,8,5,-1.2);
-  poly([[43,60],[50,57],[54,61],[47,65]],"#303c36");line(47,56,48,68,"#bfa16f",1.5);scorch(46,64,13,10);
-  poly([[78,82],[90,78],[98,89],[82,94]],"#aab4a5");line(82,84,93,87,"#4f625b");scratch(26,60,38,13);break;
+  // A broad winged aircraft silhouette, with cockpit, propeller and separate
+  // broken tail. Larger shapes remain recognizable on the smallest wreck.
+  poly([[39,47],[45,8],[57,3],[64,7],[56,46]],gradient("#d6d8ca","#83948f"),ink,1.2);
+  line(49,13,45,44,"#647c78",1.1);
+  poly([[39,58],[49,83],[60,94],[69,92],[56,58]],gradient("#c2c9bd","#6d8580"),ink,1.2);
+  line(46,62,58,87,"#dce1d0",1.3);
+  // Nose and fuselage have a clean airplane contour, not overlapping shards.
+  poly([[5,49],[11,42],[27,40],[60,45],[71,48],[71,61],[59,65],[23,64],[10,59]],gradient("#d5d7bd","#80958d"),ink,1.3);
+  poly([[11,59],[27,61],[60,60],[71,55],[71,61],[59,65],[23,64]],"#526e69");
+  window([[24,43],[34,44],[40,49],[37,55],[23,54],[19,49]]);
+  line(29,44,30,54,"#d9e3d6",1.2);
+  // Obvious radial engine, broken two-blade propeller and bent undercarriage.
+  ellipse(9,51,5,9,"#475951");ellipse(7,51,2.5,5,"#202f2b");
+  line(6,49,2,36,"#394a42",2.5);line(6,53,11,65,"#394a42",2.5);
+  line(27,65,23,77,"#475e54",1.8);wheel(23,78,5);
+  // Broken tail sits at a different angle, exposing a jagged gap and cables.
+  poly([[76,49],[91,48],[96,54],[93,62],[77,61],[80,57],[75,54]],gradient("#c0cbbb","#708c81"),ink,1.1);
+  poly([[84,49],[85,29],[91,30],[95,50]],gradient("#a5b8a9","#607e72"),ink,1.1);
+  poly([[82,57],[98,66],[96,71],[78,63]],"#b5c6b6");
+  line(70,49,74,53,"#c2a06b",1);line(70,58,76,57,"#d1b27c",1);
+  // Missing wing skin, exposed ribs and an unmistakably torn panel.
+  poly([[43,28],[49,23],[54,28],[50,39],[43,38]],"#263c35");
+  for(let i=0;i<3;i++)line(44,29+i*3,52-i,29+i*3,"#b6bca4",.8);
+  poly([[48,49],[56,47],[62,52],[59,59],[51,58]],"#26382f");
+  line(51,49,58,57,rust,1.5);scorch(54,54,13,12);
+  ellipse(54,16,4.5,5,"#f0e6c8");ellipse(54,16,2.6,3,"#546f82");
+  ellipse(57,81,4,4,"#e6ddbf");ellipse(57,81,2.2,2.2,"#546f82");
+  poly([[76,82],[91,77],[98,84],[87,93],[78,90]],"#a5b9a7",ink,1.1);
+  line(81,83,91,85,"#5a7468",1);scratch(17,58,27,5);break;
  }
  case "picnic": {
   line(23,57,13,94,"#4a4430",4);line(73,50,86,87,"#504931",4);line(21,68,82,74,"#6e5938",3);
@@ -85,7 +121,14 @@ export function paintArtifact(c:CanvasRenderingContext2D,r:Cover,biome:Biome) {
    for(let i=0;i<5;i++){line(15+i*9,30-i*.7,15+i*9,61-i*.7,"#5a694d",1);line(17+i*9,30-i*.7,17+i*9,57-i*.7,"#c5bea0",.5);}
    poly([[20,41],[40,36],[49,42],[28,48]],"#c8a878");poly([[28,48],[49,42],[49,61],[28,67]],"#94754c");poly([[20,41],[28,48],[28,67],[20,59]],"#b49361");line(29,49,47,59,"#d0b481",1.4);line(46,44,30,64,"#d0b481",1.4);
   }
-  rivets(10,72,10,7,-.6);scratch(69,49,20,15);scorch(55,68,8,9);break;
+  // Shattered windshield, crumpled hood and a missing cargo panel expose the wreck.
+  line(72,34,79,40,"#172d2d",1.5);line(79,40,73,44,"#d4ddd0",1.2);line(79,40,85,36,"#172d2d",1.2);
+  poly([[86,47],[97,45],[94,52],[98,58],[89,57]],"#34433b",ink,1);
+  if(r.artifact==="supply-truck"){
+   poly([[17,35],[27,33],[32,38],[28,50],[18,51],[20,43]],"#283a30",ink,1);
+   line(19,37,29,46,"#bba174",1);line(19,46,29,37,"#bba174",1);
+  }
+  rivets(10,72,10,7,-.6);scratch(69,49,20,15);scorch(55,68,12,13);break;
  }
  case "tractor": {
   wheel(77,75,19);wheel(22,83,11);poly([[15,55],[62,48],[77,55],[75,78],[20,89]],gradient("#b4975f","#78603b"));
@@ -126,7 +169,9 @@ export function paintArtifact(c:CanvasRenderingContext2D,r:Cover,biome:Biome) {
   poly([[6,61],[26,55],[44,61],[20,71]],"#8a9b81");poly([[20,71],[44,61],[91,50],[96,55],[94,65],[22,80]],gradient("#718570","#4a6250"));
   line(47,55,47,72,"#263d32");rect(52,56,6,1.5,"#b5b79a",.5);rect(6,65,10,6,"#e4d2a6");rect(86,62,7,4,"#9a5640");
   for(let i=0;i<7;i++)line(10+i*2,74-i*.4,10+i*2,80-i*.4,"#25382d",.7);line(5,83,29,77,"#a7aa94",2);line(76,76,96,70,"#8c9a84",2);
-  poly([[35,28],[42,14],[58,15],[62,24],[46,29]],"#4b6350");line(38,24,59,21,"#9eac8c",1.5);poly([[79,46],[88,47],[86,57],[77,54]],"#2c3d31");scratch(26,60,48,15);scorch(79,52,9,10);break;
+  poly([[35,28],[42,14],[58,15],[62,24],[46,29]],"#4b6350");line(38,24,59,21,"#9eac8c",1.5);poly([[79,46],[88,47],[86,57],[77,54]],"#2c3d31");line(51,41,61,48,"#182e2b",1.6);line(55,44,66,36,"#e1e1cc",1);
+  poly([[34,26],[41,20],[47,28],[53,22],[62,26],[46,31]],"#405348",ink,1);
+  scratch(26,60,48,15);scorch(79,52,14,14);break;
  }
  case "bunker": {
   poly([[4,42],[70,28],[96,43],[96,80],[29,99],[4,79]],gradient("#aeb3a7","#6f7e75"));

@@ -1,3 +1,4 @@
+import { northSouth, orientPoint } from "./orientation";
 import { ELITES, eliteStats, eliteDanger, eliteEvade, type EliteId } from "./elites";
 import { prepareMapPlan, mapOpeningOrder, enemySupportTarget, type EnemyMapPlan } from "./map-strategy";
 import { coverOrder, type CoverPlan } from "./cover-tactics";
@@ -285,13 +286,24 @@ export class Battle {
     for (const side of (training ? [0] : [0, 1]) as Side[])
       (side === 0 ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber","torch","sapper"] as ClassId[] : SQUADS[enemy].classes).forEach(
         (classId, slot) => {
+          const spawn={x:side===0?105:995,y:training?160+slot*70:75+slot*99};
+          const vertical=!training&&northSouth(operation?.mapId);
+          let position=spawn;
+          if(vertical) {
+            const raw=orientPoint(spawn,operation!.mapId),obstacles=this.dryCover();
+            // Keep the north squad's heads inside the field. Slide along the row
+            // around a wreck instead of pushing a soldier back above the map.
+            const row={x:raw.x,y:side===0?82:500};
+            position=[0,-20,20,-40,40,-60,60,-80,80].map(dx=>({...row,x:row.x+dx}))
+              .find(p=>legal(p,obstacles)&&this.soldiers.filter(s=>s.side===side).every(s=>distance(s,p)>52))??safePoint(row,obstacles);
+          }
           this.soldiers.push({
             id: side * 5 + slot,
             side,
             slot,
             classId,
-            x: side === 0 ? 105 : 995,
-            y: training ? 160 + slot * 70 : 75 + slot * 99,
+            ...position,
+            ...(vertical?{heading:side===0?Math.PI/2:-Math.PI/2}:{}),
             hp: CLASSES[classId].hp,
             burnRemaining: 0,
             life: "alive",
@@ -350,6 +362,10 @@ export class Battle {
     if(this.enemyMapPlan)this.note(`Enemy terrain plan: ${this.enemyMapPlan.name}.`);
   }
   maxHp(s:Soldier) {return Math.round((s.unarmed ? RUN_LIGHT.hp : CLASSES[s.classId].hp)*(s.side===1 ? this.challenge?.enemyHealth ?? 1 : 1)*(s.unarmed ? 1 : eliteStats(s)?.health ?? 1));}
+  get verticalFront() {return !this.training&&northSouth(this.operation?.mapId);}
+  teamEdge(side:Side,lane:Point,inset=18):Point {
+    return this.verticalFront?{x:lane.x,y:side===0?inset:FIELD.height-inset}:{x:side===0?inset:FIELD.width-inset,y:lane.y};
+  }
   get challenge() { return this.operation ? difficulty(this.operation.level,this.operation.mode) : null; }
   get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
   get weatherAdvice() {return weatherAdvice(this.weather);}
@@ -474,12 +490,13 @@ export class Battle {
           inside({ x: bridge.x + bridge.w / 2, y: bridge.y + bridge.h / 2 }, r),
         );
         if (river) {
-          const x =
-            s.x < river.x + river.w / 2 ? river.x + river.w + 24 : river.x - 24;
+          const crossing=this.verticalFront
+            ? {x:bridge.x+bridge.w/2,y:s.y<river.y+river.h/2?river.y+river.h+24:river.y-24}
+            : {x:s.x<river.x+river.w/2?river.x+river.w+24:river.x-24,y:bridge.y+bridge.h/2};
           s.target = null;
           s.terrainTarget = null;
           s.hold = false;
-          this.setGoal(s, { x, y: bridge.y + bridge.h / 2 }, true);
+          this.setGoal(s, crossing, true);
         }
       }
     }
@@ -1183,14 +1200,13 @@ export class Battle {
       burnRemaining: 0,
       life: "alive",
       death: null,
-      x: side === 0 ? 10 : FIELD.width - 10,
-      y: t.y,
+      ...this.teamEdge(side,t,10),
       target: id,
       side,
       phase: "in",
       timer: 0,
       path: pathfind(
-        { x: side === 0 ? 18 : FIELD.width - 18, y: t.y },
+        this.teamEdge(side,t),
         t,
         this.cover,
       ),
@@ -1553,8 +1569,9 @@ export class Battle {
     const zone=MAPS[this.operation.mapId].rewardZone;
     const xs=zone?Array.from({length:Math.floor(zone.w/60)+1},(_,i)=>zone.x+i*60):[170,300,410,690,800,930];
     const ys=zone?Array.from({length:Math.floor(zone.h/60)+1},(_,i)=>zone.y+i*60):[60,170,280,390,500];
+    const chestObstacles=zone?this.cover:this.dryCover();
     for(const x of xs)for(const y of ys){
-      const p={x,y};if(!legal(p,this.cover)||this.inWater(p)!==!!zone||units.some(s=>distance(s,p)<75))continue;
+      const p={x,y};if(!legal(p,chestObstacles)||this.inWater(p)!==!!zone||units.some(s=>distance(s,p)<75))continue;
       if(this.chests.some(c=>c.claimedBy===null&&distance(c,p)<80)||this.gear.some(g=>distance(g,p)<30))continue;
       candidates.push(p);
     }
@@ -1566,7 +1583,13 @@ export class Battle {
     };
     candidates.sort((a,b)=>score(a)-score(b)||a.x-b.x||a.y-b.y);
     const shortlist=candidates.slice(0,trailing===null?candidates.length:6);
-    const point=shortlist[Math.floor(this.random()*shortlist.length)];
+    const first=Math.floor(this.random()*shortlist.length);
+    const ordered=[...shortlist.slice(first),...shortlist.slice(0,first),...candidates.slice(shortlist.length)];
+    const point=ordered.find(p=>units.every(u=>{
+      const route=pathfind(u,p,this.inWater(u)?this.cover:chestObstacles);
+      return route.length>0&&distance(route.at(-1)!,p)<5;
+    }));
+    if(!point){this.nextChestAt=this.time+5;return false;}
     this.chests.push({...point,id:this.chestsSpawned++,expiresAt:this.time+COMEBACK.lifetime,claimedBy:null});
     this.nextChestAt=this.time+COMEBACK.interval;this.supplyRevision++;
     this.note(`COMEBACK CHEST spotted! Reach the glowing chest within ${COMEBACK.lifetime}s. Both teams can claim it.`);return true;
@@ -1929,7 +1952,7 @@ export class Battle {
         m.path[0] ??
         (m.phase === "in"
           ? t
-          : { x: m.side === 0 ? -30 : FIELD.width + 30, y: m.y });
+          : this.teamEdge(m.side,m,-30));
       const d = distance(m, goal);
       if (d > 8) {
         m.x += ((goal.x - m.x) / d) * TUNING.medicSpeed * dt;
@@ -1965,14 +1988,14 @@ export class Battle {
           m.phase = "out";
           m.path = pathfind(
             m,
-            { x: m.side === 0 ? 18 : FIELD.width - 18, y: m.y },
+            this.teamEdge(m.side,m),
             this.cover,
           );
         }
       }
     }
     this.medics = this.medics.filter(
-      (m) => m.life === "dead" || (m.x > -25 && m.x < FIELD.width + 25),
+      (m) => m.life === "dead" || (!(m.phase==="out"&&!m.path.length&&distance(m,this.teamEdge(m.side,m,-30))<=8) && (this.verticalFront ? m.y>-25&&m.y<FIELD.height+25 : m.x>-25&&m.x<FIELD.width+25)),
     );
     if (this.time >= this.nextMedic) {
       this.nextMedic = this.time + TUNING.aiMedicDelay;

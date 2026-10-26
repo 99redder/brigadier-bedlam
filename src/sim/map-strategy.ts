@@ -1,3 +1,4 @@
+import { orientPoint } from "./orientation";
 import type { Battle, Soldier, SuperWeapon } from "./battle";
 import { blocked, distance, pathfind, safePoint, type Point } from "./geometry";
 import { TUNING } from "./data";
@@ -41,8 +42,8 @@ export function prepareMapPlan(b:Battle):EnemyMapPlan|null {
  const orders=units.map(s=>{
    const role:MapOrder["role"]=s===runner?"reserve":s===overwatch?"overwatch":s===flank?(full?"flank":"assault"):s===rest[0]?"assault":s===rest[1]?"screen":"reserve";
    const raw=role==="assault"?spec.advance:role==="flank"?spec.flank:[spec[role]];
-   const route=raw.map(p=>safePoint(point(p),dry));
-   return {unitId:s.id,role,route,index:0,watch:point(spec.watch),departAt:role==="overwatch"?4:role==="screen"?1.5:role==="flank"?.8:0,finished:false,progressAt:0,position:{x:s.x,y:s.y}};
+   const route=raw.map(p=>safePoint(orientPoint(point(p),b.operation!.mapId),dry));
+   return {unitId:s.id,role,route,index:0,watch:orientPoint(point(spec.watch),b.operation!.mapId),departAt:role==="overwatch"?4:role==="screen"?1.5:role==="flank"?.8:0,finished:false,progressAt:0,position:{x:s.x,y:s.y}};
  });
  return {mapId:b.operation.mapId,name:spec.name,duration:b.operation.mode==="hard"?100:b.operation.mode==="medium"?85:65,orders};
 }

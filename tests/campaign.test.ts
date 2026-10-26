@@ -14,7 +14,7 @@ describe("ten-map tours",()=>{
   const b=new Battle(42,0,false,0,{mapId:map.id,level:1});
   for(const s of b.soldiers)expect(legal(s,b.cover)).toBe(true);
   for(const side of [0,1]){
-   const s=b.soldiers.find(s=>s.side===side)!;const goal={x:side===0?990:105,y:280};
+   const s=b.soldiers.find(s=>s.side===side)!;const goal=map.axis==="north-south"?{x:550,y:side===0?505:55}:{x:side===0?990:105,y:280};
    const path=pathfind(s,goal,b.dryCover());expect(path.length).toBeGreaterThan(0);expect(distance(path.at(-1)!,goal)).toBeLessThan(32);
   }
   expect(b.bridges.length).toBeGreaterThan(0);

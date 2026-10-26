@@ -1,8 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.43 — rehearsed enemy playbooks for all ten maps.**
+Current prototype: **v0.46 — mixed battlefield orientations and recognizable wrecks.**
 
-New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Stage 1 always has just three weak, slow opponents (two Riflemen and a Lobber); later stages build toward five stronger, quicker opponents with better aim/reload/reactions. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
+New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Every stage starts with five opponents; later stages strengthen their aim, reloads, reactions and tactics. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
 | Map | Character |
 | --- | --- |
@@ -332,3 +332,7 @@ Crackshot has a towering officer cap, angry amber glasses, a winged moustache an
 Rockets now fly at 1,600 world units/second (about 0.24 seconds at maximum range), with a bright exhaust streak and a much louder layered launch concussion/growl/roar. The distinct hit confirmation is preserved. Sapper dynamite has a 72-unit guaranteed lethal radius (previously 34), 520 damage, a 100-unit short toss (previously 80), and a quicker 0.42-second flight. Preferred AI spacing is 88 units so the larger blast does not make every throw suicidal. Friendly fire and solid cover still apply. Grenades retain 350 range, 48 radius and 115 damage.
 
 AI troops can fall back to a risky swim when their preferred dry bridge route is impossible; explicit safe bridge orders retain their guarantee. This prevents an unreachable firing position from stalling combat.
+
+### v0.46: north–south fronts and clearer wreck silhouettes
+
+Tea Break Trenches, Crooked Crossing, Brass Hat Bottleneck and Frostbite Fiasco now deploy north against south. Geometry, reward positions, initial firing headings, bridge commands, enemy playbooks and medic entry/extraction follow the orientation. Shorelines remain continuous, with bridge planks and rails aligned to the crossing. Other maps keep east–west fronts. Tanks now show long snapped cannons, continuous tracks, exposed engines and open turret hatches. Aircraft show broad wings, cockpit canopies, broken propellers, exposed ribs and detached tail sections. Trucks and staff cars have shattered windows and visibly torn bodywork. Collision footprints, cover destruction and permanent cover rules remain authoritative. Dry chest positions also keep clearance from the riverbank.
