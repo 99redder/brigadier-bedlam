@@ -1,3 +1,5 @@
+import { MORTAR } from "../sim/mortar";
+import { drawMortar } from "./mortar";
 import { eliteKey, eliteCaption } from "./elites";
 import { drawFieldLoot } from "./field-loot";
 import { runnerKey } from "./runner";
@@ -73,6 +75,7 @@ export class Battlefield extends Phaser.Scene {
   private deploymentCues = new DeploymentCues();
   private airstrikeBanner!: Phaser.GameObjects.Text;
   private lastAirstrikeEvent = -1;
+  private lastMortarEvent = -1;
   private victoryBanner!: Phaser.GameObjects.Text;
   tutorialMarker: { point: Point; label: string } | null = null;
   aimPoint(): Point {
@@ -391,6 +394,7 @@ export class Battlefield extends Phaser.Scene {
     this.previousPositions.clear();
     this.lastCombatEvent = -1;
     this.lastAirstrikeEvent = -1;
+    this.lastMortarEvent = -1;
     this.lastMeleeEvent = -1;
     this.previousRevives = 0;
     this.previousChestOpened=0;this.previousChestSpawned=0;
@@ -424,6 +428,7 @@ export class Battlefield extends Phaser.Scene {
           this.sfx.airstrike(event.kind);
           this.lastAirstrikeEvent = event.id;
         }
+      for(const event of this.battle.mortarEvents)if(event.id>this.lastMortarEvent){this.sfx.mortar(event.kind);this.lastMortarEvent=event.id;}
       for (const event of this.battle.meleeEvents)
         if (event.id > this.lastMeleeEvent) {
           this.sfx.melee(event.kind, event.blocked);
@@ -517,7 +522,8 @@ export class Battlefield extends Phaser.Scene {
           s.remaining - (b.winner === null ? 0 : this.victory.elapsed) >
           -TUNING.airstrikeAftermath,
       );
-    this.airstrikeBanner.setVisible(!!activeStrike);
+    const activeMortar=b.winner===null?b.mortars[0]:undefined;
+    this.airstrikeBanner.setVisible(!!activeStrike||!!activeMortar);
     if (activeStrike)
       this.airstrikeBanner
         .setText(
@@ -526,6 +532,10 @@ export class Battlefield extends Phaser.Scene {
             : "AIRSTRIKE IMPACT — BOMBS AWAY!",
         )
         .setBackgroundColor(activeStrike.side === 0 ? "#695324" : "#8c3429");
+    if(!activeStrike&&activeMortar)this.airstrikeBanner
+      .setText(`${activeMortar.side===0?"FRIENDLY":"ENEMY"} MORTAR · ${activeMortar.elapsed<MORTAR.setup?`CREW SETTING UP ${(MORTAR.setup-activeMortar.elapsed).toFixed(1)}s`:"BARRAGE IN PROGRESS"}\nTAKE COVER — scattered shells across the marked area!`)
+      .setBackgroundColor(activeMortar.side===0?"#695324":"#8c3429");
+    for(const mortar of b.mortars)drawMortar(g,b.winner===null?mortar:{...mortar,elapsed:mortar.elapsed+this.victory.elapsed},project);
     for (const strike of visibleStrikes) {
       if (strike.remaining > 0) {
         const aim = project(strike.requested), actual = project(strike.point);
@@ -553,7 +563,7 @@ export class Battlefield extends Phaser.Scene {
     }
     if (this.superAim && b.winner === null && !b.planning) {
       const p = project(this.cursor),
-        radius = this.superAim === "airstrike" ? TUNING.airstrikeMaxScatter : 22;
+        radius = this.superAim === "airstrike" ? TUNING.airstrikeMaxScatter : this.superAim==="mortar" ? MORTAR.coverage+MORTAR.drift : 22;
       g.lineStyle(2, 0xffd15f, 0.9);
       g.strokeEllipse(p.x, p.y, radius * 2, radius * 1.48);
       g.lineBetween(p.x - 12, p.y, p.x + 12, p.y);

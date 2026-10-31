@@ -131,6 +131,14 @@ export class Sound {
       g.disconnect();
     };
   }
+  mortar(kind:"setup"|"launch"|"impact") {
+    if(this.muted||!this.context||this.context.state!=="running")return;
+    if(kind==="setup")for(let i=0;i<3;i++){this.tone(380,160,.08,"triangle",.04,i*.18);this.hiss(.09,.035,1700,i*.18);}
+    else if(kind==="launch"){
+      this.tone(185,55,.2,"sine",.12);this.hiss(.15,.12,1400);
+      this.tone(1600,280,.65,"triangle",.045,.5);
+    } else {this.tone(95,25,.45,"sine",.14);this.hiss(.4,.16,2000);}
+  }
   airstrike(kind: "warning" | "drop" | "impact") {
     if (this.muted || !this.context || this.context.state !== "running") return;
     if (kind === "warning") {

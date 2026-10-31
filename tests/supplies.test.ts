@@ -45,8 +45,10 @@ describe("contested supply drops", () => {
   it("awards each random reward once to either side on physical contact", () => {
     for (const [roll, weapon] of [
       [0, "airstrike"],
-      [0.4999, "airstrike"],
-      [0.5, "sniper"],
+      [0.3999, "airstrike"],
+      [0.4, "mortar"],
+      [0.7999, "mortar"],
+      [0.8, "sniper"],
       [0.9999, "sniper"],
     ] as const) {
       const { b, a, t } = fixture();
@@ -110,7 +112,7 @@ describe("contested supply drops", () => {
   it("rejects the removed reward without spawning troops or spending a valid reward", () => {
     const { b } = fixture();
     b.powers[0] = ["airstrike", "reinforcements" as SuperWeapon];
-    expect(SUPPLY_WEAPONS).toEqual(["airstrike", "sniper"]);
+    expect(SUPPLY_WEAPONS).toEqual(["airstrike", "mortar", "sniper"]);
     expect(b.useSuper(0, "reinforcements" as SuperWeapon, { x: 300, y: 200 })).toBe(false);
     expect(b.soldiers).toHaveLength(10);
     expect(b.powers[0]).toEqual(["airstrike", "reinforcements"]);

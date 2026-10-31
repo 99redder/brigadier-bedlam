@@ -1,3 +1,5 @@
+import { SUPPORT_WEAPONS, rollSupport } from "./rewards";
+import { createMortar, tickMortars, mortarCoverOrder, type MortarStrike, type MortarSound } from "./mortar";
 import { northSouth, orientPoint } from "./orientation";
 import { ELITES, eliteStats, eliteDanger, eliteEvade, type EliteId } from "./elites";
 import { prepareMapPlan, mapOpeningOrder, enemySupportTarget, type EnemyMapPlan } from "./map-strategy";
@@ -49,6 +51,7 @@ export interface Soldier extends Point {
   shotsFired?: number;
   traffic?: number;
   takingCover?: boolean;
+  mortarCoverUntil?: number;
   steadyTime?: number;
   heat?: number;
   overheated?: boolean;
@@ -140,10 +143,11 @@ export interface Effect extends Point {
   time: number;
   size: number;
 }
-export const SUPPLY_WEAPONS = ["airstrike", "sniper"] as const;
+export const SUPPLY_WEAPONS = SUPPORT_WEAPONS;
 export type SuperWeapon = (typeof SUPPLY_WEAPONS)[number];
 export const SUPER_LABELS: Record<SuperWeapon, string> = {
   airstrike: "Airstrike",
+  mortar: "Mortar strike",
   sniper: "Sniper shot",
 };
 export type Command =
@@ -213,6 +217,11 @@ export class Battle {
     this.airstrikeEvents.push({ id: this.airstrikeEventId++, kind });
     if (this.airstrikeEvents.length > 32) this.airstrikeEvents.shift();
   }
+  mortars:MortarStrike[]=[];
+  mortarEvents:{id:number;kind:MortarSound}[]=[];
+  private mortarId=0;
+  private mortarEventId=0;
+  emitMortar(kind:MortarSound){this.mortarEvents.push({id:this.mortarEventId++,kind});if(this.mortarEvents.length>64)this.mortarEvents.shift();}
   supplyRevision = 0;
   aiSides: Side[] = [1];
   enemySupplyRun: SupplyRun | null = null;
@@ -1295,7 +1304,7 @@ export class Battle {
   aimAi(s:Soldier,point:Point) {
     // An AI may fire anywhere inside its held arc, just like a player soldier.
     // Do not restart the settle timer for every small movement of its target.
-    if(s.side===1&&this.operation?.mode&&inView(s,point))return;
+    if(inView(s,point))return;
     this.facePoint(s,point);
   }
   get enemyTactics() {return this.challenge?.tactics??0;}
@@ -1372,6 +1381,7 @@ export class Battle {
   }
   ai(s: Soldier) {
     if(eliteEvade(this,s))return;
+    if(mortarCoverOrder(this,s))return;
     if(supplyRunOrder(this,s))return;
     if(mapOpeningOrder(this,s))return;
     if(this.assistedOrder(s))return;
@@ -1524,7 +1534,7 @@ export class Battle {
         )[0];
       if (!unit) continue;
       drop.claimedBy = unit.side;
-      const weapon = SUPPLY_WEAPONS[Math.floor(this.random() * SUPPLY_WEAPONS.length)];
+      const weapon = rollSupport(this.random());
       this.powers[unit.side].push(weapon);
       this.supplyRevision++;
       this.note(
@@ -1614,13 +1624,14 @@ export class Battle {
     const allies=this.soldiers.filter(s=>s.side===collector.side),living=allies.filter(s=>s.life==="alive");
     const foes=this.soldiers.filter(s=>s.side!==collector.side&&s.life==="alive");
     const fallen=allies.some(s=>s.life!=="alive");
-    const pool:ChestReward[]=["sniper","airstrike"];
+    const pool:(ChestReward|"support")[]=["support","support"];
     if(living.some(s=>s.hp<this.maxHp(s)||s.burnRemaining>0))pool.push("treatment");
     if(fallen){pool.push("recall");if(foes.length-living.length>=2)pool.push("recall","recall");}
-    let reward=choice??pool[Math.floor(this.random()*pool.length)];
-    if(reward==="recall"&&!this.recallSoldier(collector))reward=living.some(s=>s.hp<this.maxHp(s)||s.burnRemaining>0)?"treatment":"sniper";
+    const category=choice??pool[Math.floor(this.random()*pool.length)];
+    let reward:ChestReward=category==="support"?rollSupport(this.random()):category;
+    if(reward==="recall"&&!this.recallSoldier(collector))reward=living.some(s=>s.hp<this.maxHp(s)||s.burnRemaining>0)?"treatment":rollSupport(this.random());
     if(reward==="treatment")for(const s of living){s.hp=Math.min(this.maxHp(s),s.hp+this.maxHp(s)*COMEBACK.healFraction);s.burnRemaining=0;}
-    else if(reward==="sniper"||reward==="airstrike")this.powers[collector.side].push(reward);
+    else if(reward==="sniper"||reward==="airstrike"||reward==="mortar")this.powers[collector.side].push(reward);
     this.supplyRevision++;this.note(`${collector.side===0?"Your squad":"Enemy"} opened a chest: ${CHEST_LABELS[reward]}!`);
     this.effects.push({...collector,kind:"revive",time:1,size:35});return reward;
   }
@@ -1685,6 +1696,10 @@ export class Battle {
       });
       this.emitAirstrike("warning");
       this.note(`Bombardier: ${AIRSTRIKE_ACCURACY[scatter.accuracy]}. Clear the marked blast zone.`);
+    } else if(weapon === "mortar") {
+      this.mortars.push(createMortar(this,side,point,this.mortarId++));
+      this.emitMortar("setup");
+      this.note("Mortar crew arriving at the opposing starting edge. TAKE COVER before the barrage!");
     }
     inventory.splice(index, 1);
     this.supplyRevision++;
@@ -1695,6 +1710,7 @@ export class Battle {
   }
   tickSupers(dt: number) {
     this.collectSupplies();
+    tickMortars(this,dt);
     for (const strike of this.strikes) {
       strike.remaining -= dt;
       if (!strike.dropped && strike.remaining <= 1.8) {

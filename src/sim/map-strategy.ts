@@ -1,3 +1,4 @@
+import { MORTAR } from "./mortar";
 import { orientPoint } from "./orientation";
 import type { Battle, Soldier, SuperWeapon } from "./battle";
 import { blocked, distance, pathfind, safePoint, type Point } from "./geometry";
@@ -90,12 +91,13 @@ export function enemySupportTarget(b:Battle,weapon:SuperWeapon):Point|undefined 
    const value=(s:Soldier)=>s.unarmed?0:s.classId==="bazooka"?6:s.classId==="lobber"?4:s.classId==="torch"?3:2;
    return value(z)-value(a)||a.id-z.id;
  })[0];
+ const radius=weapon==="mortar"?MORTAR.coverage:TUNING.airstrikeRadius;
  const friends=b.soldiers.filter(s=>s.side===1&&s.life==="alive");
  const candidates:Point[]=[...foes];
  for(let i=0;i<foes.length;i++)for(let j=i+1;j<foes.length;j++)
-   if(distance(foes[i],foes[j])<TUNING.airstrikeRadius*1.8)candidates.push({x:(foes[i].x+foes[j].x)/2,y:(foes[i].y+foes[j].y)/2});
- const score=(p:Point)=>foes.reduce((n,s)=>n+(distance(p,s)<TUNING.airstrikeRadius&&!blocked(p,s,b.cover)?(s.unarmed ? .6 : 1):0),0)
-   -friends.filter(s=>distance(p,s)<TUNING.airstrikeRadius+40).length*3;
+   if(distance(foes[i],foes[j])<radius*1.8)candidates.push({x:(foes[i].x+foes[j].x)/2,y:(foes[i].y+foes[j].y)/2});
+ const score=(p:Point)=>foes.reduce((n,s)=>n+(distance(p,s)<radius&&!blocked(p,s,b.cover)?(weapon==="mortar"&&s.takingCover ? .1 : s.unarmed ? .6 : 1):0),0)
+   -friends.filter(s=>distance(p,s)<radius+40).length*3;
  candidates.sort((a,z)=>score(z)-score(a)||a.x-z.x||a.y-z.y);
  return candidates[0]&&score(candidates[0])>0?candidates[0]:undefined;
 }

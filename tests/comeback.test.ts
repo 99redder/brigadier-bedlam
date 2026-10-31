@@ -92,7 +92,7 @@ describe("timed comeback chests",()=>{
  });
  it("opens once for a living nearby runner, then shows its reward briefly",()=>{
   const {b,a}=fixture();b.dropGear(a);b.time=30;b.spawnChest();const c=b.chests[0];a.x=c.x;a.y=c.y;b.random=()=>0;
-  b.tickComeback();expect(c.claimedBy).toBe(0);expect(c.reward).toBe("sniper");expect(b.chestsOpened).toBe(1);expect(b.powers[0]).toEqual(["sniper"]);
+  b.tickComeback();expect(c.claimedBy).toBe(0);expect(c.reward).toBe("airstrike");expect(b.chestsOpened).toBe(1);expect(b.powers[0]).toEqual(["airstrike"]);
   b.tickComeback();expect(b.powers[0]).toHaveLength(1);b.time=34;b.tickComeback();expect(b.chests).toEqual([]);
  });
  it("can return a permanently lost ally at a safe point with partial health",()=>{
@@ -116,7 +116,7 @@ describe("timed comeback chests",()=>{
   expect(b.soldiers.filter(s=>s.side===0&&s.life==="alive")).toHaveLength(3);
  });
  it("lets enemies claim rewards too, and the enemy AI can contest a chest",()=>{
-  const {b,t}=fixture();b.time=30;b.spawnChest();const c=b.chests[0];t.x=c.x;t.y=c.y;b.random=()=>0;b.tickComeback();expect(c.claimedBy).toBe(1);expect(b.powers[1]).toContain("sniper");
+  const {b,t}=fixture();b.time=30;b.spawnChest();const c=b.chests[0];t.x=c.x;t.y=c.y;b.random=()=>0;b.tickComeback();expect(c.claimedBy).toBe(1);expect(b.powers[1]).toContain("airstrike");
   const q=fixture();q.b.time=30;q.b.spawnChest();q.b.chests[0].x=650;q.b.chests[0].y=250;q.b.ai(q.t);expect(q.t.goal).not.toBeNull();
  });
  it("expires unclaimed chests and stops after six rather than enabling endless rewards",()=>{
