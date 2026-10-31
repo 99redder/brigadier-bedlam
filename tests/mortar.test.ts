@@ -3,7 +3,9 @@ import {Battle,replayBattle} from "../src/sim/battle";
 import {MORTAR,mortarDuration,mortarImpact,mortarCoverOrder,createMortar} from "../src/sim/mortar";
 import {rollSupport} from "../src/sim/rewards";
 import {TUNING} from "../src/sim/data";
-import {distance} from "../src/sim/geometry";
+import {MAPS} from "../src/sim/maps";
+import {publicState} from "../src/net/protocol";
+import {distance,legal} from "../src/sim/geometry";
 function fixture(mapId=0){
  const b=new Battle(42,0,false,0,{mapId,level:7,mode:"hard"});b.aiSides=[];b.cover=[];b.water=[];b.bridges=[];b.supplies=[];b.chestsSpawned=6;
  for(const s of b.soldiers){s.life="dead";s.hold=true;s.cooldown=999;s.autoFireWait=999;}
@@ -24,11 +26,17 @@ describe("support reward weights",()=>{
  });
 });
 describe("sustained mortar support",()=>{
- for(const mapId of [0,4])for(const side of [0,1] as const)it(`crew arrives at the opposing starting edge for side ${side}, map ${mapId}`,()=>{
-  const {b}=fixture(mapId);b.powers[side]=["mortar"];expect(b.useSuper(side,"mortar",{x:550,y:280})).toBe(true);
-  const m=b.mortars[0];expect(m.shells).toHaveLength(12);expect(m.elapsed).toBe(0);expect(b.soldiers.filter(s=>s.life==="alive")).toHaveLength(2);
-  expect(mapId===4?(side===0?m.pit.y>490:m.pit.y<70):(side===0?m.pit.x>1000:m.pit.x<80)).toBe(true);
+ for(const multiplayer of [false,true])for(const map of MAPS)for(const side of [0,1] as const)it(`crew deploys on its own starting edge for side ${side}, map ${map.id}, multiplayer ${multiplayer}`,()=>{
+  const b=new Battle(42,0,false,0,{mapId:map.id,level:1},multiplayer);
+  const requested=b.teamEdge((side^1) as 0|1,{x:550,y:280},140);
+  b.powers[side]=["mortar"];expect(b.useSuper(side,"mortar",requested)).toBe(true);
+  const m=b.mortars[0];expect(m.shells).toHaveLength(12);expect(m.elapsed).toBe(0);expect(b.soldiers.filter(s=>s.life==="alive")).toHaveLength(10);
+  const edge=b.verticalFront?m.pit.y:m.pit.x,midpoint=b.verticalFront?280:550;
+  expect(side===0?edge<midpoint:edge>midpoint).toBe(true);
+  expect(legal(m.pit,b.dryCover())).toBe(true);
+  expect(m.requested).toEqual(requested);
   expect(b.powers[side]).toEqual([]);expect(b.mortarEvents).toEqual([{id:0,kind:"setup"}]);
+  const ownView=publicState(b,side).mortars[0];expect(ownView.side).toBe(0);expect(ownView.pit).toEqual(m.pit);
  });
  it("waits longer than an airstrike, then launches and resolves twelve shells over a sustained attack",()=>{
   const {b}=fixture();b.powers[0]=["mortar"];b.useSuper(0,"mortar",{x:600,y:280});

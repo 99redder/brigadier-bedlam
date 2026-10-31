@@ -1705,7 +1705,7 @@ export class Battle {
     } else if(weapon === "mortar") {
       this.mortars.push(createMortar(this,side,point,this.mortarId++));
       this.emitMortar("setup");
-      this.note("Mortar crew arriving at the opposing starting edge. TAKE COVER before the barrage!");
+      this.note("Mortar crew deploying from its own starting edge. TAKE COVER before the barrage!");
     }
     inventory.splice(index, 1);
     this.supplyRevision++;

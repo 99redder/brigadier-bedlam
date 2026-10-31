@@ -6,7 +6,7 @@ import type {Point} from "../sim/geometry";
 // simulation time. These temporary support personnel do not add squad slots.
 export function drawMortar(g:Phaser.GameObjects.Graphics,m:MortarStrike,project:(p:Point)=>Point){
  if(m.elapsed>=mortarDuration)return;
- const pit=project(m.pit),center=project(m.center),color=m.side===0?0xffd36d:0xff7962;
+ const pit=project(m.pit),center=project(m.center),direction=center.x>=pit.x?1:-1,color=m.side===0?0xffd36d:0xff7962;
  const setup=Math.min(1,m.elapsed/MORTAR.setup),walk=Math.max(0,1-m.elapsed/1.4);
  const packing=Math.max(0,m.elapsed-(mortarDuration-.8))/.8;
  const active=m.elapsed<MORTAR.setup+(MORTAR.shells-1)*MORTAR.interval+MORTAR.flight;
@@ -39,10 +39,10 @@ export function drawMortar(g:Phaser.GameObjects.Graphics,m:MortarStrike,project:
   const recent=m.shells.some(s=>s.launched&&m.elapsed-s.launchAt>=0&&m.elapsed-s.launchAt<.12);
   g.fillStyle(0x303d36);g.fillEllipse(pit.x,pit.y+1,23,9);
   g.lineStyle(4,0x8d9c8b);g.lineBetween(pit.x,pit.y-14,pit.x-10,pit.y+1);g.lineBetween(pit.x+3,pit.y-14,pit.x+14,pit.y+2);
-  g.lineStyle(10,0x283f35);g.lineBetween(pit.x+4,pit.y-4,pit.x-5,pit.y-29+(recent?3:0));
-  g.lineStyle(4,0x96a78d);g.lineBetween(pit.x+2,pit.y-6,pit.x-5,pit.y-27+(recent?3:0));
-  g.fillStyle(0x172b26);g.fillEllipse(pit.x-5,pit.y-29+(recent?3:0),11,6);
-  if(recent){g.fillStyle(0xffe6a1,.9);g.fillCircle(pit.x-5,pit.y-33,8);}
+  g.lineStyle(10,0x283f35);g.lineBetween(pit.x-4*direction,pit.y-4,pit.x+5*direction,pit.y-29+(recent?3:0));
+  g.lineStyle(4,0x96a78d);g.lineBetween(pit.x-2*direction,pit.y-6,pit.x+5*direction,pit.y-27+(recent?3:0));
+  g.fillStyle(0x172b26);g.fillEllipse(pit.x+5*direction,pit.y-29+(recent?3:0),11,6);
+  if(recent){g.fillStyle(0xffe6a1,.9);g.fillCircle(pit.x+5*direction,pit.y-33,8);}
  }
  // An ammunition box makes this visually distinct from an ordinary soldier.
  g.fillStyle(0x7f754e);g.fillRoundedRect(pit.x+33,pit.y-4,20,13,2);

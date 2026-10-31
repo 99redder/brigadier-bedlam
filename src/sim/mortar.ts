@@ -12,7 +12,7 @@ function scatter(b:Battle,point:Point,radius:number):Point {
 }
 export function createMortar(b:Battle,side:Side,requested:Point,id:number):MortarStrike {
   const center=scatter(b,requested,MORTAR.drift);
-  const pit=safePoint(b.teamEdge(side===0?1:0,requested,46),b.dryCover());
+  const pit=safePoint(b.teamEdge(side,requested,46),b.dryCover());
   return {id,side,requested:{...requested},center,pit,elapsed:0,shells:Array.from({length:MORTAR.shells},(_,i)=>({point:scatter(b,center,MORTAR.coverage),launchAt:MORTAR.setup+i*MORTAR.interval,launched:false,impacted:false}))};
 }
 export function mortarImpact(b:Battle,point:Point) {

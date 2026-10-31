@@ -1,5 +1,12 @@
 # Prototype verification — October 31, 2026
 
+## v0.48.1 mortar crew deployment correction
+
+- All 553 tests pass across 37 files. Frontend build, multiplayer Worker type check and Worker deployment dry run pass.
+
+- Mortar crews now deploy from the starting edge of the team that earned/called the reward, then arc shells into the selected target area. The tube illustration faces the target horizontally. Field manual and radio instructions match the corrected behavior.
+- Placement regression coverage exercises both teams on all ten maps in solo and multiplayer (40 combinations), using actual terrain and checking legal dry deployment positions, unchanged targeting, reward consumption and multiplayer viewer ownership/coordinates.
+
 ## v0.48 unranked multiplayer beta
 
 - 517 tests pass across 37 files. Multiplayer regressions cover equal rosters/stats, no enemy AI/luck/elites, independent selections and manual Torch control, equal friendly collision, side-specific volleys, ownership/bounds validation, private snapshot redaction, checkpoint reproducibility, late-match reconnection, acknowledged command deduplication, and cancellation during a pending join.
