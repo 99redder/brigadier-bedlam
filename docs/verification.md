@@ -1,4 +1,12 @@
-# Prototype verification — October 13, 2026
+# Prototype verification — October 31, 2026
+
+## v0.48 unranked multiplayer beta
+
+- 517 tests pass across 37 files. Multiplayer regressions cover equal rosters/stats, no enemy AI/luck/elites, independent selections and manual Torch control, equal friendly collision, side-specific volleys, ownership/bounds validation, private snapshot redaction, checkpoint reproducibility, late-match reconnection, acknowledged command deduplication, and cancellation during a pending join.
+- Frontend production build, generated multiplayer Worker type check, leaderboard Worker type check and whitespace checks pass. CI now runs the real local Durable Object smoke test before the Pages build.
+- Actual Wrangler SQLite/WebSocket runtime smoke passes locally and against the deployed Cloudflare multiplayer Worker: concurrent public pairing, private invites, origin/seat authorization, Ready gating, both players' orders, enemy-order rejection, synchronized deployment, reconnecting a seat, forfeit and matched-room isolation. Test seats are cancelled in cleanup; no campaign scores are written.
+- Two isolated browser contexts completed the rendered friend-lobby flow. Both the west/north and east/south player views could select their green squad, enter/leave cover and queue movement through the existing mouse controls. The shared countdown reached GO. The field manual stayed open while the authoritative clock advanced; closing it returned to the live match. A retreat produced the other player's victory celebration and multiplayer result screen. Screenshot inspected at `/tmp/bedlam-online-qa.png` (local QA artifact).
+- Dedicated production backend: `https://brigadier-bedlam-multiplayer.99redder.workers.dev`. Existing scores Worker/D1 resources are unchanged. One-second checkpoints, idle socket hibernation, active-loop shutdown, reconnect/expiry alarms, bounded queue sizes, and closed-room cleanup are documented in `multiplayer.md`. Real-world latency and gameplay balance still need human playtesting; this is unranked single-round beta functionality.
 
 ## v0.10 controls and balance pass
 

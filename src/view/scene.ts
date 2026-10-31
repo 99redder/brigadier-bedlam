@@ -1,3 +1,4 @@
+import {type PublicState} from "../net/protocol";
 import { MORTAR } from "../sim/mortar";
 import { drawMortar } from "./mortar";
 import { eliteKey, eliteCaption } from "./elites";
@@ -56,6 +57,9 @@ export const unproject = (p: Point) => ({
 });
 export class Battlefield extends Phaser.Scene {
   battle: Battle | null = null;
+  remote = false;
+  private snapshotAt=0;
+  private snapshotGap=100;
   paused = true;
   accumulator = 0;
   private previousPositions = new Map<number, Point>();
@@ -68,7 +72,7 @@ export class Battlefield extends Phaser.Scene {
       : interpolatePoint(
           unit,
           this.previousPositions.get(unit.id),
-          this.accumulator / TUNING.step,
+          this.remote ? Math.min(1,(performance.now()-this.snapshotAt)/this.snapshotGap) : this.accumulator / TUNING.step,
         );
   }
   victory = new VictoryClock();
@@ -371,7 +375,7 @@ export class Battlefield extends Phaser.Scene {
         })
         .setAlpha(0.65);
     const name=this.children.getByName("map-name") as Phaser.GameObjects.Text | null;
-    const caption=map ? `${map.name.toUpperCase()} / ${env.name.toUpperCase()} / STAGE ${this.battle!.operation!.level} OF 10` : "THE DISPUTED PICNIC GROUNDS / SECTOR 01";
+    const caption=map ? `${map.name.toUpperCase()} / ${env.name.toUpperCase()} / ${this.remote?"UNRANKED 1V1":`STAGE ${this.battle!.operation!.level} OF 10`}` : "THE DISPUTED PICNIC GROUNDS / SECTOR 01";
     if(name)name.setText(caption);else makeText(76,574,caption).setName("map-name");
   }
   showAttract() {
@@ -384,7 +388,14 @@ export class Battlefield extends Phaser.Scene {
     });
     this.render();
   }
+  receive(state:PublicState) {
+    if(!this.battle)return;
+    this.previousPositions=new Map(this.battle.combatants().map(unit=>[unit.id,this.visualPoint(unit)]));
+    const now=performance.now();this.snapshotGap=Math.max(33,Math.min(200,now-this.snapshotAt));this.snapshotAt=now;
+    Object.assign(this.battle,state);
+  }
   start(battle: Battle) {
+    this.remote=false;
     this.victory.reset();
     this.deploymentCues.reset(battle.planning);
     this.battle = battle;
@@ -404,7 +415,8 @@ export class Battlefield extends Phaser.Scene {
   }
   update(_time: number, delta: number) {
     if (!this.battle) return;
-    if (!this.paused && this.battle.winner === null) {
+    if (!this.paused && (this.remote || this.battle.winner === null)) {
+      if(!this.remote){
       this.accumulator += Math.min(delta / 1000, 0.2);
       while (this.accumulator >= 1 / 30) {
         this.previousPositions = new Map(
@@ -415,6 +427,7 @@ export class Battlefield extends Phaser.Scene {
         this.battle.step();
         this.accumulator -= 1 / 30;
       }
+      }else this.accumulator=Math.min(.2,(performance.now()-this.snapshotAt)/1000);
       const cue = this.deploymentCues.poll(this.battle.countdown);
       if (cue !== null) this.sfx.deployment(cue);
       for (const event of this.battle.combatEvents) {

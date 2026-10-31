@@ -42,6 +42,7 @@ export type Side = 0 | 1;
 export type Life = "alive" | "down" | "dead";
 export interface Soldier extends Point {
   id: number;
+  human?: boolean;
   elite?: EliteId;
   eliteEscape?: Point;
   unarmed?: boolean;
@@ -263,6 +264,7 @@ export class Battle {
   bridges: Rect[] = BRIDGES.map((r) => ({ ...r }));
   winner: Side | null = null;
   selected: number | null = null;
+  selectedBySide: [number|null,number|null]=[null,null];
   log: string[] = [];
   commands: Replay["commands"] = [];
   shotId = 0;
@@ -274,7 +276,9 @@ export class Battle {
     readonly training = false,
     readonly deploymentSeconds = 0,
     readonly operation?: {mapId:number;level:number;mode?:DifficultyMode},
+    readonly multiplayer=false,
   ) {
+    if(multiplayer)this.aiSides=[];
     this.planningTicks = training
       ? 0
       : Math.round(deploymentSeconds / TUNING.step);
@@ -293,7 +297,7 @@ export class Battle {
     this.squad = squad;
     const enemy = Math.floor(this.random() * SQUADS.length);
     for (const side of (training ? [0] : [0, 1]) as Side[])
-      (side === 0 ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber","torch","sapper"] as ClassId[] : SQUADS[enemy].classes).forEach(
+      (side === 0 || multiplayer ? SQUADS[squad].classes : operation?.level===1 ? ["rifleman","rifleman","lobber","torch","sapper"] as ClassId[] : SQUADS[enemy].classes).forEach(
         (classId, slot) => {
           const spawn={x:side===0?105:995,y:training?160+slot*70:75+slot*99};
           const vertical=!training&&northSouth(operation?.mapId);
@@ -311,6 +315,7 @@ export class Battle {
             side,
             slot,
             classId,
+            ...(multiplayer?{human:true}:{}),
             ...position,
             ...(vertical?{heading:side===0?Math.PI/2:-Math.PI/2}:{}),
             hp: CLASSES[classId].hp,
@@ -349,7 +354,7 @@ export class Battle {
           });
         },
       );
-    if(!training && operation) {
+    if(!training && operation && !multiplayer) {
       const d=difficulty(operation.level,operation.mode);
       this.soldiers=this.soldiers.filter(s=>s.side===0||s.slot<d.enemyCount);
       this.soldiers.filter(s=>s.side===1).forEach(s=>{s.hp=Math.round(CLASSES[s.classId].hp*d.enemyHealth);});
@@ -375,7 +380,7 @@ export class Battle {
   teamEdge(side:Side,lane:Point,inset=18):Point {
     return this.verticalFront?{x:lane.x,y:side===0?inset:FIELD.height-inset}:{x:side===0?inset:FIELD.width-inset,y:lane.y};
   }
-  get challenge() { return this.operation ? difficulty(this.operation.level,this.operation.mode) : null; }
+  get challenge() { return this.operation && !this.multiplayer ? difficulty(this.operation.level,this.operation.mode) : null; }
   get weather(): Weather { return !this.training && this.operation ? MAPS[this.operation.mapId].environment.weather ?? "clear" : "clear"; }
   get weatherAdvice() {return weatherAdvice(this.weather);}
   weaponRange(s:Soldier) {return CLASSES[s.classId].range * (s.classId==="torch" && this.weather==="rain" ? RAIN.flameRange : 1);}
@@ -404,7 +409,7 @@ export class Battle {
   getCombatant(id: number) {
     return this.get(id) ?? this.medics.find((m) => m.id === id);
   }
-  command(c: Command, record = true) {
+  command(c: Command, record = true, actor:Side=0) {
     if (this.winner !== null) return;
     if (record)
       this.commands.push({ tick: this.tick, command: structuredClone(c) });
@@ -418,7 +423,7 @@ export class Battle {
       return;
     }
     if (c.type === "squad-move") {
-      this.moveSquad(c.point);
+      this.moveSquad(c.point,actor);
       return;
     }
     if (c.type === "super") {
@@ -426,12 +431,13 @@ export class Battle {
       return;
     }
     if (c.type === "fire-all") {
-      this.fireAll();
+      this.fireAll(actor);
       return;
     }
     if (c.type === "select") {
-      this.selected = c.id;
-      for (const s of this.soldiers) s.blocking = false;
+      if(!this.multiplayer||actor===0)this.selected = c.id;
+      this.selectedBySide[actor]=c.id;
+      for (const s of this.soldiers) if(!this.multiplayer||s.side===actor)s.blocking = false;
       return;
     }
     if (c.type === "medic") {
@@ -556,11 +562,11 @@ export class Battle {
     if (c.type === "block") s.blocking = c.held && s.brawl !== null;
     if (c.type === "punch" || c.type === "kick") this.brawlHit(s, c.type);
   }
-  moveSquad(point: Point) {
+  moveSquad(point: Point,side:Side=0) {
     const units = this.soldiers
       .filter(
         (s) =>
-          s.side === 0 &&
+          s.side === side &&
 
           !s.takingCover &&
           s.life === "alive" &&
@@ -633,7 +639,7 @@ export class Battle {
       p,
       this.aiSides.includes(s.side) ? this.dryCover() : obstacles,
     );
-    if(s.side===1)s.goal=reserveEnemyGoal(s,s.goal,this.soldiers,obstacles);
+    if(s.side===1&&!this.multiplayer)s.goal=reserveEnemyGoal(s,s.goal,this.soldiers,obstacles);
     s.path = pathfind(s, s.goal, obstacles);
     // An AI bridge preference must not strand a unit forever if the dry route
     // is unavailable. Explicit safe bridge orders never fall back to swimming.
@@ -820,10 +826,10 @@ export class Battle {
   aimDelay(s: Soldier) { return s.classId === "bazooka" ? TUNING.rocketAimTime : TUNING.aimSettleTime; }
   isManualTorch(s: Soldier) {
     return (
-      s.side === 0 &&
+      (s.side === 0 || this.multiplayer) &&
       s.classId === "torch" && !s.unarmed &&
-      s.id === this.selected &&
-      !this.aiSides.includes(0)
+      s.id === (this.multiplayer?this.selectedBySide[s.side]:this.selected) &&
+      !this.aiSides.includes(s.side)
     );
   }
   aimTorch(s: Soldier, point: Point) {
@@ -856,11 +862,11 @@ export class Battle {
     }
     return fired;
   }
-  fireAll() {
+  fireAll(side:Side=0) {
     let fired = 0;
     for (const s of this.soldiers) {
       if (
-        s.side !== 0 ||
+        s.side !== side ||
 
         s.life !== "alive" ||
         s.moving ||
@@ -985,7 +991,7 @@ export class Battle {
     const spread = manual
       ? 0
       : (w.spread + (coveredTarget ? TUNING.coverRifleSpread : 0)) *
-        (s.classId === "bazooka" && s.side === 1
+        (s.classId === "bazooka" && s.side === 1 && !this.multiplayer
           ? TUNING.enemyRocketScatter
           : 1) * (s.side===1 ? this.challenge?.enemySpread ?? 1 : 1) * (eliteStats(s)?.spread??1);
     if (spread > 0 && (!miss || s.classId === "bazooka")) {
@@ -994,7 +1000,7 @@ export class Battle {
         (centeredRoll(()=>this.random(),this.fortune(s.side)) * spread * Math.PI) / 180;
       const radial =
         s.classId === "bazooka"
-          ? 0.06 * (s.side === 1 ? TUNING.enemyRocketScatter : 1) * (eliteStats(s)?.spread??1)
+          ? 0.06 * (s.side === 1 && !this.multiplayer ? TUNING.enemyRocketScatter : 1) * (eliteStats(s)?.spread??1)
           : w.arc
             ? 0.015
             : 0;
@@ -1810,7 +1816,7 @@ export class Battle {
           s.brawl = null;
           s.blocking = false;
         } else {
-          if (s.id !== this.selected) {
+          if (s.id !== (this.multiplayer?this.selectedBySide[s.side]:this.selected)) {
             if (s.autoGuardTime <= 0 && s.brawlCd <= 0 && this.random() < 0.15)
               s.autoGuardTime = TUNING.autoBlockDuration;
             s.blocking = s.autoGuardTime > 0;

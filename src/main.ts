@@ -1,3 +1,5 @@
+import {MultiplayerClient} from "./net/client";
+import {type NetState} from "./net/protocol";
 import { MORTAR } from "./sim/mortar";
 import { fortuneLabel } from "./sim/luck";
 import { drawRunner } from "./view/runner";
@@ -35,6 +37,11 @@ let scoreReturn:"title"|"result"="title";
 let syncMessage="";
 const ui = document.querySelector<HTMLDivElement>("#ui")!;
 const scene = new Battlefield();
+const multiplayer=new MultiplayerClient();
+let online=false;
+let onlineName=saved.name||"";
+let inviteCode=new URLSearchParams(location.search).get("join")||"";
+let onlineStatus="";
 let tutorial: Tutorial | null = null;
 let armedSuper: SuperWeapon | null = null;
 let faceArmed = false;
@@ -42,9 +49,10 @@ let squadMoveArmed = false;
 let difficultyMode:DifficultyMode="medium";
 let supplyRevision = -1;
 function issue(c: Command) {
+  if(online){const sent=multiplayer.command(c);if(sent&&c.type==="select"){scene.battle!.selected=c.id;scene.battle!.selectedBySide[0]=c.id;}return;}
   if (!tutorial || tutorial.accepts(c)) scene.battle?.command(c);
 }
-let screen: "title" | "squad" | "battle" | "result" | "scores" = "title",
+let screen: "title" | "squad" | "battle" | "result" | "scores" | "online" = inviteCode?"online":"title",
   squad = 0,
   manualOpen = false,
   manualReturn = true,
@@ -106,7 +114,45 @@ function portrait(id: ClassId, side = 0, showcase = false, light=false) {
 function btn(label: string, action: string, kind = "secondary") {
   return `<button class="btn ${kind}" data-do="${action}">${label}</button>`;
 }
+function openOnline(){
+  if(online||multiplayer.active)multiplayer.leave();
+  online=false;tutorial=null;scene.tutorialMarker=null;scene.remote=false;scene.paused=true;
+  menuOpen=false;manualOpen=false;settingsOpen=false;screen="online";render();
+}
+function renderOnline(){
+ const n=multiplayer.state,session=multiplayer.session,waiting=multiplayer.active;
+ const link=new URL(location.href);link.search="";if(session)link.searchParams.set("join",session.code);
+ ui.innerHTML=`<section class="overlay"><div class="screen-inner online-screen"><div class="screen-head"><div><div class="eyebrow">Unranked online beta / two human commanders</div><h2>Find some trouble.</h2></div>${btn("← Title","title")}</div><p>One map. Five soldiers each. Equal equipment and rules. Both commanders get ten seconds to plan before the battle begins.</p><p class="tiny muted">Online matches keep running when you switch tabs or open the menu. A lost connection has a 25-second grace period. Test matches end after 20 minutes. Campaign scores are separate.</p><label for="online-name">Call sign (optional)</label><input id="online-name" maxlength="20" autocomplete="nickname" value="${esc(onlineName)}" placeholder="Volunteer" ${waiting?"disabled":""}><p class="online-status" role="status">${esc(multiplayer.status)}</p>${waiting?`<div class="online-seats">${[0,1].map(i=>`<div><strong>${esc(n?.players[i]?.name||"Waiting for commander…")}</strong><span>${n?.players[i]?n.players[i]!.connected?n.players[i]!.ready?"READY":"Connected · not ready":"Connecting…":"Open seat"}</span></div>`).join("")}</div><div class="buttons">${n&&n.players[n.side]&&!n.players[n.side]!.ready?btn("Ready for battle →","online-ready","primary campaign-continue"):""}${session?btn("Copy friend invite","online-copy"):""}${btn("Cancel / leave lobby","online-cancel")}</div><label for="invite-link">Friend invite · code ${esc(session?.code||"")}</label><input id="invite-link" readonly value="${esc(link.href)}">`:`<div class="buttons">${btn("Find opponent →","online-find","primary campaign-continue")}${btn("Create private friend lobby","online-private")}${session?btn("Reconnect previous match","online-resume"):""}</div><div class="invite-row"><label for="invite-code">Have a friend’s code?</label><input id="invite-code" maxlength="12" value="${esc(inviteCode)}" placeholder="12-character invite code">${btn("Join friend","online-join")}</div><p>No one here yet? Create a friend lobby and share its link, or use two separate browser sessions to test. Public matchmaking pairs the next two waiting players.</p>`}</div></section>`;
+}
+function renderOnlineResult(){
+ const b=scene.battle!,won=b.winner===0;
+ ui.innerHTML=`<section class="overlay result-screen"><div class="screen-inner"><div class="eyebrow">Unranked 1v1 / ${esc(MAPS[b.operation!.mapId].name)}</div><h2>${b.winner===null?"Ceasefire. Paperwork wins.":won?"Victory. Brag responsibly.":"Outmaneuvered. Demand a rematch."}</h2><p>${esc(multiplayer.state?.reason||"Match complete.")}</p><p>${b.soldiers.filter(s=>s.side===0&&s.life==="alive").length} survivors · ${Math.floor(b.time)} seconds · Campaign scores stay separate.</p><div class="buttons">${btn("Back to multiplayer →","online","primary campaign-continue")}${btn("Title","title")}</div></div></section>`;
+}
+multiplayer.onChange=()=>{
+ if(screen==="online")render();
+ if(online&&screen==="battle"){
+   onlineStatus=multiplayer.status;
+   let banner=ui.querySelector(".network-notice");
+   if(!banner){ui.insertAdjacentHTML("beforeend",'<aside class="network-notice" role="status"></aside>');banner=ui.querySelector(".network-notice");}
+   if(banner)banner.textContent=onlineStatus==="Connected"?"":onlineStatus;
+ }
+};
+multiplayer.onOrder=text=>scene.battle?.note(text);
+multiplayer.onState=(state:NetState)=>{
+ if(state.state){
+   if(online&&armedSuper&&state.state.powers[0].length<(scene.battle?.powers[0].length??0)){armedSuper=null;scene.superAim=null;}
+   if(!online){
+     tutorial=null;menuOpen=false;manualOpen=false;settingsOpen=false;armedSuper=null;faceArmed=false;squadMoveArmed=false;
+     scene.superAim=null;scene.facePreview=false;scene.squadMovePreview=false;
+     scene.start(new Battle(0,0,false,10,{mapId:state.mapId,level:1},true));scene.remote=true;online=true;screen="battle";renderAt=0;supplyRevision=-1;
+     scene.receive(state.state);scene.drawTerrain();render();
+   }else scene.receive(state.state);
+   if(screen==="battle"&&state.phase==="finished"&&state.state.winner===null){screen="result";scene.paused=true;render();}
+ }else if(screen==="online")render();
+ if(state.phase==="closed"&&online&&screen==="battle"){screen="result";scene.paused=true;render();}
+};
 function title() {
+  if(online||multiplayer.active)multiplayer.leave();online=false;scene.remote=false;manualOpen=false;settingsOpen=false;
   tutorial = null;
   scene.tutorialMarker = null;
   screen = "title";
@@ -118,11 +164,12 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.47</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Single player · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.48</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Multiplayer beta · 1v1", "online", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Solo or online 1v1 · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. A gentle opening grows into a tougher fight. A fresh squad arrives on each map.</p><fieldset class="difficulty-picker"><legend>Campaign difficulty · fixed for this tour</legend><div>${(Object.keys(MODES) as DifficultyMode[]).map(mode=>`<label class="difficulty-option"><input type="radio" name="difficulty" value="${mode}" ${difficultyMode===mode?"checked":""}><span><strong>${MODES[mode].name} <small>×${MODES[mode].score} score</small></strong><span>${MODES[mode].description}</span></span></label>`).join("")}</div></fieldset><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
-  if (screen === "result") renderResult();
+  if (screen === "result") online?renderOnlineResult():renderResult();
+  if (screen === "online") renderOnline();
   if (screen === "scores") renderScores();
   if (manualOpen) renderManual();
   if (settingsOpen) renderSettings();
@@ -168,7 +215,7 @@ function renderBattle() {
     .padStart(2, "0")}:${Math.floor(b.time % 60)
     .toString()
     .padStart(2, "0")}`;
-  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">${esc(b.operation ? MAPS[b.operation.mapId].name : "BRIGADIER BEDLAM")}<small>${tutorial ? "BOOT CAMP / NO ENEMIES" : b.operation ? `${b.operation.mode?MODES[b.operation.mode].name.toUpperCase():"ORIGINAL"} · STAGE ${b.operation.level}/10 · ${campaign ? totalScore(campaign.history).toLocaleString() : 0} PTS` : "OPERATION: DISPUTED PICNIC"}</small>${b.weather!=="clear"?`<span class="weather-tag" title="${esc(b.weatherAdvice)}">${weatherLabel(b.weather)}</span>`:""}</div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><div class="opposition"><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/${b.soldiers.filter(s=>s.side===1).length}`}</span>${b.operation?.mode&&!tutorial?`<span class="enemy-odds" title="Enemy luck improves accuracy, damage, reloads and survival odds. See the field manual.">ENEMY LUCK: ${fortuneLabel(b.fortune(1))}</span>`:""}</div></div><div class="hud-actions">${btn(squadMoveArmed ? "Cancel move" : "Move squad", "squad-move", "squad-move")}${btn(`Fire all · ${esc(input.hint("fireAll"))}`, "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
+  ui.innerHTML = `<header class="hud-top"><div class="hud-brand">${esc(b.operation ? MAPS[b.operation.mapId].name : "BRIGADIER BEDLAM")}<small>${online ? `UNRANKED 1V1 · ${esc(multiplayer.state?.players[(multiplayer.state.side^1) as 0|1]?.name||"Opponent")} · ${multiplayer.ping?`${multiplayer.ping}ms`:"CONNECTED"}` : tutorial ? "BOOT CAMP / NO ENEMIES" : b.operation ? `${b.operation.mode?MODES[b.operation.mode].name.toUpperCase():"ORIGINAL"} · STAGE ${b.operation.level}/10 · ${campaign ? totalScore(campaign.history).toLocaleString() : 0} PTS` : "OPERATION: DISPUTED PICNIC"}</small>${b.weather!=="clear"?`<span class="weather-tag" title="${esc(b.weatherAdvice)}">${weatherLabel(b.weather)}</span>`:""}</div><div class="hud-center"><span class="team-count">YOUR SQUAD &nbsp; ${alive(0)}/5</span><span class="clock">${time}</span><div class="opposition"><span class="team-count enemy">${tutorial ? "NO ENEMIES" : `OPPOSITION &nbsp; ${alive(1)}/${b.soldiers.filter(s=>s.side===1).length}`}</span>${b.operation?.mode&&!tutorial?`<span class="enemy-odds" title="Enemy luck improves accuracy, damage, reloads and survival odds. See the field manual.">ENEMY LUCK: ${fortuneLabel(b.fortune(1))}</span>`:""}</div></div><div class="hud-actions">${btn(squadMoveArmed ? "Cancel move" : "Move squad", "squad-move", "squad-move")}${btn(`Fire all · ${esc(input.hint("fireAll"))}`, "fire-all", "fire-all")}${btn(scene.sfx.muted ? "Sound off" : "Sound on", "sound")}${online?"":btn(`Pause · ${esc(input.hint("pause"))}`, "pause")}${btn(`Menu · ${esc(input.hint("menu"))}`, "menu")}</div></header><div class="radio-log">${b.log
     .slice(0, 2)
     .map((t) => `<div>${esc(t)}</div>`)
     .join(
@@ -222,7 +269,7 @@ function renderBattle() {
   if (b.planning)
     ui.insertAdjacentHTML(
       "beforeend",
-      `<aside class="deployment-banner" aria-label="Deployment countdown"><strong>DEPLOYMENT · <span class="deployment-count">${b.countdown}</span></strong><span>${faceArmed ? "Click a direction to watch on arrival. Right-click cancels facing." : b.operation ? esc(MAPS[b.operation.mapId].terrainAdvice)+(b.weather!=="clear" ? " "+esc(weatherBrief(b.weather)) : "") : "Select a soldier, then click a destination. Use Face direction to set a firing lane. Moves and combat begin at GO."}</span></aside>`,
+      `<aside class="deployment-banner" aria-label="Deployment countdown"><strong>DEPLOYMENT · <span class="deployment-count">${b.countdown}</span></strong><span>${faceArmed ? "Click a direction to watch on arrival. Right-click cancels facing." : online ? `Your squad starts on the ${scene.battle!.verticalFront ? multiplayer.state?.side===0?"north":"south" : multiplayer.state?.side===0?"west":"east"} edge. Queue moves and facing orders. Combat starts at GO.` : b.operation ? esc(MAPS[b.operation.mapId].terrainAdvice)+(b.weather!=="clear" ? " "+esc(weatherBrief(b.weather)) : "") : "Select a soldier, then click a destination. Use Face direction to set a firing lane. Moves and combat begin at GO."}</span></aside>`,
     );
   const fireAllButton = ui.querySelector<HTMLButtonElement>(".fire-all");
   if (fireAllButton) fireAllButton.title = "Command a volley: repeat for up to twice passive fire rate. Respects reloads, facing arcs, movement and Torch heat.";
@@ -250,12 +297,13 @@ function renderBattle() {
   if (menuOpen)
     ui.insertAdjacentHTML(
       "beforeend",
-      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>Battle paused. Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${tutorial ? "" : btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
+      `<div class="modal-shade"><section class="modal"><div class="eyebrow">Command desk</div><h2>At ease, commander.</h2><p>${online?"Online battle continues while this menu is open.":"Battle paused."} Press ${esc(input.hint("menu"))} to return.<br>Seed ${b.seed} · ${SQUADS[b.squad].name}</p><div class="buttons">${btn("Resume", "resume", "primary")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${tutorial||online ? "" : btn("Export replay", "export")}${btn("Retreat to title", "retreat")}</div></section></div>`,
     );
 }
 function updateBattleHud() {
   const b = scene.battle!,
     s = b.get(b.selected ?? -1);
+  if(online){const status=ui.querySelector(".hud-brand small");if(status)status.textContent=`UNRANKED 1V1 · ${multiplayer.state?.players[(multiplayer.state.side^1) as 0|1]?.name||"Opponent"} · ${multiplayer.ping?`${multiplayer.ping}ms`:"CONNECTED"}`;}
   const brief=ui.querySelector(".orders p"),copy=unitBrief(b,s);
   if(brief&&brief.innerHTML!==copy)brief.innerHTML=copy;
   const write = (selector: string, value: string) => {
@@ -293,11 +341,14 @@ function updateBattleHud() {
     write(`[data-unit="${t.id}"] .unit-status`, unitStatus(t));
   }
   const coverControl = ui.querySelector<HTMLButtonElement>(".cover-order");
-  if (coverControl && s)
+  if (coverControl && s){
+    coverControl.textContent=`${s.takingCover?"Leave cover":"Take cover"} · ${input.hint("cover")}`;
+    coverControl.setAttribute("aria-label",`${s.takingCover?"Leave cover":"Take cover"}: ${CLASSES[s.classId].name}, soldier ${s.slot+1}`);
     coverControl.disabled =
       s.life !== "alive" ||
       (!s.takingCover &&
         (s.brawl !== null || s.drowningTime > 0 || b.inWater(s)));
+  }
   const faceButton = ui.querySelector<HTMLButtonElement>(".face-order");
   if (faceButton && s) faceButton.disabled = s.life !== "alive" || s.brawl !== null || s.drowningTime > 0;
   const gearButton=ui.querySelector<HTMLButtonElement>(".gear-control");
@@ -452,13 +503,13 @@ function action(a: Action, held = true, event?: Event) {
     }
     if (screen === "battle") {
       menuOpen = !menuOpen;
-      scene.paused = menuOpen;
+      scene.paused = online?false:menuOpen;
       input.clear();
       render();
     }
     return;
   }
-  if (a === "pause" && held && screen === "battle" && !menuOpen) {
+  if (a === "pause" && held && screen === "battle" && !menuOpen && !online) {
     scene.paused = !scene.paused;
     tutorial?.ui(scene.paused ? "pause" : "resume");
     input.clear();
@@ -468,10 +519,10 @@ function action(a: Action, held = true, event?: Event) {
   if (a === "block" && !held) {
     const selected = scene.battle?.get(scene.battle.selected ?? -1);
     if (selected && selected.blocking)
-      scene.battle?.command({ type: "block", id: selected.id, held: false });
+      issue({ type: "block", id: selected.id, held: false });
     return;
   }
-  if (screen !== "battle" || scene.paused || scene.battle?.winner !== null)
+  if (screen !== "battle" || menuOpen || scene.paused || scene.battle?.winner !== null)
     return;
   const b = scene.battle!,
     s = b.get(b.selected ?? -1);
@@ -677,6 +728,16 @@ function wire() {
       (button.onclick = () => {
         scene.sfx.unlock();
         const what = button.dataset.do;
+        if(what==="online"){openOnline();return;}
+        if(what==="online-find"||what==="online-private"||what==="online-join"||what==="online-resume"){
+          onlineName=ui.querySelector<HTMLInputElement>("#online-name")?.value||onlineName;
+          inviteCode=ui.querySelector<HTMLInputElement>("#invite-code")?.value||"";
+          void multiplayer.join(onlineName,what==="online-join"?inviteCode:"",what==="online-private",what==="online-resume");return;
+        }
+        if(what==="online-cancel"){multiplayer.leave();render();return;}
+        if(what==="online-ready"){multiplayer.ready();return;}
+        if(what==="online-copy"){const link=new URL(location.href);link.search="";link.searchParams.set("join",multiplayer.session!.code);void navigator.clipboard.writeText(link.href).then(()=>{button.textContent="Invite copied";}).catch(()=>{button.textContent="Select and copy the invite below";});return;}
+
         if (what === "scores") {scoreReturn=screen==="result"?"result":"title";screen="scores";refreshScores();}
         if (what === "scores-refresh") refreshScores();
         if (what === "scores-close") {screen=scoreReturn;render();}
@@ -763,7 +824,7 @@ function wire() {
         if (what === "manual") {
           manualReturn = scene.paused;
           manualOpen = true;
-          scene.paused = true;
+          scene.paused = !online;
           input.clear();
           render();
           ui.querySelector<HTMLButtonElement>("#close-manual")?.focus();
@@ -772,7 +833,7 @@ function wire() {
           tutorial?.ui("settings-open");
           settingsReturn = scene.paused;
           settingsOpen = true;
-          scene.paused = true;
+          scene.paused = !online;
           input.clear();
           render();
         }
@@ -798,7 +859,7 @@ function wire() {
         const s = scene.battle!.get(Number(button.dataset.unit))!;
         if (s.life === "alive") select(s.id);
         if (s.life === "down")
-          scene.battle!.command({ type: "medic", target: s.id, side: 0 });
+          issue({ type: "medic", target: s.id, side: 0 });
       }),
   );
   if (manualOpen) wireManual();
@@ -953,7 +1014,7 @@ function persistSettings() {
   refreshSettings();
 }
 scene.onTick = () => {
-  if (screen !== "battle") return;
+  if (screen !== "battle" || (online&&(menuOpen||manualOpen||settingsOpen))) return;
   if (
     scene.battle &&
     supplyRevision !== scene.battle.supplyRevision &&
@@ -970,6 +1031,7 @@ scene.onTick = () => {
     renderBattle();
     wire();
   }
+  if (online&&multiplayer.state?.phase==="finished"&&scene.battle?.winner===null){screen="result";scene.paused=true;render();return;}
   if (scene.battle?.winner !== null) {
     input.clear();
     if (renderAt !== scene.battle!.time) {
@@ -1007,7 +1069,7 @@ document.addEventListener(
   true,
 );
 window.addEventListener("blur", () => {
-  if (screen === "battle" && !scene.paused) {
+  if (screen === "battle" && !scene.paused && !online) {
     scene.paused = true;
     render();
   }
@@ -1020,6 +1082,7 @@ window.addEventListener("bindinglabels", () => {
 if (import.meta.env.DEV)
   Object.defineProperty(window, "bedlam", {
     value: {
+      multiplayer,
       get battle() {
         return scene.battle;
       },

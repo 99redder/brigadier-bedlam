@@ -1,6 +1,10 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.47 — sustained mortar support and weighted reward odds.**
+Current prototype: **v0.48 — unranked human-versus-human multiplayer beta.**
+
+Choose **Multiplayer beta · 1v1** to find the next waiting opponent, or create a private lobby and copy its invite. Both commanders press Ready, then share a ten-second deployment countdown. Each receives the same five-class squad on a randomly selected map. All existing weapons, rewards, cover, water and weather rules apply. Both sides use human collision rules; enemy campaign boosts, luck and AI are disabled. Online matches run continuously while menus are open or tabs are in the background. Multiplayer results do not affect campaign scores.
+
+The frontend stays on GitHub Pages. A separate Cloudflare Worker and SQLite-backed Durable Objects own matchmaking, authentication and the 30 Hz battle simulation; browsers receive state snapshots and send validated orders. See [multiplayer operations and testing](docs/multiplayer.md) for development, deployment, cleanup limits and current beta scope.
 
 New campaigns shuffle ten different map layouts without repeats. Difficulty follows the stage (1–10), not a fixed map name. Every stage starts with five opponents; later stages strengthen their aim, reloads, reactions and tactics. Enemy supply powers unlock at stage 4 and rescues at stage 6. Each map starts a fresh copy of your selected squad. Win or lose, the result screen offers the next map until all ten have been visited. Completed stages count once.
 
@@ -38,7 +42,7 @@ Automatic weapons only fire within a **120° arc** centered on the soldier’s f
 Select a soldier, click **Face direction** (default **V**, left-handed **N**), then click a point on the map. A stationary soldier turns in place and takes the normal 0.7 seconds to settle; reloads are preserved. Moving faces the direction of travel. After queuing a move, assign a facing order to watch that direction on arrival without cancelling the route; this also works during deployment. New movement orders replace that queued facing. Right-click cancels facing selection. Troops can turn while taking cover. Explicit attack/demolition orders turn toward the commanded target once; manual Torch bursts aim toward the cursor. Enemy AI sets its own firing positions and must obey the same arc and settling rules. Flanking a stationary firing lane now matters.
 
 
-Open **Field manual** from the title screen or battle pause menu. Four scrollable chapters cover getting started, field tactics, all five slapstick personnel biographies with portraits and class advice, and your current control bindings. The battle stays paused while reading; Close manual or Escape returns to the previous screen. Chapter navigation, keyboard scrolling and focus stay within the manual.
+Open **Field manual** from the title screen or battle pause menu. Four scrollable chapters cover getting started, field tactics, all five slapstick personnel biographies with portraits and class advice, and your current control bindings. Solo battles stay paused while reading; online battles continue. Close manual or Escape returns to the previous screen. Chapter navigation, keyboard scrolling and focus stay within the manual.
 
 Soldier, melee, celebration, medic and casualty textures now render at twice their previous resolution while retaining their gameplay size. Soft shading, rounded outlines, uniform stitching, equipment highlights and class-specific details make the five silhouettes clearer: Rifleman tailoring and rifle hardware, Bazooka armor plates and launcher bore, Lobber grenade segments and beret pin, Torch pressure gauge and pilot flame, and Sapper overalls, bandage and dynamite fuse. Both teams keep their identifying colors.
 

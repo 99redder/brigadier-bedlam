@@ -20,7 +20,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run multiplayer:check
       - run: npm run leaderboard:check
+      - name: Test multiplayer Worker locally
+        timeout-minutes: 3
+        run: |
+          npm run multiplayer:dev > /tmp/bedlam-multiplayer.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..60}; do
+            if curl --silent --fail http://127.0.0.1:8792/health; then break; fi
+            sleep 1
+          done
+          npm run multiplayer:smoke || { cat /tmp/bedlam-multiplayer.log; exit 1; }
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

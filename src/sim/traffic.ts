@@ -8,11 +8,11 @@ function segmentDistance(p:Point,a:Point,b:Point){const x=b.x-a.x,y=b.y-a.y,len=
 // Friendly bodies are not terrain: escape from an existing overlap is always permitted.
 export function trafficMove(s:Soldier,desired:Point,units:Soldier[],obstacles:Rect[]) {
  const allies=trafficAllies(s,units),length=distance(s,desired),dx=length?(desired.x-s.x)/length:0,dy=length?(desired.y-s.y)/length:0;
- const spacing=s.side===0?TRAFFIC.playerSpacing:TRAFFIC.enemySpacing;
+ const spacing=s.side===0||s.human?TRAFFIC.playerSpacing:TRAFFIC.enemySpacing;
  const clear=(p:Point)=>legal(p,obstacles)&&!blocked(s,p,obstacles,14)&&allies.every(t=>distance(p,t)>=Math.min(spacing,distance(s,t))-.00001);
  const ahead={x:s.x+dx*TRAFFIC.lookAhead,y:s.y+dy*TRAFFIC.lookAhead};
  const crowded=allies.some(t=>distance(s,t)<spacing || (distance(s,t)<TRAFFIC.warningRadius&&distance(desired,t)<distance(s,t)&&segmentDistance(t,s,ahead)<spacing));
- if(s.side===0){
+ if(s.side===0||s.human){
   const point=crowded?{x:s.x+(desired.x-s.x)*TRAFFIC.crawl,y:s.y+(desired.y-s.y)*TRAFFIC.crawl}:desired;
   return {point:clear(point)?point:{x:s.x,y:s.y},crowded,blocked:!clear(point)};
  }

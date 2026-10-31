@@ -1,18 +1,23 @@
 {
   "name": "brigadier-bedlam",
-  "version": "0.47.0",
+  "version": "0.48.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=2",
     "test:watch": "vitest",
     "leaderboard:dev": "wrangler dev --local --port 8791",
     "leaderboard:types": "wrangler types leaderboard/env.d.ts",
     "leaderboard:check": "tsc -p tsconfig.worker.json",
-    "leaderboard:deploy": "wrangler deploy"
+    "leaderboard:deploy": "wrangler deploy",
+    "multiplayer:dev": "wrangler dev --local --config multiplayer/wrangler.jsonc --port 8792",
+    "multiplayer:types": "wrangler types multiplayer/env.d.ts --config multiplayer/wrangler.jsonc --env-interface MultiplayerEnv",
+    "multiplayer:check": "tsc -p tsconfig.multiplayer.json",
+    "multiplayer:deploy": "wrangler deploy --config multiplayer/wrangler.jsonc",
+    "multiplayer:smoke": "node multiplayer/smoke.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"

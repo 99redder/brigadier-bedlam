@@ -1,0 +1,20 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "brigadier-bedlam-multiplayer",
+  "main": "worker.ts",
+  "compatibility_date": "2026-03-17",
+  "account_id": "5ba75829ac4aa8cf4ae7a2700d9fa436",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 },
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "LOBBY", "class_name": "Lobby" },
+      { "name": "MATCHES", "class_name": "Match" },
+    ],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Lobby", "Match"] }],
+}
