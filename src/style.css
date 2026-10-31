@@ -974,3 +974,5 @@ p {
 .online-seats span { display:block; margin-top:8px; }
 .network-notice { position:absolute; top:90px; left:30%; right:30%; background:#8c3429; color:#fff1bc; text-align:center; padding:8px; pointer-events:none; }
 .network-notice:empty {display:none;}
+
+.hud-brand .starting-side { display:block; margin-top:.35em; color:#c8f5d5; font:800 .48em "DM Sans",sans-serif; letter-spacing:.06em; }

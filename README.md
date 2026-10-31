@@ -1,6 +1,8 @@
 # Brigadier Bedlam
 
-Current prototype: **v0.48.1 — mortar crews deploy from the side that earned the reward.**
+Current prototype: **v0.48.2 — clear starting-side markers on every battlefield.**
+
+Deployment highlights each starting edge and labels YOUR SQUAD and ENEMY along the battlefield edges. Labels include north/top, south/bottom, west/left or east/right; the countdown and persistent HUD also identify your start. Multiplayer uses the actual assigned side, including the south/east player.
 
 Choose **Multiplayer beta · 1v1** to find the next waiting opponent, or create a private lobby and copy its invite. Both commanders press Ready, then share a ten-second deployment countdown. Each receives the same five-class squad on a randomly selected map. All existing weapons, rewards, cover, water and weather rules apply. Both sides use human collision rules; enemy campaign boosts, luck and AI are disabled. Online matches run continuously while menus are open or tabs are in the background. Multiplayer results do not affect campaign scores.
 

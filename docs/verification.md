@@ -1,5 +1,12 @@
 # Prototype verification — October 31, 2026
 
+## v0.48.2 starting-side indicators
+
+- All 553 tests and the production frontend build pass. Browser fixtures verified west/left, east/right, north/top and south/bottom HUD/countdown/edge labels against the local squad positions; screenshots were inspected. A real two-browser multiplayer game verified each assigned side’s HUD indicator and the existing controls/countdown/result flow.
+
+- Every battlefield labels YOUR SQUAD and ENEMY at their starting edges, along the battlefield edges. During deployment, green and red edge bands reinforce ownership. The countdown identifies the player's cardinal and screen-relative side; the HUD and edge labels retain that reference after GO.
+- Multiplayer passes the actual assigned side to the renderer, so the second player correctly sees their squad marked east/right or south/bottom. Solo starts reset to west/left or north/top. Tutorial hides the enemy marker.
+
 ## v0.48.1 mortar crew deployment correction
 
 - All 553 tests pass across 37 files. Frontend build, multiplayer Worker type check and Worker deployment dry run pass.

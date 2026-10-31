@@ -1,3 +1,4 @@
+import {startingEdge} from "./deployment";
 import {type PublicState} from "../net/protocol";
 import { MORTAR } from "../sim/mortar";
 import { drawMortar } from "./mortar";
@@ -12,7 +13,7 @@ import { MAPS } from "../sim/maps";
 import { AIRSTRIKE_ACCURACY } from "../sim/airstrike";
 import { headingOf, viewArcOf } from "../sim/vision";
 import Phaser from "phaser";
-import { Battle, type SuperWeapon, type Soldier } from "../sim/battle";
+import { Battle, type SuperWeapon, type Soldier, type Side } from "../sim/battle";
 import {
   CLASSES,
   FIELD,
@@ -58,6 +59,8 @@ export const unproject = (p: Point) => ({
 export class Battlefield extends Phaser.Scene {
   battle: Battle | null = null;
   remote = false;
+  localSide:Side=0;
+  private startingLabels:Phaser.GameObjects.Text[]=[];
   private snapshotAt=0;
   private snapshotGap=100;
   paused = true;
@@ -394,7 +397,8 @@ export class Battlefield extends Phaser.Scene {
     const now=performance.now();this.snapshotGap=Math.max(33,Math.min(200,now-this.snapshotAt));this.snapshotAt=now;
     Object.assign(this.battle,state);
   }
-  start(battle: Battle) {
+  start(battle: Battle,localSide:Side=0) {
+    this.localSide=localSide;
     this.remote=false;
     this.victory.reset();
     this.deploymentCues.reset(battle.planning);
@@ -465,6 +469,20 @@ export class Battlefield extends Phaser.Scene {
     if (!this.paused) this.onTick();
     this.render();
   }
+  private drawStartingSides(g:Phaser.GameObjects.Graphics){
+    const b=this.battle!;
+    for(const viewSide of [0,1] as const){
+      const edge=startingEdge(b.verticalFront,(this.localSide^viewSide) as Side),own=viewSide===0;
+      const label=this.startingLabels[viewSide]??=this.add.text(0,0,"",{fontFamily:"monospace",fontStyle:"bold",padding:{x:10,y:5}}).setOrigin(.5).setDepth(10003);
+      label.setVisible(!b.training||own).setText(`${own?"YOUR SQUAD":"ENEMY"} · ${edge.name}`)
+        .setFontSize(b.planning&&own?16:12).setColor(own?"#dcffe3":"#ffe1d3")
+        .setBackgroundColor(own?"#24513d":"#713e34").setPosition(edge.x,edge.y).setAngle(edge.angle);
+      if(!b.planning||(b.training&&!own))continue;
+      const r=edge.strip,corners=[project(r),project({x:r.x+r.w,y:r.y}),project({x:r.x+r.w,y:r.y+r.h}),project({x:r.x,y:r.y+r.h})];
+      g.fillStyle(own?0x61e5a2:0xec896e,own?.25:.16);g.fillPoints(corners,true);
+      g.lineStyle(2,own?0xb5ffcf:0xf3ac91,.85);g.strokePoints(corners,true,true);
+    }
+  }
   render() {
     const b = this.battle;
     if (!b) return;
@@ -485,6 +503,7 @@ export class Battlefield extends Phaser.Scene {
       );
     const g = this.effects;
     g.clear();
+    this.drawStartingSides(g);
     if(b.weather==="rain")drawRain(g,b.tick*TUNING.step+(!this.paused && b.winner===null ? this.accumulator : 0));
     const loot=drawFieldLoot(g,b,project,visualTime);
     loot.forEach((info,i)=>{
