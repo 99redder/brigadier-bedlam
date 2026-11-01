@@ -25,7 +25,7 @@ try{
  await Promise.all([connect(a),connect(b)]);
  send(a,{type:'ready'});await delay(100);assert.notEqual(a.state.phase,'playing');send(b,{type:'ready'});
  await until(()=>a.state.phase==='playing'&&b.state.phase==='playing','both ready');
- assert.equal(a.state.mapId,b.state.mapId);assert.equal(a.state.state.soldiers.length,10);assert(a.state.state.planningTicks>0);
+ assert.equal(a.state.mapId,b.state.mapId);assert.equal(a.state.state.soldiers.length,10);assert(a.state.state.planningTicks>0);assert(a.state.state.briefingTicks>0,'shared squad introduction precedes countdown');
  assert(!('rngState' in a.state.state));
  // The wire uses authoritative ids. Each recipient's own squad is remapped to 0..4.
  const own=a.ticket.side*5,other=(a.ticket.side^1)*5;
@@ -37,7 +37,7 @@ try{
  // Close and reconnect the same seat; server keeps its orders and acknowledges.
  const ack=a.state.ack;clearInterval(a.ping);a.ws.close();await delay(250);a.state=null;await connect(a);assert.equal(a.state.ack,ack);
  command(b,{type:'select',id:b.ticket.side*5+3});await until(()=>b.state.ack===b.seq,'second player control');
- await until(()=>a.state.state.planningTicks===0&&b.state.state.planningTicks===0,'synchronized GO',15000);
+ await until(()=>a.state.state.planningTicks===0&&b.state.state.planningTicks===0,'synchronized GO',20000);
  assert(Math.abs(a.state.state.tick-b.state.state.tick)<=3);
  const before=a.state.state.time;await delay(500);assert(a.state.state.time>before,'authoritative simulation runs');
  send(b,{type:'leave'});await until(()=>a.state.phase==='finished','forfeit');assert.equal(a.state.state.winner,0);

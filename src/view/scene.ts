@@ -61,6 +61,8 @@ export class Battlefield extends Phaser.Scene {
   remote = false;
   localSide:Side=0;
   private startingLabels:Phaser.GameObjects.Text[]=[];
+  private introLabels:Phaser.GameObjects.Text[]=[];
+  private introBanner?:Phaser.GameObjects.Text;
   private snapshotAt=0;
   private snapshotGap=100;
   paused = true;
@@ -432,7 +434,7 @@ export class Battlefield extends Phaser.Scene {
         this.accumulator -= 1 / 30;
       }
       }else this.accumulator=Math.min(.2,(performance.now()-this.snapshotAt)/1000);
-      const cue = this.deploymentCues.poll(this.battle.countdown);
+      const cue = this.battle.briefingTicks?null:this.deploymentCues.poll(this.battle.countdown);
       if (cue !== null) this.sfx.deployment(cue);
       for (const event of this.battle.combatEvents) {
         if (event.id > this.lastCombatEvent) {
@@ -471,10 +473,25 @@ export class Battlefield extends Phaser.Scene {
   }
   private drawStartingSides(g:Phaser.GameObjects.Graphics){
     const b=this.battle!;
+    const introducing=b.briefingTicks>0&&b.winner===null;
+    this.introBanner??=this.add.text(640,322,"",{fontFamily:"monospace",fontStyle:"bold",fontSize:"21px",align:"center",color:"#dcffe3",backgroundColor:"#183f32",padding:{x:22,y:16},lineSpacing:8}).setOrigin(.5).setDepth(10006);
+    this.introBanner.setVisible(introducing).setText("THESE FIVE SOLDIERS ARE YOURS\nLook for the glowing green rings\nPlanning countdown starts next");
+    const ownUnits=b.soldiers.filter(s=>s.side===0);
+    for(let i=0;i<5;i++){
+      const label=this.introLabels[i]??=this.add.text(0,0,"",{fontFamily:"monospace",fontStyle:"bold",fontSize:"15px",color:"#e2ffe8",backgroundColor:"#176048",padding:{x:7,y:4}}).setOrigin(.5).setDepth(10006);
+      label.setVisible(introducing&&!!ownUnits[i]);
+      if(!introducing||!ownUnits[i])continue;
+      const unit=ownUnits[i],p=project(unit),elapsed=TUNING.briefingSeconds-b.briefingTicks*TUNING.step;
+      const pulse=(1+Math.sin(elapsed*8-i*.8))*.5;
+      g.fillStyle(0x65ffad,.15+pulse*.18);g.fillEllipse(p.x,p.y-4,64+pulse*14,35+pulse*8);
+      g.lineStyle(3,0x8dffc5,.7+pulse*.3);g.strokeEllipse(p.x,p.y-4,58+pulse*12,30+pulse*8);
+      g.lineBetween(p.x,p.y+10,p.x,p.y+24);g.fillStyle(0x8dffc5);g.fillTriangle(p.x,p.y+7,p.x-5,p.y+15,p.x+5,p.y+15);
+      label.setText(`YOU ${unit.slot+1}`).setPosition(p.x,p.y+38);
+    }
     for(const viewSide of [0,1] as const){
       const edge=startingEdge(b.verticalFront,(this.localSide^viewSide) as Side),own=viewSide===0;
       const label=this.startingLabels[viewSide]??=this.add.text(0,0,"",{fontFamily:"monospace",fontStyle:"bold",padding:{x:10,y:5}}).setOrigin(.5).setDepth(10003);
-      label.setVisible(!b.training||own).setText(`${own?"YOUR SQUAD":"ENEMY"} · ${edge.name}`)
+      label.setVisible(!introducing&&(!b.training||own)).setText(`${own?"YOUR START":"ENEMY START"} · ${edge.name}`)
         .setFontSize(b.planning&&own?16:12).setColor(own?"#dcffe3":"#ffe1d3")
         .setBackgroundColor(own?"#24513d":"#713e34").setPosition(edge.x,edge.y).setAngle(edge.angle);
       if(!b.planning||(b.training&&!own))continue;
@@ -775,7 +792,7 @@ export class Battlefield extends Phaser.Scene {
           (0.79 / ASSET_SCALE) * (1 - sink * 0.45),
         )
         .setTint(0xffffff)
-        .setAlpha(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1)
+        .setAlpha((b.briefingTicks&&b.winner===null&&s.side===1?.18:1)*(sinking ? 1 - sink * 0.85 : down ? 0.64 : 1))
         .setAngle(
           celebrating
             ? victoryPose.angle
@@ -892,7 +909,8 @@ export class Battlefield extends Phaser.Scene {
         )
         .setPosition(p.x, p.y + (s.takingCover && alive ? -57 : 16))
         .setDepth(p.y + 1)
-        .setAlpha(alive ? 1 : 0.8);
+        .setAlpha(b.briefingTicks&&b.winner===null&&s.side===1?.18:alive ? 1 : 0.8)
+        .setVisible(!(b.briefingTicks&&b.winner===null&&s.side===0));
       if (
         b.winner === null &&
         s.flash > 0 &&

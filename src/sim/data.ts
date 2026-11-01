@@ -167,6 +167,7 @@ export const TUNING = {
   dynamiteFlight: .42,
   step: 1 / 30,
   deploymentSeconds: 10,
+  briefingSeconds:3,
   burnDuration: 8,
   burnDamagePerSecond: 35,
   medicCalls: 2,

@@ -1,4 +1,13 @@
-# Prototype verification — October 31, 2026
+# Prototype verification — November 1, 2026
+
+## v0.49 mortar warning response and squad introduction
+
+- All 561 tests pass across 38 files; production frontend build, multiplayer Worker type check and deployment dry run pass. New regressions cover early-stage warning response with delayed think timers, overlapping barrages, human-player isolation, frozen introduction timing, full countdown/audio sequence and replay compatibility.
+- Four browser fixtures verified that the correct local five troops are marked YOU and enemies dim, for every starting edge. Real two-browser multiplayer and solo flows verified that the introduction is visible before the countdown, the countdown retains all ten seconds, and the bottom banner no longer says YOUR SQUAD. Local and production Worker smoke confirm synchronized opening, commands, reconnect and forfeit. An actual opening-phase forfeit also reaches the victory result without a stuck countdown or introduction.
+
+- Mortar defense no longer waits for the general cover-tactics stage unlock or the ordinary think timer. Hard reacts one second into setup, Medium after 2.5 seconds and Easy at the first launch. Only threatened, living AI troops on dry ground can duck; no automatic orders are issued to human multiplayer squads. Overlapping barrages extend shelter without repeatedly multiplying reload times; elite airstrike escape remains higher priority.
+- Campaign and multiplayer rounds have a synchronized three-second introduction before the full ten-second planning countdown. Actual player soldiers pulse with green rings, individual YOU markers and a central explanation; opponents dim. The lower banner now says PLAN YOUR MOVES rather than YOUR SQUAD. Persistent map labels explicitly identify YOUR START and ENEMY START.
+- Introduction time is part of authoritative simulation/checkpoints and public snapshots, keeps troops/combat frozen, and is preserved in solo replays. Countdown sound cues begin only after the introduction. Training and old replays retain their existing timing.
 
 ## v0.48.2 starting-side indicators
 

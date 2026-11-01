@@ -174,6 +174,7 @@ export interface Replay {
   squad: number;
   training?: boolean;
   deploymentSeconds?: number;
+  briefingSeconds?: number;
   aiSides?: Side[];
   operation?: {mapId:number;level:number;mode?:DifficultyMode};
   commands: { tick: number; command: Command }[];
@@ -241,9 +242,10 @@ export class Battle {
   squad: number;
   tick = 0;
   combatTicks = 0;
+  briefingTicks=0;
   planningTicks = 0;
   get planning() {
-    return this.planningTicks > 0;
+    return this.winner===null && (this.briefingTicks>0 || this.planningTicks > 0);
   }
   get countdown() {
     return Math.ceil(this.planningTicks * TUNING.step);
@@ -277,7 +279,9 @@ export class Battle {
     readonly deploymentSeconds = 0,
     readonly operation?: {mapId:number;level:number;mode?:DifficultyMode},
     readonly multiplayer=false,
+    readonly briefingSeconds=0,
   ) {
+    this.briefingTicks=!training&&deploymentSeconds>0?Math.round(briefingSeconds/TUNING.step):0;
     if(multiplayer)this.aiSides=[];
     this.planningTicks = training
       ? 0
@@ -1763,12 +1767,14 @@ export class Battle {
     if (this.winner !== null) return;
     const dt = TUNING.step;
     this.tick++;
+    if(this.briefingTicks>0){this.briefingTicks--;return;}
     if (this.planning) {
       this.planningTicks--;
       if (!this.planning) this.note("GO! Opening orders are live.");
       return;
     }
     this.time = ++this.combatTicks * dt;
+    for(const s of this.soldiers)if(this.aiSides.includes(s.side)&&(this.mortars.length||s.mortarCoverUntil!==undefined)&&!eliteDanger(this,s)&&!s.eliteEscape)mortarCoverOrder(this,s,false);
     this.tickSupers(dt);
     for (const unit of this.combatants()) this.tickBurn(unit, dt);
     this.effects = this.effects.filter((e) => (e.time -= dt) > 0);
@@ -2056,6 +2062,7 @@ export class Battle {
       squad: this.squad,
       training: this.training,
       deploymentSeconds: this.deploymentSeconds,
+      briefingSeconds:this.briefingSeconds,
       aiSides: [...this.aiSides],
       operation: this.operation,
       commands: this.commands,
@@ -2069,6 +2076,8 @@ export function replayBattle(replay: Replay, ticks: number) {
     replay.training ?? false,
     replay.deploymentSeconds ?? 0,
     replay.operation,
+    false,
+    replay.briefingSeconds??0,
   );
   battle.aiSides = replay.aiSides ? [...replay.aiSides] : [1];
   let i = 0;

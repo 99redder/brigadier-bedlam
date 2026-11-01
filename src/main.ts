@@ -165,7 +165,7 @@ function title() {
 }
 function render() {
   if (screen === "title")
-    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.48.2</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Multiplayer beta · 1v1", "online", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Solo or online 1v1 · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
+    ui.innerHTML = `<section class="overlay"><div class="title-top"><span class="brand">BB / DEPARTMENT OF UNNECESSARY CONFLICT</span><span class="badge">PLAYABLE PROTOTYPE · v0.49</span></div><div class="title-content"><div class="eyebrow">Real-time tactics. Cartoon consequences.</div><h1>Brigadier<br><span>Bedlam.</span></h1><p>Five soldiers. Questionable leadership.<br>A small battlefield with a very big attitude.</p><div class="buttons">${btn("New campaign &nbsp; ↗", "deploy", "primary")}${saved.run && saved.run.history.length<10 ? btn(`Continue tour · ${saved.run.history.length+1}/10`, "continue-tour") : ""}${btn("Multiplayer beta · 1v1", "online", "primary")}${btn("Boot camp", "tutorial")}${btn("Field manual", "manual")}${btn("Controls", "controls")}${btn("All-time scores", "scores")}</div><p class="tiny muted">Ten maps · Rising difficulty · Optional nickname<br>Solo or online 1v1 · Mouse-first · No military experience required</p></div><div class="art-panel"><div class="art-grid"></div><span class="stamp">CHAOS<br>APPROVED</span>${(Object.keys(CLASSES) as ClassId[]).map((id, i) => `<figure class="hero-unit u${i}"><img alt="${CLASSES[id].name} carrying ${WEAPON_LABELS[id].toLowerCase()}" src="${portrait(id, 0, true)}"><figcaption><strong>${CLASSES[id].name}</strong><span>${WEAPON_LABELS[id]}</span></figcaption></figure>`).join("")}</div><div class="title-bottom"><span>ONE SQUAD. ZERO GOOD EXCUSES.</span><span>AN ORIGINAL SLAPSTICK TACTICS GAME</span></div></section>`;
   if (screen === "squad")
     ui.innerHTML = `<section class="overlay squad-screen"><div class="screen-inner"><div class="screen-head"><div><div class="eyebrow">Personnel department / requisition 001</div><h2>Pick your trouble.</h2></div>${btn("← Back", "title")}</div><p class="muted">Ten maps in random order. A gentle opening grows into a tougher fight. A fresh squad arrives on each map.</p><fieldset class="difficulty-picker"><legend>Campaign difficulty · fixed for this tour</legend><div>${(Object.keys(MODES) as DifficultyMode[]).map(mode=>`<label class="difficulty-option"><input type="radio" name="difficulty" value="${mode}" ${difficultyMode===mode?"checked":""}><span><strong>${MODES[mode].name} <small>×${MODES[mode].score} score</small></strong><span>${MODES[mode].description}</span></span></label>`).join("")}</div></fieldset><div class="squad-grid">${SQUADS.map((s, i) => `<button class="squad-card ${squad === i ? "selected" : ""}" data-squad="${i}" aria-pressed="${squad === i}"><span class="eyebrow">0${i + 1} / ${s.tag}</span><h3>${s.name}</h3><p>${s.description}</p><div class="squad-portraits">${s.classes.map((id) => `<img src="${portrait(id)}" alt="${CLASSES[id].name}">`).join("")}</div></button>`).join("")}</div>${nameForm(false)}<div class="seed-row"><label for="seed">Battle seed</label><input id="seed" inputmode="numeric" value="${newSeed()}" aria-label="Battle seed"><span class="muted">Same seed, same opposition. Your orders change the outcome.</span></div><div class="buttons">${btn("Start ten-map tour &nbsp; ↗", "start", "primary")}<span class="tiny muted">No nickname required. You can add one after any map.</span></div></div></section>`;
   if (screen === "battle") renderBattle();
@@ -268,10 +268,10 @@ function renderBattle() {
     const help = ui.querySelector(".battle-help");
     if (help) help.textContent = `Click a direction to watch ${s?.path.length ? "on arrival" : "from this position"} · ${s?.classId === "bazooka" ? 70 : 120}° firing arc · ${input.hint("deselect")}: cancel`;
   }
-  if (b.planning)
+  if (b.planning && !b.briefingTicks)
     ui.insertAdjacentHTML(
       "beforeend",
-      `<aside class="deployment-banner" aria-label="Deployment countdown"><strong>YOUR SQUAD: ${start.name} ${start.arrow} · DEPLOYMENT <span class="deployment-count">${b.countdown}</span></strong><span>${faceArmed ? "Click a direction to watch on arrival. Right-click cancels facing." : online ? `Your squad starts on the ${scene.battle!.verticalFront ? multiplayer.state?.side===0?"north":"south" : multiplayer.state?.side===0?"west":"east"} edge. Queue moves and facing orders. Combat starts at GO.` : b.operation ? esc(MAPS[b.operation.mapId].terrainAdvice)+(b.weather!=="clear" ? " "+esc(weatherBrief(b.weather)) : "") : "Select a soldier, then click a destination. Use Face direction to set a firing lane. Moves and combat begin at GO."}</span></aside>`,
+      `<aside class="deployment-banner" aria-label="Deployment countdown"><strong>PLAN YOUR MOVES · DEPLOYMENT <span class="deployment-count">${b.countdown}</span></strong><span>${faceArmed ? "Click a direction to watch on arrival. Right-click cancels facing." : online ? `Your squad starts on the ${scene.battle!.verticalFront ? multiplayer.state?.side===0?"north":"south" : multiplayer.state?.side===0?"west":"east"} edge. Queue moves and facing orders. Combat starts at GO.` : b.operation ? esc(MAPS[b.operation.mapId].terrainAdvice)+(b.weather!=="clear" ? " "+esc(weatherBrief(b.weather)) : "") : "Select a soldier, then click a destination. Use Face direction to set a firing lane. Moves and combat begin at GO."}</span></aside>`,
     );
   const fireAllButton = ui.querySelector<HTMLButtonElement>(".fire-all");
   if (fireAllButton) fireAllButton.title = "Command a volley: repeat for up to twice passive fire rate. Respects reloads, facing arcs, movement and Torch heat.";
@@ -709,7 +709,7 @@ function launchStage() {
   screen = "battle";
   menuOpen = false;
   settingsOpen = false;
-  scene.start(new Battle(seed, squad, false, TUNING.deploymentSeconds,{mapId:campaign.route[level-1],level,mode:campaign.mode}));
+  scene.start(new Battle(seed, squad, false, TUNING.deploymentSeconds,{mapId:campaign.route[level-1],level,mode:campaign.mode},false,TUNING.briefingSeconds));
   scene.sfx.unlock();
   render();
 }
@@ -1026,6 +1026,7 @@ scene.onTick = () => {
     wire();
   }
   if (scene.battle?.planning) {
+    if(!scene.battle.briefingTicks&&!ui.querySelector(".deployment-banner")){renderBattle();wire();}
     updateBattleHud();
     return;
   }

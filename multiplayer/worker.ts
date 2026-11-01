@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { TUNING } from "../src/sim/data";
 import { Battle, type Command, type Side } from "../src/sim/battle";
 import {
   NET_VERSION,
@@ -409,6 +410,7 @@ export class Match extends DurableObject<MultiplayerEnv> {
           10,
           { mapId: this.data.mapId, level: 1 },
           true,
+          TUNING.briefingSeconds,
         );
         this.data.phase = "playing";
         this.data.started = now;

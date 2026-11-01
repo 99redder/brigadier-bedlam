@@ -36,12 +36,16 @@ export function tickMortars(b:Battle,dt:number) {
   }
   b.mortars=b.mortars.filter(m=>m.elapsed<mortarDuration);
 }
-export function mortarCoverOrder(b:Battle,s:Soldier) {
-  if(s.side!==1||!b.challenge?.coverTactics||s.brawl!==null||b.inWater(s))return false;
-  const danger=b.mortars.find(m=>m.elapsed>=MORTAR.setup-1.5&&m.elapsed<mortarDuration-MORTAR.aftermath&&distance(s,m.center)<MORTAR.coverage+MORTAR.blast);
+export function mortarCoverOrder(b:Battle,s:Soldier,aim=true) {
+  if(s.side!==1||s.life!=="alive"||s.drowningTime>0||s.brawl!==null||b.inWater(s))return false;
+  // Mortar warnings are a basic survival response, independent of the later
+  // cover-and-peek unlock. Hard troops recognize setup; easy troops hear firing.
+  const reaction=b.operation?.mode==="hard"?1:b.operation?.mode==="medium"?2.5:b.operation?.mode==="easy"?MORTAR.setup:4.5;
+  const danger=b.mortars.find(m=>m.elapsed>=reaction&&m.elapsed<mortarDuration-MORTAR.aftermath&&distance(s,m.center)<MORTAR.coverage+MORTAR.blast);
   if(danger) {
-    if(!s.takingCover){s.coverPlan=undefined;b.command({type:"cover",id:s.id,active:true},false);s.mortarCoverUntil=b.time+mortarDuration-danger.elapsed;}
-    const target=b.chooseTarget(s);if(target){s.target=target.id;b.aimAi(s,target);}return true;
+    if(!s.takingCover){s.coverPlan=undefined;b.command({type:"cover",id:s.id,active:true},false);}
+    s.mortarCoverUntil=Math.max(s.mortarCoverUntil??0,b.time+mortarDuration-danger.elapsed);
+    const target=aim?b.chooseTarget(s):undefined;if(target){s.target=target.id;b.aimAi(s,target);}return true;
   }
   if(s.mortarCoverUntil!==undefined&&b.time>=s.mortarCoverUntil){s.mortarCoverUntil=undefined;if(s.takingCover)b.command({type:"cover",id:s.id,active:false},false);}
   return false;

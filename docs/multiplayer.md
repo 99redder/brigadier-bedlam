@@ -1,9 +1,9 @@
-# Multiplayer beta — v0.48
+# Multiplayer beta — v0.49
 
 ## Play
 
 - Title → Multiplayer beta → Find opponent matches the next two waiting players. Create private friend lobby stays outside public matchmaking. Copy friend invite shares a link opening the invite form; joining still requires an explicit click.
-- Optional call sign; no account. Two players press Ready before the ten-second deployment countdown begins. Each side gets one Rifleman, Bazooka, Lobber, Torch and Sapper, with identical class stats and rules on one random map. The local squad always appears green, including when starting on the east/south edge.
+- Optional call sign; no account. Two players press Ready before a synchronized three-second squad introduction, followed by the ten-second deployment countdown. Each side gets one Rifleman, Bazooka, Lobber, Torch and Sapper, with identical class stats and rules on one random map. The local squad always appears green, including when starting on the east/south edge.
 - Existing individual orders, squad moves, facing, Fire all, cover, dropped gear, rewards, medics, brawls and manual Torch controls work online. No campaign AI, enemy elite bonuses, luck boosts or easier enemy collision rules. No pause in multiplayer; menus/manuals and switching tabs do not stop the server.
 - A disconnected commander gets 25 seconds after detection to reconnect before forfeiting. Refresh, open Multiplayer and choose Reconnect previous match in the same tab/session. Connection trouble is shown on the HUD. A closed browser session may lose its anonymous seat credential. Opening the same seat twice replaces the older connection.
 - Matches are unranked single rounds; campaign progress and shared campaign scores are separate. Return to multiplayer to find another match or create a fresh invite. There is no automatic rematch, spectator mode, region picker, skill matchmaking, chat or cross-device account recovery yet.

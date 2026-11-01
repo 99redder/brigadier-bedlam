@@ -80,6 +80,24 @@ describe("sustained mortar support",()=>{
   mortarCoverOrder(b,enemy);expect(enemy.cooldown).toBe(4);
   b.time=30;b.mortars=[];expect(mortarCoverOrder(b,enemy)).toBe(false);expect(enemy.takingCover).toBe(false);
  });
+ for(const [mode,reaction] of [["hard",1],["medium",2.5],["easy",MORTAR.setup]] as const)it(`${mode} reacts to mortar warnings at stage one without waiting for ordinary AI thinking`,()=>{
+  const {b,enemy}=fixture();Object.assign(b,{operation:{mapId:0,level:1,mode}});b.aiSides=[1];b.random=()=>0;
+  for(const s of b.soldiers)s.think=999;enemy.elite=undefined;b.powers[0]=["mortar"];b.useSuper(0,"mortar",enemy);
+  for(let i=0;i<Math.floor((reaction-.1)*30);i++)b.step();expect(enemy.takingCover).toBeFalsy();
+  for(let i=0;i<6;i++)b.step();expect(enemy.takingCover).toBe(true);expect(enemy.think).toBeGreaterThan(900);
+  while(b.time<9)b.step();expect(enemy.hp).toBe(9987);expect(enemy.takingCover).toBe(true);
+  while(b.time<mortarDuration+.2)b.step();expect(enemy.takingCover).toBe(false);
+ });
+ it("holds cover across overlapping barrages without repeatedly doubling reloads",()=>{
+  const {b,enemy}=fixture();b.random=()=>0;b.powers[0]=["mortar","mortar"];b.useSuper(0,"mortar",enemy);b.mortars[0].elapsed=6;enemy.cooldown=2;
+  mortarCoverOrder(b,enemy);const first=enemy.mortarCoverUntil!;expect(enemy.cooldown).toBe(4);
+  b.useSuper(0,"mortar",enemy);b.mortars[1].elapsed=1;b.time=10;mortarCoverOrder(b,enemy);b.mortars.shift();b.mortars[0].elapsed=6;mortarCoverOrder(b,enemy);
+  expect(enemy.mortarCoverUntil).toBeGreaterThan(first);expect(enemy.cooldown).toBe(4);
+ });
+ it("does not give human opponents automatic mortar cover in multiplayer",()=>{
+  const b=new Battle(42,0,false,0,{mapId:0,level:1},true);b.cover=[];b.water=[];b.random=()=>0;const enemy=b.get(5)!;
+  for(const s of b.soldiers){s.cooldown=999;s.autoFireWait=999;}b.powers[0]=["mortar"];b.useSuper(0,"mortar",enemy);for(let i=0;i<240;i++)b.step();expect(enemy.takingCover).toBeFalsy();
+ });
  it("preserves elite airstrike evasion when a mortar barrage is also active",()=>{
   const {b}=fixture(),elite=b.get(6)!;Object.assign(elite,{life:"alive",hp:300,x:600,y:280});
   b.powers[0]=["mortar"];b.useSuper(0,"mortar",elite);Object.assign(b.mortars[0],{elapsed:MORTAR.setup,center:{x:elite.x,y:elite.y}});

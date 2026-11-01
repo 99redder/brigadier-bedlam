@@ -27,6 +27,7 @@ export const NET_FIELDS = [
   "tick",
   "combatTicks",
   "planningTicks",
+  "briefingTicks",
   "supplyRevision",
   "combatEvents",
   "airstrikeEvents",
