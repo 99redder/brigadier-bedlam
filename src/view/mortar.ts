@@ -1,6 +1,6 @@
 import type Phaser from "phaser";
 import type { MortarStrike } from "../sim/mortar";
-import {MORTAR,mortarDuration} from "../sim/mortar";
+import {MORTAR,mortarDuration,mortarOnMap} from "../sim/mortar";
 import type {Point} from "../sim/geometry";
 // Crew, construction, firing recoil, arcing shells and blast warnings all use
 // simulation time. These temporary support personnel do not add squad slots.
@@ -56,9 +56,9 @@ export function drawMortar(g:Phaser.GameObjects.Graphics,m:MortarStrike,project:
    const x=pit.x+(p.x-pit.x)*t,y=pit.y-28+(p.y-pit.y+28)*t-Math.sin(t*Math.PI)*190;
    g.lineStyle(2,0xf3dfac,.8);g.lineBetween(x-4,y-10,x,y);
    g.fillStyle(0x283c32);g.fillEllipse(x,y,7,12);g.fillStyle(0xffd47b);g.fillCircle(x,y-3,2);
-   if(t>.55){g.lineStyle(2,color,.7);g.strokeEllipse(p.x,p.y,MORTAR.blast*2,MORTAR.blast*1.48);}
+   if(t>.55&&mortarOnMap(shell.point)){g.lineStyle(2,color,.7);g.strokeEllipse(p.x,p.y,MORTAR.blast*2,MORTAR.blast*1.48);}
   }
-  if(shell.impacted){
+  if(shell.impacted&&mortarOnMap(shell.point)){
    const after=age-MORTAR.flight;
    if(after>=0&&after<MORTAR.aftermath){
     const t=after/MORTAR.aftermath;

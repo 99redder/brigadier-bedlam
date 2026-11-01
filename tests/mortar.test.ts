@@ -1,6 +1,6 @@
 import {describe,it,expect} from "vitest";
 import {Battle,replayBattle} from "../src/sim/battle";
-import {MORTAR,mortarDuration,mortarImpact,mortarCoverOrder,createMortar} from "../src/sim/mortar";
+import {MORTAR,mortarDuration,mortarImpact,mortarCoverOrder,createMortar,mortarOnMap} from "../src/sim/mortar";
 import {rollSupport} from "../src/sim/rewards";
 import {TUNING} from "../src/sim/data";
 import {MAPS} from "../src/sim/maps";
@@ -39,7 +39,7 @@ describe("sustained mortar support",()=>{
   const ownView=publicState(b,side).mortars[0];expect(ownView.side).toBe(0);expect(ownView.pit).toEqual(m.pit);
  });
  it("waits longer than an airstrike, then launches and resolves twelve shells over a sustained attack",()=>{
-  const {b}=fixture();b.powers[0]=["mortar"];b.useSuper(0,"mortar",{x:600,y:280});
+  const {b}=fixture();b.random=()=>0;b.powers[0]=["mortar"];b.useSuper(0,"mortar",{x:600,y:280});
   b.tickSupers(MORTAR.setup-.01);expect(b.mortarEvents.filter(e=>e.kind==="launch")).toHaveLength(0);
   b.tickSupers(.02);expect(b.mortarEvents.filter(e=>e.kind==="launch")).toHaveLength(1);
   expect(b.mortarEvents.filter(e=>e.kind==="impact")).toHaveLength(0);
@@ -56,6 +56,23 @@ describe("sustained mortar support",()=>{
   expect(m.shells.some(s=>distance(s.point,m.requested)>TUNING.airstrikeRadius)).toBe(true);
   for(const s of m.shells)expect(distance(s.point,m.center)).toBeLessThanOrEqual(MORTAR.coverage+1e-8);
  });
+ it("lets edge overshoots miss instead of piling every outlying round onto the bank",()=>{
+  const {b}=fixture();let outside=0,clamped=0;
+  for(let seed=1;seed<=200;seed++){b.rngState=seed;const m=createMortar(b,0,{x:550,y:500},seed);outside+=m.shells.filter(s=>!mortarOnMap(s.point)).length;clamped+=m.shells.filter(s=>s.point.y===542||s.point.y===18).length;}
+  expect(outside).toBeGreaterThan(300);expect(clamped).toBe(0);
+ });
+ it("does not let an off-map shell splash or destroy cover at the edge",()=>{
+  const {b,enemy}=fixture();Object.assign(enemy,{x:1080,y:280,hp:330});b.cover=[{x:1070,y:260,w:20,h:40,hp:100}];
+  b.mortars=[{id:0,side:0,requested:{x:1080,y:280},center:{x:1080,y:280},pit:{x:46,y:280},elapsed:0,shells:[{point:{x:1101,y:280},launchAt:0,launched:false,impacted:false}]}];
+  b.tickSupers(MORTAR.flight+.1);expect(enemy.hp).toBe(330);expect(b.cover[0].hp).toBe(100);expect(b.mortarEvents.map(e=>e.kind)).toEqual(["launch"]);
+ });
+ it("keeps exposed soldiers outside the smaller blast alive",()=>{
+  const {b,enemy}=fixture();mortarImpact(b,{x:enemy.x+46,y:enemy.y});expect(enemy.hp).toBe(9999);mortarImpact(b,{x:enemy.x+44,y:enemy.y});expect(enemy.hp).toBe(9699);
+ });
+ it("keeps an alerted enemy sheltered when another order briefly takes it outside the warning ring",()=>{
+  const {b,enemy}=fixture();b.random=()=>0;b.powers[0]=["mortar"];b.useSuper(0,"mortar",enemy);b.mortars[0].elapsed=2;mortarCoverOrder(b,enemy);expect(enemy.takingCover).toBe(true);
+  enemy.x=1000;enemy.takingCover=false;b.ai(enemy);expect(enemy.takingCover).toBe(true);expect(enemy.path).toEqual([]);
+ });
  it("deals a dangerous 300 damage to exposed soldiers and can hit allies",()=>{
   const {b,enemy,player}=fixture();Object.assign(player,{x:600,y:280,hp:230});enemy.hp=330;
   mortarImpact(b,enemy);expect(enemy.hp).toBe(30);expect(player.life).not.toBe("alive");
@@ -68,7 +85,7 @@ describe("sustained mortar support",()=>{
   enemy.takingCover=false;mortarImpact(b,enemy);expect(enemy.life).not.toBe("alive");
  });
  it("respects solid cover snapshots and keeps permanent cover intact",()=>{
-  const {b,enemy}=fixture();enemy.x=620;b.cover=[{x:575,y:240,w:20,h:80,hp:20}];
+  const {b,enemy}=fixture();enemy.x=600;b.cover=[{x:575,y:240,w:20,h:80,hp:20}];
   mortarImpact(b,{x:565,y:280});expect(enemy.hp).toBe(9999);expect(b.cover).toEqual([]);
   mortarImpact(b,{x:565,y:280});expect(enemy.hp).toBe(9699);
   b.cover=[{x:575,y:240,w:20,h:80,hp:100,indestructible:true}];mortarImpact(b,{x:565,y:280});expect(b.cover[0].hp).toBe(100);expect(enemy.hp).toBe(9699);

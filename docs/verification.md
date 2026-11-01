@@ -1,5 +1,14 @@
 # Prototype verification — November 1, 2026
 
+## v0.49.1 mortar accuracy and cover balance
+
+- All 565 tests pass across 38 files. Frontend build, multiplayer Worker type check and deployment dry run pass. Regressions cover lost edge overshoots, no off-map splash/terrain damage, the smaller blast and retained enemy shelter.
+
+- Aim drift increases from 210 to 320 units and blast radius drops from 65 to 45. Shell count, 300 exposed damage, setup/flight times and long barrage duration are unchanged. Covered hits retain their low nonfatal damage.
+- Individual shells can overshoot the map and miss completely. Previously, clamping every round to the boundary concentrated misses onto starting rows. Off-map rounds produce no damage, ground warning, impact effect or impact sound; the fired round still arcs away. Both sides use the same rules.
+- Alerted AI retains shelter through an active barrage if another order has briefly moved or stood it outside the warning circle. Existing airstrike escape priority and manual human cover rules are retained.
+- A 1,000-seed geometric audit of a stationary south starting row, with identical random seeds and no AI/cover, counted 3,853 old shell/target intersections versus 930 new intersections; 3,138 of 12,000 new rounds missed the map. This diagnoses edge concentration, not actual casualty counts or win rates. Actual cover and movement further affect results.
+
 ## v0.49 mortar warning response and squad introduction
 
 - All 561 tests pass across 38 files; production frontend build, multiplayer Worker type check and deployment dry run pass. New regressions cover early-stage warning response with delayed think timers, overlapping barrages, human-player isolation, frozen introduction timing, full countdown/audio sequence and replay compatibility.
